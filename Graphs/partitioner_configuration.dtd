@@ -1,0 +1,53 @@
+<!ELEMENT partitioner_configuration (general_configuration, preprocessor_configuration?, klfm_configuration, postprocessor_configuration?)>
+
+<!ELEMENT general_configuration (device_resource+)>
+<!ELEMENT device_resource (resource_id, resource_capacity, max_imbalance)>
+<!ELEMENT resource_id (#PCDATA)>
+<!ELEMENT resource_capacity (#PCDATA)>
+<!ELEMENT max_imbalance (#PCDATA)>
+
+<!ELEMENT preprocessor_configuration (all_universal_resource_strategy | proportional_to_capacity_strategy | lowest_capacity_cost_strategy | random_strategy)>
+
+<!ELEMENT all_universal_resource_strategy (universal_resource_id)>
+<!ELEMENT universal_resource_id (#PCDATA)>
+
+<!ELEMENT proportional_to_capacity_strategy (use_total_capacity | use_flexible_capacity)>
+<!ELEMENT use_total_capacity EMPTY>
+<!ELEMENT use_flexible_capacity EMPTY>
+
+<!ELEMENT lowest_capacity_cost_strategy (use_total_capacity | use_flexible_capacity)>
+
+<!ELEMENT random_strategy (#PCDATA)>
+
+<!ELEMENT klfm_configuration (gain_bucket_type, node_implementation_options)>
+
+<!ELEMENT gain_bucket_type (single_resource_bucket | multi_resource_exclusive_bucket | multi_resource_mixed_bucket)>
+
+<!ELEMENT single_resource_bucket EMPTY>
+
+<!ELEMENT multi_resource_exclusive_bucket (use_adaptive_implementations?, (use_random_resource_selection_policy | use_largest_resource_imbalance_selection_policy | use_largest_unconstrained_gain_selection_policy | use_largest_gain_selection_policy))>
+<!ELEMENT use_adaptive_implementations EMPTY>
+<!ELEMENT use_random_resource_selection_policy EMPTY>
+<!ELEMENT use_largest_resource_imbalance_selection_policy EMPTY>
+<!ELEMENT use_largest_unconstrained_gain_selection_policy EMPTY>
+<!ELEMENT use_largest_gain_selection_policy EMPTY>
+
+<!ELEMENT multi_resource_mixed_bucket (use_adaptive_implementations?,  (use_random_resource_selection_policy | use_most_unbalanced_resource_selection_policy | use_best_gain_imbalance_score_classic_selection_policy | use_best_gain_imbalance_score_with_affinities_selection_policy))>
+<!ELEMENT use_most_unbalanced_resource_selection_policy EMPTY>
+<!ELEMENT use_best_gain_imbalance_score_classic_selection_policy EMPTY>
+<!ELEMENT use_best_gain_imbalance_score_with_affinities_selection_policy EMPTY>
+
+<!ELEMENT node_implementation_options (restrict_supernodes_to_default_implementation?, supernode_implementations_cap?, reuse_previous_run_implementations?, mutation_options, rebalance_options)>
+<!ELEMENT restrict_supernodes_to_default_implementation EMPTY>
+<!ELEMENT supernode_implementations_cap (#PCDATA)>
+<!ELEMENT reuse_previous_run_implementations EMPTY>
+
+<!ELEMENT mutation_options (mutation_rate)>
+<!ELEMENT mutation_rate (#PCDATA)>
+
+<!ELEMENT rebalance_options (rebalance_on_start_of_pass?, rebalance_on_end_of_run?, rebalance_on_demand?)>
+<!ELEMENT rebalance_on_start_of_pass EMPTY>
+<!ELEMENT rebalance_on_end_of_run EMPTY>
+<!ELEMENT rebalance_on_demand (rebalance_on_demand_cap_per_run, rebalance_on_demand_cap_per_pass)>
+<!ELEMENT rebalance_on_demand_cap_per_run (#PCDATA)>
+<!ELEMENT rebalance_on_demand_cap_per_pass (#PCDATA)>

@@ -1,0 +1,14 @@
+<!ELEMENT graph ((node | edge | port)+)>
+<!ELEMENT node (name, resource_weights?, source_edges, sink_edges)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT resource_weights (lut_factor, dsp_factor, bram_factor)> 
+<!ELEMENT lut_factor (#PCDATA)>
+<!ELEMENT dsp_factor (#PCDATA)>
+<!ELEMENT bram_factor (#PCDATA)>
+<!ELEMENT source_edges (name+)>
+<!ELEMENT sink_edges (name+)>
+<!ELEMENT edge (name, weight)>
+<!ELEMENT weight (#PCDATA)>
+<!ELEMENT port (name, source_edge?, sink_edge?)>
+<!ELEMENT source_edge (#PCDATA)>
+<!ELEMENT sink_edge (#PCDATA)>

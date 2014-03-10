@@ -2,15 +2,20 @@
 #define LP_SOLVE_INTERFACE_H_
 
 #include <exception>
+#include <map>
 #include <memory>
+#include <vector>
 #include <string>
 
 #include "lp_solve/lp_lib.h"
-#include "node.h"
+#include "universal_macros.h"
+
+class Edge;
+class Node;
 
 class LpSolveInterface {
  public:
-  LpSolveInterface() : state_(nullptr), graph_(0, 0, "top-level") {}
+  LpSolveInterface() : state_(nullptr) {}
   ~LpSolveInterface() {}
 
   // Load and construct ILP model from CHACO graph or netlist format.
@@ -47,22 +52,38 @@ class LpSolveInterface {
   };
 
  private:
-  // Returns an LP model using the structure in 'graph_'.
-  lprec* ConstructModelFromGraph();
+  class GraphParsingState {
+   public:
+    GraphParsingState(Node* graph) : graph_(CHECK_NOTNULL(graph)) {}
 
-  void AddObjectiveFunction(lprec* model);
-  void AddImbalanceConstraints(lprec* model);
-  void AddNodeConstraint(lprec* model, const Node& node);
+    // Returns an LP model using the structure in 'graph_'. Caller takes
+    // ownership of model.
+    lprec* ConstructModel();
+
+   private:
+    void SetObjectiveFunction(lprec* model);
+    // Elements must be added to the model in the following order:
+    // 1. Imbalance constraints
+    // 2. Nodes
+    // 3. Edges
+    void AddImbalanceConstraintsToModel(lprec* model);
+    void AddNodeToModel(lprec* model, const Node& node);
+    void AddEdgeToModel(lprec* model, const Edge& edge);
+
+    Node* graph_;
+    std::vector<double> max_weight_imbalance_fraction_;
+    std::map<int, int> variable_index_to_id_;
+    // Provides 3-D access to variable (column) indexes in the model.
+    //
+    // Access a node index by map[id][partition_num][personality_num]
+    // Access an edge crossing index by map[id][num_partitions][0]
+    // Access an edge partition connectivity by map[id][partition_num][0]
+    //
+    // Where 'id' is node.id or edge.id.
+    std::map<int, std::vector<std::vector<int>>> id_to_variable_indices_;
+  };
 
   std::unique_ptr<LpSolveState> state_;
-
-  // TODO: Move inside ConstructModelFromGraph?
-  Node graph_;
-  std::vector<double> max_weight_imbalance_fraction_;
-  // Row index 0 is not used in lp_solve.
-  std::vector<int> row_index_to_id_;
-  std::map<int, std::pair<int, int>> id_to_column_index_and_length_;
 };
-
 
 #endif // LP_SOLVE_INTERFACE_H_

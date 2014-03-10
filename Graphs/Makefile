@@ -73,12 +73,12 @@ weight_score_H = weight_score.h
 
 edge_klfm_H = $(edge_H) edge_klfm.h
 directed_edge_H = $(edge_H) directed_edge.h
+lp_solve_interface_H = $(univeral_macros_H)
 node_H = $(edge_H) $(port_H) node.h
 
 chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
 directed_node_H = $(edge_H) $(node_H) $(port_H) directed_node.h
 gain_bucket_entry_H = $(node_H) $(universal_macros_H) gain_bucket_entry.h
-lp_solve_interface_H = $(node_H)
 partitioner_config_H = $(node_H) partitioner_config.h
 partition_engine_H = $(edge_klfm_H) partition_engine.h
 
@@ -128,7 +128,7 @@ $(OBJDIR)/gain_bucket_standard.o: $(gain_bucket_standard_H) gain_bucket_standard
 $(OBJDIR)/id_manager.o: $(id_manager_H) id_manager.cpp
 	$(CXX) -c id_manager.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(processed_netlist_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
+$(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(processed_netlist_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
 	$(CXX) -c lp_solve_interface.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/node.o: $(id_manager_H) $(universal_macros_H) $(node_H) $(weight_score_H) node.cpp

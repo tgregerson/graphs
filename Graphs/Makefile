@@ -13,7 +13,7 @@ LPSOLVE_LDFLAGS = lp_solve/liblpsolve55.a $(LDFLAGS)
 PMBASE_OBJS = $(addprefix $(OBJDIR)/,chaco_parser.o edge.o edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o id_manager.o node.o partition_engine_klfm.o partitioner_config.o port.o preprocessor.o processed_netlist_parser.o testbench_generator.o weight_score.o xml_config_reader.o)
 PM_OBJS = $(PMBASE_OBJS) $(OBJDIR)/partition_main.o
 
-SNPBASE_OBJS = $(addprefix $(OBJDIR)/,structural_netlist_parser.o)
+SNPBASE_OBJS = $(OBJDIR)/structural_netlist_parser.o
 SNP_OBJS = $(SNPBASE_OBJS) $(OBJDIR)/structural_netlist_parser_main.o
 
 VDG_OBJS = $(addprefix $(OBJDIR)/,vcd_parser.o vcd_dumpvars_generator_main.o)
@@ -72,12 +72,10 @@ vcd_parser_H = vcd_parser.h
 weight_score_H = weight_score.h
 
 edge_klfm_H = $(edge_H) edge_klfm.h
-directed_edge_H = $(edge_H) directed_edge.h
 lp_solve_interface_H = $(univeral_macros_H)
 node_H = $(edge_H) $(port_H) node.h
 
 chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
-directed_node_H = $(edge_H) $(node_H) $(port_H) directed_node.h
 gain_bucket_entry_H = $(node_H) $(universal_macros_H) gain_bucket_entry.h
 partitioner_config_H = $(node_H) partitioner_config.h
 partition_engine_H = $(edge_klfm_H) partition_engine.h
@@ -85,7 +83,6 @@ partition_engine_H = $(edge_klfm_H) partition_engine.h
 gain_bucket_interface_H = $(edge_klfm_H) $(gain_bucket_entry_H) gain_bucket_interface.h
 preprocessor_H = $(node_H) $(partitioner_config_H) preprocessor.h
 xml_config_reader_H = $(partitioner_config_H) xml_config_reader.h
-xml_parser_H = $(directed_edge_H) $(directed_node_H) $(port_H) $(parser_interface_H) xml_parser.h
 
 gain_bucket_manager_H = $(node_H) $(gain_bucket_interface_H) $(gain_bucket_entry_H) $(partitioner_config_H) gain_bucket_manager.h
 gain_bucket_standard_H = $(gain_bucket_entry_H) $(gain_bucket_interface_H) gain_bucket_standard.h
@@ -98,7 +95,7 @@ partition_engine_klfm_H = $(edge_klfm_H) $(gain_bucket_entry_H) $(gain_bucket_ma
 # ------------------------------------------------------------
 # COMPILER OBJECTS
 
-$(OBJDIR)/partition_main.o: $(chaco_parser_H) $(directed_node_H) $(id_manager_H) $(partition_engine_H) $(partition_engine_klfm_H) $(preprocessor_H) $(processed_netlist_parser_H) $(testbench_generator_H) $(xml_config_reader_H) $(xml_parser_H) partition_main.cpp
+$(OBJDIR)/partition_main.o: $(chaco_parser_H) $(id_manager_H) $(partition_engine_H) $(partition_engine_klfm_H) $(preprocessor_H) $(processed_netlist_parser_H) $(testbench_generator_H) $(xml_config_reader_H) partition_main.cpp
 	$(CXX) -c partition_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/chaco_parser.o: $(id_manager_H) $(chaco_parser_H) chaco_parser.cpp
@@ -134,7 +131,7 @@ $(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(processe
 $(OBJDIR)/node.o: $(id_manager_H) $(universal_macros_H) $(node_H) $(weight_score_H) node.cpp
 	$(CXX) -c node.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/partition_engine_klfm.o: $(directed_node_H) $(gain_bucket_manager_single_resource_H) $(gain_bucket_manager_multi_resource_exclusive_H) $(gain_bucket_manager_multi_resource_mixed_H) $(id_manager_H) $(universal_macros_H) $(weight_score_H) $(partition_engine_klfm_H) partition_engine_klfm.cpp
+$(OBJDIR)/partition_engine_klfm.o: $(gain_bucket_manager_single_resource_H) $(gain_bucket_manager_multi_resource_exclusive_H) $(gain_bucket_manager_multi_resource_mixed_H) $(id_manager_H) $(universal_macros_H) $(weight_score_H) $(partition_engine_klfm_H) partition_engine_klfm.cpp
 	$(CXX) -c partition_engine_klfm.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/partitioner_config.o: $(universal_macros_H) $(partitioner_config_H) partitioner_config.cpp

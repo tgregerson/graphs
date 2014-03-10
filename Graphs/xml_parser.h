@@ -14,8 +14,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#include "directed_node.h"
-#include "directed_edge.h"
+#include "edge.h"
+#include "node.h"
 #include "port.h"
 
 class XmlParser : ParserInterface {
@@ -37,8 +37,8 @@ class XmlParser : ParserInterface {
   void PopulateConnectionsNodeToEdges(bool source_edges);
   void PopulateConnectionsEdgeToNodesPorts(bool source_nodes);
   bool PopulateEntities(xmlNodePtr nodePtr);
-  void PopulateNodeFromXml(DirectedNode* newNode, xmlNodePtr curNodePtr);
-  void PopulateEdgeFromXml(DirectedEdge* newEdge, xmlNodePtr curNodePtr);
+  void PopulateNodeFromXml(Node* newNode, xmlNodePtr curNodePtr);
+  void PopulateEdgeFromXml(Edge* newEdge, xmlNodePtr curNodePtr);
   void PopulatePortFromXml(Port* newPort, xmlNodePtr curNodePtr);
 
   // Maps of the connections of each node and edge, using the name strings
@@ -60,8 +60,8 @@ class XmlParser : ParserInterface {
 
   // Used for temporary storage during parsing. Ownership of pointers will
   // be passed to the graph if parsing succeeds.
-  std::unordered_map<int, DirectedNode*> parsed_nodes;
-  std::unordered_map<int, DirectedEdge*> parsed_edges;
+  std::unordered_map<int, Node*> parsed_nodes;
+  std::unordered_map<int, Edge*> parsed_edges;
   std::unordered_map<int, Port*> parsed_ports;
 };
 

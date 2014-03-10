@@ -15,14 +15,13 @@
 
 #include "id_manager.h"
 #include "chaco_parser.h"
-#include "directed_node.h"
+#include "node.h"
 #include "partition_engine.h"
 #include "partition_engine_klfm.h"
 #include "preprocessor.h"
 #include "processed_netlist_parser.h"
 #include "testbench_generator.h"
 #include "xml_config_reader.h"
-#include "xml_parser.h"
 
 using namespace std;
 

@@ -13,7 +13,7 @@ class Edge {
   typedef std::set<int> NodeIdSet;
   typedef std::vector<int> NodeIdVector;
 
-  Edge() {}
+  Edge() : id(-1), weight(0) {}
   Edge(int edge_id, int weight = 1, const std::string& edge_name = "");
   virtual ~Edge() {}
 

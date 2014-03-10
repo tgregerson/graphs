@@ -26,9 +26,6 @@
 #include "node.h"
 #include "partitioner_config.h"
 
-class DirectedEdgeKlfm;
-class DirectedNode;
-
 class PartitionEngineKlfm : public PartitionEngine {
  public:
   class Options;
@@ -306,9 +303,7 @@ class PartitionEngineKlfm : public PartitionEngine {
   // to use this method.
   void StripPorts(KlfmNodeMap* node_map, KlfmEdgeMap* edge_set,
                   const NodeIdSet& port_ids);
-  /*void StripPortsDirected(std::unordered_map<int, DirectedNode*>* node_set,
-                          std::unordered_map<int, DirectedEdgeKlfm*>* edge_set,
-                          const std::unordered_set<int>& port_ids);*/
+
   void PopulateEdgePartitionConnections(
       const NodePartitions& current_partition,
       NodeVectorPairMap* edge_connected_nodes);

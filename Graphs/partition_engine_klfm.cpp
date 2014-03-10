@@ -8,7 +8,6 @@
 #include <sstream>
 #include <utility>
 
-#include "directed_node.h"
 #include "gain_bucket_manager_single_resource.h"
 #include "gain_bucket_manager_multi_resource_exclusive.h"
 #include "gain_bucket_manager_multi_resource_mixed.h"
@@ -1151,56 +1150,6 @@ void PartitionEngineKlfm::StripPorts(
     edge_set->erase(old_edge_id);
   }
 }
-
-/*void PartitionEngineKlfm::StripPortsDirected(
-    unordered_map<int, DirectedNode*>* node_set,
-    unordered_map<int, DirectedEdgeKlfm*>* edge_set,
-    const unordered_set<int>& port_ids) {
-  unordered_set<int> edges_to_remove;
-  for (auto edge_pair : *edge_set) {
-    unordered_set<int> sources_to_remove;
-    unordered_set<int> sinks_to_remove;
-    for (auto cnx_id : edge_pair.second->source_ids) {
-      if (port_ids.count(cnx_id) != 0) {
-        sources_to_remove.insert(cnx_id);
-      }
-    }
-    for (auto cnx_id : edge_pair.second->sink_ids) {
-      if (port_ids.count(cnx_id) != 0) {
-        sinks_to_remove.insert(cnx_id);
-      }
-    }
-    for (auto cnx_id : sources_to_remove) {
-      edge_pair.second->RemoveSource(cnx_id);
-      edge_pair.second->connection_ids.erase(cnx_id);
-    }
-    for (auto cnx_id : sinks_to_remove) {
-      edge_pair.second->RemoveSink(cnx_id);
-      edge_pair.second->connection_ids.erase(cnx_id);
-    }
-    if (edge_pair.second->source_ids.empty() ||
-        edge_pair.second->sink_ids.empty()) {
-      // Edge no longer has both a sink and a source, so it can be removed
-      // from the edges used in partitioning.
-      edges_to_remove.insert(edge_pair.first);
-    }
-  }
-  // Remove references to the outdated edges from the node set.
-  for (auto node_pair : *node_set) {
-    for (auto& port_pair : node_pair.second->ports) {
-      if (edges_to_remove.count(port_pair.second.external_edge_id) != 0) {
-        port_pair.second.external_edge_id = 0;
-      }
-    }
-  }
-  // Delete the edges that are being removed.
-  for (auto old_edge_id : edges_to_remove) {
-    assert(edge_set->count(old_edge_id) == 1);
-    auto it = edge_set->find(old_edge_id);
-    delete it->second;
-    edge_set->erase(old_edge_id);
-  }
-}*/
 
 void PartitionEngineKlfm::PopulateEdgePartitionConnections(
     const NodePartitions& partition, NodeVectorPairMap* edge_connected_nodes) {

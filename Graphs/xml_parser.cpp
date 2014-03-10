@@ -86,7 +86,7 @@ void XmlParser::PopulateConnectionsNodeToEdges(bool source_edges) {
     assert(node_name_to_id.count(node_name));
     int node_id = node_name_to_id[node_name];
     assert(parsed_nodes.count(node_id));
-    DirectedNode* node = parsed_nodes[node_id];
+    Node* node = parsed_nodes[node_id];
     for (auto edge_cnx_name : edge_connections) {
       assert(edge_name_to_id.count(edge_cnx_name));
       int edge_cnx_id = edge_name_to_id[edge_cnx_name];
@@ -110,7 +110,7 @@ void XmlParser::PopulateConnectionsEdgeToNodesPorts(bool source_nodes) {
     assert(edge_name_to_id.count(edge_name));
     int edge_id = edge_name_to_id[edge_name];
     assert(parsed_edges.count(edge_id));
-    DirectedEdge* edge = parsed_edges[edge_id];
+    Edge* edge = parsed_edges[edge_id];
     for (auto node_port_cnx_name : node_port_connections) {
       assert(node_name_to_id.count(node_port_cnx_name) ||
              port_name_to_id.count(node_port_cnx_name));
@@ -127,11 +127,7 @@ void XmlParser::PopulateConnectionsEdgeToNodesPorts(bool source_nodes) {
         parsed_ports[node_port_cnx_id]->internal_edge_id = edge_id;
         assert(node_port_cnx_id != 0);
       }
-      if (source_nodes) {
-        edge->AddSource(node_port_cnx_id);
-      } else {
-        edge->AddSink(node_port_cnx_id);
-      }
+      edge->AddConnection(node_port_cnx_id);
     }
   }
 }
@@ -147,11 +143,11 @@ bool XmlParser::PopulateEntities(xmlNodePtr nodePtr) {
     if (curNodePtr->type == XML_ELEMENT_NODE) {
       if (!strcmp((char*)(curNodePtr->name), "node")) {
         int node_id = IdManager::AcquireNodeId();
-        DirectedNode* newNode = new DirectedNode(IdManager::AcquireNodeId());
+        Node* newNode = new Node(IdManager::AcquireNodeId());
         PopulateNodeFromXml(newNode, curNodePtr);
         parsed_nodes.insert(make_pair(newNode->id, newNode));
       } else if (!strcmp((char*)(curNodePtr->name), "edge")) {
-        DirectedEdge* newEdge = new DirectedEdge(IdManager::AcquireEdgeId());
+        Edge* newEdge = new Edge(IdManager::AcquireEdgeId());
         PopulateEdgeFromXml(newEdge, curNodePtr);
         parsed_edges.insert(make_pair(newEdge->id, newEdge));
       } else if (!strcmp((char*)(curNodePtr->name), "port")) {
@@ -168,7 +164,7 @@ bool XmlParser::PopulateEntities(xmlNodePtr nodePtr) {
   return true;
 }
 
-void XmlParser::PopulateNodeFromXml(DirectedNode* newNode,
+void XmlParser::PopulateNodeFromXml(Node* newNode,
                                     xmlNodePtr myNodePtr) {
   assert(myNodePtr != NULL);
   assert(myNodePtr->type == XML_ELEMENT_NODE);
@@ -202,13 +198,13 @@ void XmlParser::PopulateNodeFromXml(DirectedNode* newNode,
       newNode->AddWeightVector(resource_weights);
     } else if(!strcmp((char*)(myNodePtr->name),"source_edges")) {
       xmlNodePtr sourcePtr = myNodePtr->children;
-      for(sourcePtr; sourcePtr != NULL; sourcePtr = sourcePtr->next) {
+      for(; sourcePtr != NULL; sourcePtr = sourcePtr->next) {
         string s = (char*)(sourcePtr->children->content);
         sources.push_back(s);
       }
     } else if(!strcmp((char*)(myNodePtr->name),"sink_edges")) {
       xmlNodePtr sinkPtr = myNodePtr->children;
-      for (sinkPtr; sinkPtr != NULL; sinkPtr = sinkPtr->next) {
+      for (; sinkPtr != NULL; sinkPtr = sinkPtr->next) {
         string s = (char*)(sinkPtr->children->content);
         sinks.push_back(s);
       }
@@ -231,7 +227,7 @@ void XmlParser::PopulateNodeFromXml(DirectedNode* newNode,
   }
 }
 
-void XmlParser::PopulateEdgeFromXml(DirectedEdge* newEdge,
+void XmlParser::PopulateEdgeFromXml(Edge* newEdge,
                                     xmlNodePtr myNodePtr) {
   assert(myNodePtr != NULL);
   assert(myNodePtr->type == XML_ELEMENT_NODE);

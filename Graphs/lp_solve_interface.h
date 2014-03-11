@@ -18,20 +18,20 @@ class LpSolveInterface {
   LpSolveInterface() : state_(nullptr) {}
   ~LpSolveInterface() {}
 
-  // Load and construct ILP model from CHACO graph or netlist format.
-  void LoadFromChaco(const std::string& filename);
-  void LoadFromNtl(const std::string& filename);
-
   // If model has been previously constructed and written to a file, it can
   // be loaded without additional construction.
   void WriteToMps(const std::string& filename) const;
   void LoadFromMps(const std::string& filename);
-  
+
+  // Load and construct ILP model from CHACO graph or netlist format.
+  void LoadFromChaco(const std::string& filename);
+  void LoadFromNtl(const std::string& filename);
+
   // Encapsulates state related to lp_solve.
   class LpSolveState {
    public:
     LpSolveState();
-    LpSolveState(lprec* model) : model_(model, delete_lp) {}
+    LpSolveState(lprec* model) : model_(CHECK_NOTNULL(model), delete_lp) {}
 
     lprec* model() const {
       return model_.get();

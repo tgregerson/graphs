@@ -7,6 +7,21 @@
 
 using namespace std;
 
+void LpSolveInterface::WriteToMps(const string& filename) const {
+  if (state_.get() == nullptr) {
+    throw LpSolveException("Trying to write MPS without creating model.");
+  }
+  lprec* model = CHECK_NOTNULL(state_.get())->model();
+  if (!write_mps(model, const_cast<char*>(filename.c_str()))) {
+    throw LpSolveException("Could not write file " + filename);
+  }
+}
+
+void LpSolveInterface::LoadFromMps(const string& filename) {
+  lprec* model = read_MPS(const_cast<char*>(filename.c_str()), NORMAL);
+
+}
+
 void LpSolveInterface::LoadFromNtl(const string& filename) {
   ProcessedNetlistParser netlist_parser;
   Node graph;

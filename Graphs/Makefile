@@ -4,28 +4,51 @@ CXX_GCC = g++
 CXX_CLANG = clang++
 CXX = $(CXX_CLANG)
 XML2_FLAGS = `xml2-config --cflags`
-CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3
+CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3 -flto
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS)
 CXXFLAGS = $(CXXFLAGS_OPT)
 LDFLAGS = -lrt -v `xml2-config --libs` -flto
-LPSOLVE_LDFLAGS = lp_solve/liblpsolve55.a $(LDFLAGS)
+LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
-PMBASE_OBJS = $(addprefix $(OBJDIR)/,chaco_parser.o edge.o edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o id_manager.o node.o partition_engine_klfm.o partitioner_config.o port.o preprocessor.o processed_netlist_parser.o testbench_generator.o weight_score.o xml_config_reader.o)
-PM_OBJS = $(PMBASE_OBJS) $(OBJDIR)/partition_main.o
+GRAPH_BASE_O = $(addprefix $(OBJDIR)/,edge.o id_manager.o node.o port.o weight_score.o)
 
-SNPBASE_OBJS = $(OBJDIR)/structural_netlist_parser.o
-SNP_OBJS = $(SNPBASE_OBJS) $(OBJDIR)/structural_netlist_parser_main.o
+CHACO_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o)
 
-VDG_OBJS = $(addprefix $(OBJDIR)/,vcd_parser.o vcd_dumpvars_generator_main.o)
+NTL_BASE_O = $(addprefix $(OBJDIR)/,processed_netlist_parser.o) \
+             $(GRAPH_BASE_O)
+             
+SNP_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_parser.o)
 
-VPBASE_OBJS = $(addprefix $(OBJDIR)/,vcd_parser.o)
-VP_OBJS = $(VPBASE_OBJS) $(OBJDIR)/vcd_parser_main.o
+LPSI_BASE_O = $(addprefix $(OBJDIR)/,lp_solve_interface.o) \
+              $(CHACO_BASE_O) \
+              $(GRAPH_BASE_O) \
+              $(NTL_BASE_O)
+LPSI_BIN_O = $(OBJDIR)/lp_solve_interface_main.o \
+             $(LPSI_BASE_O)
 
-WG_OBJS = $(OBJDIR)/chaco_weight_generator.o
+KLFM_BASE_O = $(addprefix $(OBJDIR)/,edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o partition_engine_klfm.o partitioner_config.o preprocessor.o testbench_generator.o) \
+              $(GRAPH_BASE_O)
 
-OBJS = $(PM_OBJS) $(SNP_OBJS) $(VDG_OBJS) $(VP_OBJS) $(WG_OBJS)
+PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o partitioner_config.o preprocessor.o processed_netlist_parser.o xml_config_reader.o) \
+            $(CHACO_BASE_O) \
+            $(GRAPH_BASE_O) \
+            $(KLFM_BASE_O) \
+            $(NTL_BASE_O)
+PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
+SNP_BIN_O = $(OBJDIR)/structural_netlist_parser_main.o \
+            $(SNP_BASE_O)
+
+VDG_BIN_O = $(addprefix $(OBJDIR)/,vcd_parser.o vcd_dumpvars_generator_main.o)
+
+VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_parser.o)
+VP_BIN_O = $(VP_BASE_O) $(OBJDIR)/vcd_parser_main.o
+
+WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
+           $(CHACO_BASE_O) \
+           $(GRAPH_BASE_O)
+
+BINARIES = $(addprefix $(BINDIR)/,partition_main lp_solve_interface structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -38,19 +61,22 @@ $(OBJDIR):
 $(BINDIR):
 	mkdir $(BINDIR)
 
-$(BINDIR)/partition_main: $(PM_OBJS)
+$(BINDIR)/partition_main: $(PM_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BINDIR)/structural_netlist_parser: $(SNP_OBJS)
+$(BINDIR)/lp_solve_interface: $(LPSI_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LPSOLVE_LDFLAGS)
+
+$(BINDIR)/structural_netlist_parser: $(SNP_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BINDIR)/vcd_dumpvars_generator: $(VDG_OBJS)
+$(BINDIR)/vcd_dumpvars_generator: $(VDG_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BINDIR)/vcd_parser: $(VP_OBJS)
+$(BINDIR)/vcd_parser: $(VP_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BINDIR)/weight_generator: $(WG_OBJS) $(PMBASE_OBJS)
+$(BINDIR)/weight_generator: $(WG_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
@@ -127,6 +153,9 @@ $(OBJDIR)/id_manager.o: $(id_manager_H) id_manager.cpp
 
 $(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(processed_netlist_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
 	$(CXX) -c lp_solve_interface.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/lp_solve_interface_main.o: $(lp_solve_interface_H) lp_solve_interface.cpp
+	$(CXX) -c lp_solve_interface_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/node.o: $(id_manager_H) $(universal_macros_H) $(node_H) $(weight_score_H) node.cpp
 	$(CXX) -c node.cpp $(CXXFLAGS) -o $@

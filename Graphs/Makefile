@@ -1,13 +1,13 @@
 OBJDIR = build_files
 BINDIR = binaries
-#COMPILER = /app/usr/local/bin/g++
-#COMPILER = g++
-CXX = clang++
+CXX_GCC = g++
+CXX_CLANG = clang++
+CXX = $(CXX_CLANG)
 XML2_FLAGS = `xml2-config --cflags`
-CXXFLAGS = -g -std=c++11 $(XML2_FLAGS)
-#CFLAGS = $(XML2_FLAGS) -flto -O3 -std=gnu++0x -c
-#LDFLAGS = -flto -lrt -v
-LDFLAGS = -lrt -v `xml2-config --libs`
+CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3
+CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS)
+CXXFLAGS = $(CXXFLAGS_OPT)
+LDFLAGS = -lrt -v `xml2-config --libs` -flto
 LPSOLVE_LDFLAGS = lp_solve/liblpsolve55.a $(LDFLAGS)
 
 PMBASE_OBJS = $(addprefix $(OBJDIR)/,chaco_parser.o edge.o edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o id_manager.o node.o partition_engine_klfm.o partitioner_config.o port.o preprocessor.o processed_netlist_parser.o testbench_generator.o weight_score.o xml_config_reader.o)

@@ -83,10 +83,10 @@ int main(int argc, char *argv[]) {
     TCLAP::SwitchArg solve_switch(
         "s", "solve", "Solve LP model", cmd, false);
 
-    cmd.parse(argc, argv);
-
     TCLAP::SwitchArg verbose_switch(
         "v", "verbose", "Print progress information", cmd, false);
+
+    cmd.parse(argc, argv);
 
     if (chaco_input_file_flag.isSet()) {
       use_chaco = true;

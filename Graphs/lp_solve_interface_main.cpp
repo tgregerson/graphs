@@ -46,17 +46,17 @@ int main(int argc, char *argv[]) {
 
     vector<TCLAP::Arg*> input_file_args;
     TCLAP::ValueArg<string> chaco_input_file_flag(
-        "c", "chaco", "CHACO-format input file name", false, "string",
+        "c", "chaco", "CHACO-format input file name", false, "", "string",
         nullptr);
     input_file_args.push_back(&chaco_input_file_flag);
 
     TCLAP::ValueArg<string> ntl_input_file_flag(
-        "n", "ntl", "NTL-format input file name", false, "string",
+        "n", "ntl", "NTL-format input file name", false, "", "string",
         nullptr);
     input_file_args.push_back(&ntl_input_file_flag);
 
     TCLAP::ValueArg<string> mps_input_file_flag(
-        "m", "mps", "MPS-format input file name", false, "string",
+        "m", "mps", "MPS-format input file name", false, "", "string",
         nullptr);
     input_file_args.push_back(&mps_input_file_flag);
 

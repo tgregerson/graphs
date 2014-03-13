@@ -23,7 +23,7 @@ void LpSolveInterface::LoadFromNtl(const string& filename) {
   ProcessedNetlistParser netlist_parser;
   Node graph;
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
-  GraphParsingState gpstate(&graph);
+  GraphParsingState gpstate(&graph, max_imbalance_);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }
 
@@ -33,7 +33,7 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
   if (!chaco_parser.Parse(&graph, filename.c_str())) {
     throw LpSolveException("Error parsing CHACO graph from: " + filename);
   }
-  GraphParsingState gpstate(&graph);
+  GraphParsingState gpstate(&graph, max_imbalance_);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }
 
@@ -212,11 +212,11 @@ void LpSolveInterface::GraphParsingState::AddNodeToModel(
 
   // +1 because lp_solve ignores position 0 in its rows.
   int new_variable_index = get_Ncolumns(model) + 1;
+  double imbalance_fraction = max_weight_imbalance_fraction_;
   for (int par = 0; par < num_partitions_; ++par) {
     for (int per = 0; per < num_personalities; ++per) {
       vector<pair<int, REAL>> row_num_and_coeff;
       for (int res = 0; res < num_resources; ++res) {
-        double imbalance_fraction = max_weight_imbalance_fraction_[res];
         int row_num_1 = 1 + 2 * res;
         double scaling1 = (par == 0) ? (imbalance_fraction + 1) :
                                        (imbalance_fraction - 1);

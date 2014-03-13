@@ -8,14 +8,18 @@
 using namespace std;
 
 void LpSolveInterface::LoadFromMps(const string& filename) {
-  cout << "Reading MPS model from " << filename << "...";
+  if (verbose_) {
+    cout << "Reading MPS model from " << filename << "...";
+  }
   lprec* model = read_MPS(const_cast<char*>(filename.c_str()), NORMAL);
   if (model == nullptr) {
     throw LpSolveException("Could not read model from " + filename);
   }
-  cout << "Done." << endl;
-  cout << "Model contains " << get_Ncolumns(model) << " variables and "
-       << get_Nrows(model) << " constraints." << endl;
+  if (verbose_) {
+    cout << "Done." << endl;
+    cout << "Model contains " << get_Ncolumns(model) << " variables and "
+         << get_Nrows(model) << " constraints." << endl;
+  }
   state_.reset(new LpSolveState(model));
 }
 
@@ -38,7 +42,9 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
 }
 
 void LpSolveInterface::WriteToLp(const string& filename) const {
-  cout << "Writing LP model to " << filename << endl;
+  if (verbose_) {
+    cout << "Writing LP model to " << filename << endl;
+  }
   if (state_.get() == nullptr) {
     throw LpSolveException("Trying to write LP without creating model.");
   }
@@ -49,7 +55,9 @@ void LpSolveInterface::WriteToLp(const string& filename) const {
 }
 
 void LpSolveInterface::WriteToMps(const string& filename) const {
-  cout << "Writing MPS model to " << filename << endl;
+  if (verbose_) {
+    cout << "Writing MPS model to " << filename << endl;
+  }
   if (state_.get() == nullptr) {
     throw LpSolveException("Trying to write MPS without creating model.");
   }
@@ -107,22 +115,28 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModel() {
   int num_edges_added = 0;
   for (const auto& node_id_ptr_pair : graph_->internal_nodes()) {
     AddNodeToModel(model, *(node_id_ptr_pair.second));
-    if (++num_nodes_added % 1000 == 0) {
-      cout << "Added " << num_nodes_added << " nodes." << endl;
-      cout << "Current Variables: " << get_Ncolumns(model) << endl;
-      cout << "Current Constraints: " << get_Nrows(model) << endl;
+    if (verbose_) {
+      if (++num_nodes_added % 10000 == 0) {
+        cout << "Added " << num_nodes_added << " nodes." << endl;
+        cout << "Current Variables: " << get_Ncolumns(model) << endl;
+        cout << "Current Constraints: " << get_Nrows(model) << endl;
+      }
     }
   }
   for (const auto& edge_id_ptr_pair : graph_->internal_edges()) {
     AddEdgeToModel(model, *(edge_id_ptr_pair.second));
-    if (++num_edges_added % 1000 == 0) {
-      cout << "Added " << num_edges_added << " edges." << endl;
-      cout << "Current Variables: " << get_Ncolumns(model) << endl;
-      cout << "Current Constraints: " << get_Nrows(model) << endl;
+    if (verbose_) {
+      if (++num_edges_added % 1000 == 0) {
+        cout << "Added " << num_edges_added << " edges." << endl;
+        cout << "Current Variables: " << get_Ncolumns(model) << endl;
+        cout << "Current Constraints: " << get_Nrows(model) << endl;
+      }
     }
   }
-  cout << "Total Variables: " << get_Ncolumns(model) << endl;
-  cout << "Total Constraints: " << get_Nrows(model) << endl;
+  if (verbose_) {
+    cout << "Total Variables: " << get_Ncolumns(model) << endl;
+    cout << "Total Constraints: " << get_Nrows(model) << endl;
+  }
   return model;
 }
 
@@ -149,8 +163,10 @@ void LpSolveInterface::GraphParsingState::PreAllocateModelMemory(lprec* model) {
 
   int constraint_estimate = node_constraint_estimate + edge_constraint_estimate;
 
-  cout << "Pre-allocating memory for " << constraint_estimate
-       << " constraints and " << variable_estimate << " variables." << endl;
+  if (verbose_) {
+    cout << "Pre-allocating memory for " << constraint_estimate
+         << " constraints and " << variable_estimate << " variables." << endl;
+  }
 
   if (!resize_lp(model, constraint_estimate, variable_estimate)) {
     throw LpSolveException("Failed to pre-allocate memory.");

@@ -17,6 +17,7 @@ void print_usage_and_exit() {
        << "OPTIONS:" << endl
        << "--imbalance max_imbalance_fraction" << endl
        << "--solve [SOLVE_OPTIONS*]" << endl
+       << "--verbose" << endl
        << "--write_lp mps_output_file" << endl
        << "--write_mps mps_output_file" << endl
        << endl
@@ -27,6 +28,7 @@ void print_usage_and_exit() {
 }
 
 int main(int argc, char *argv[]) {
+  bool verbose = false;
   bool solve = false;
   bool use_chaco = false;
   bool use_ntl = false;
@@ -83,6 +85,9 @@ int main(int argc, char *argv[]) {
 
     cmd.parse(argc, argv);
 
+    TCLAP::SwitchArg verbose_switch(
+        "v", "verbose", "Print progress information", cmd, false);
+
     if (chaco_input_file_flag.isSet()) {
       use_chaco = true;
       input_filename = chaco_input_file_flag.getValue();
@@ -114,11 +119,13 @@ int main(int argc, char *argv[]) {
       timeout_s = solver_timeout_flag.getValue();
     }
 
+    verbose = verbose_switch.getValue();
+
   } catch (TCLAP::ArgException &e) {
     cerr << "Error: " << e.error() << " for arg " << e.argId() << endl;
   }
 
-  LpSolveInterface interface(max_imbalance_fraction);
+  LpSolveInterface interface(max_imbalance_fraction, verbose);
   if (use_chaco) {
     interface.LoadFromChaco(input_filename);
   } else if (use_ntl) {

@@ -15,9 +15,9 @@ class Node;
 
 class LpSolveInterface {
  public:
-  LpSolveInterface() : state_(nullptr), max_imbalance_(0.01) {}
-  LpSolveInterface(double max_imbalance)
-      : state_(nullptr), max_imbalance_(max_imbalance) {}
+  LpSolveInterface() : state_(nullptr), max_imbalance_(0.01), verbose_(false) {}
+  LpSolveInterface(double max_imbalance, bool verbose)
+      : state_(nullptr), max_imbalance_(max_imbalance), verbose_(verbose) {}
   ~LpSolveInterface() {}
 
   // If model has been previously constructed and written to a file, it can
@@ -124,6 +124,7 @@ class LpSolveInterface {
 
   std::unique_ptr<LpSolveState> state_;
   const double max_imbalance_;
+  const bool verbose_;
 };
 
 #endif // LP_SOLVE_INTERFACE_H_

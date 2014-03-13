@@ -6,7 +6,7 @@ CXX = $(CXX_CLANG)
 XML2_FLAGS = `xml2-config --cflags`
 CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3 -flto
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS)
-CXXFLAGS = $(CXXFLAGS_OPT)
+CXXFLAGS = $(CXXFLAGS_DEBUG)
 LDFLAGS = -lrt -v `xml2-config --libs` -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
@@ -98,7 +98,7 @@ vcd_parser_H = vcd_parser.h
 weight_score_H = weight_score.h
 
 edge_klfm_H = $(edge_H) edge_klfm.h
-lp_solve_interface_H = $(univeral_macros_H)
+lp_solve_interface_H = $(univeral_macros_H) lp_solve_interface.h
 node_H = $(edge_H) $(port_H) node.h
 
 chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
@@ -154,7 +154,7 @@ $(OBJDIR)/id_manager.o: $(id_manager_H) id_manager.cpp
 $(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(processed_netlist_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
 	$(CXX) -c lp_solve_interface.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/lp_solve_interface_main.o: $(lp_solve_interface_H) lp_solve_interface.cpp
+$(OBJDIR)/lp_solve_interface_main.o: $(lp_solve_interface_H) lp_solve_interface_main.cpp
 	$(CXX) -c lp_solve_interface_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/node.o: $(id_manager_H) $(universal_macros_H) $(node_H) $(weight_score_H) node.cpp

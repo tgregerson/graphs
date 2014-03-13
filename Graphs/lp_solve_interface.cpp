@@ -458,3 +458,69 @@ void LpSolveInterface::GraphParsingState::SetEdgePartitionConnectivityVariableIn
   }
   entry[partition_num] = index;
 }
+
+void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
+    lprec* model) {
+  vector<vector<pair<REAL, REAL>>> coefficients;
+  vector<vector<int>> variable_indices;
+  coefficients.resize(num_resources_);
+  variable_indices.resize(num_resources_);
+  for (const pair<int, vector<vector<int>>>& nid_mapping :
+       node_to_variable_indices_) {
+    int node_id = nid_mapping.first;
+    Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));
+    for (int part = 0; part < num_partitions_; ++part) {
+      int num_personalities = node->WeightVectors().size();
+      for (int per = 0; per < num_personalities; ++per) {
+        const vector<int>& wv =
+            graph_->internal_nodes().at(node_id)->WeightVector(per);
+        for (int res = 0; res < num_resources_; ++res) {
+          int weight = wv[res];
+          if (res != 0) {
+            variable_indices[res].push_back(nid_mapping.second[part][per]);
+            coefficients[res].push_back(make_pair(
+                (REAL)(weight * (max_weight_imbalance_fraction_ + 1)),
+                (REAL)(weight * (max_weight_imbalance_fraction_ - 1))));
+
+          }
+        }
+      }
+    }
+  }
+
+  for (int res = 0; res < num_resources_; ++res) {
+    int num_nonzero = variable_indices[res].size();
+    int* indices = (int*)malloc(num_nonzero * sizeof(int));
+    REAL* gz_coeffs = (REAL*)malloc(num_nonzero * sizeof(REAL));
+    REAL* lz_coeffs = (REAL*)malloc(num_nonzero * sizeof(REAL));
+    for (int i = 0; i < num_nonzero; ++i) {
+      indices[i] = variable_indices[res][i];
+      gz_coeffs[i] = coefficients[res][i].first;
+      lz_coeffs[i] = coefficients[res][i].second;
+    }
+    if (!add_constraintex(model, num_nonzero, gz_coeffs, indices , GE, 0.0) ||
+        !add_constraintex(model, num_nonzero, lz_coeffs, indices , GE, 0.0)) {
+      throw LpSolveException("Failed to imbalance constraint to model.");
+    }
+    free(indicies);
+    free(gz_coeffs);
+    free(lz_coeffs);
+  }
+}
+
+void LpSolveInterface::GraphParsingState::AddNodeConstraintToModel(
+    lprec* model, const Node& node) {
+  int num_nonzero = num_partitions_ * node.WeightVectors().size();
+  int indices[num_nonzero];
+  REAL coeffs[num_nonzero];
+  int i = 0;
+  for (int part = 0; part < num_partitions_; ++part) {
+    for (int per = 0; per < node.WeightVectors().size(); ++per) {
+      indices[i] = node_to_variable_indices_[node.id][part][per];
+      coeffs[i++] = 1.0;
+    }
+  }
+  if (!add_constraintex(model, num_nonzero, coeffs, indices , LE, 1.0)) {
+    throw LpSolveException("Failed to add empty row to model.");
+  }
+}

@@ -106,6 +106,11 @@ class LpSolveInterface {
     void SetEdgePartitionConnectivityVariableIndex(
         int edge_id, int partition_num, int index);
 
+    // For fast row mode
+    void AddImbalanceConstraintsToModel(lprec* model);
+    void AddNodeConstraintToModel(lprec* model, const Node& node);
+    void AddEdgeConstraintsToModel(lprec* model, const Edge& edge);
+
     // Indexed [NodeId][NodePartitionId][NodePersonalityId]
     // Partition and Personality IDs start at zero and are sequential.
     // Node IDs are non-negative.

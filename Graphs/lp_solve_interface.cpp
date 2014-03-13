@@ -27,7 +27,7 @@ void LpSolveInterface::LoadFromNtl(const string& filename) {
   ProcessedNetlistParser netlist_parser;
   Node graph;
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
-  GraphParsingState gpstate(&graph, max_imbalance_);
+  GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }
 
@@ -37,7 +37,7 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
   if (!chaco_parser.Parse(&graph, filename.c_str())) {
     throw LpSolveException("Error parsing CHACO graph from: " + filename);
   }
-  GraphParsingState gpstate(&graph, max_imbalance_);
+  GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }
 
@@ -91,9 +91,10 @@ LpSolveInterface::LpSolveState::LpSolveState() : model_(nullptr, delete_lp) {
 }
 
 LpSolveInterface::GraphParsingState::GraphParsingState(
-    Node* graph, double max_imbalance)
+    Node* graph, double max_imbalance, bool verbose)
     : graph_(CHECK_NOTNULL(graph)),
-      max_weight_imbalance_fraction_(max_imbalance) {
+      max_weight_imbalance_fraction_(max_imbalance),
+      verbose_(verbose) {
   if (graph->internal_nodes().empty()) {
     throw LpSolveException("Provided empty graph.");
   }

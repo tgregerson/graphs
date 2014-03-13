@@ -63,7 +63,7 @@ class LpSolveInterface {
  private:
   class GraphParsingState {
    public:
-    GraphParsingState(Node* graph, double max_imbalance);
+    GraphParsingState(Node* graph, double max_imbalance, bool verbose);
 
     // Returns an LP model using the structure in 'graph_'. Caller takes
     // ownership of model.
@@ -83,9 +83,10 @@ class LpSolveInterface {
     void AddNodeToModel(lprec* model, const Node& node);
     void AddEdgeToModel(lprec* model, const Edge& edge);
 
-    Node* graph_;
+    const Node* const graph_;
     int num_resources_;
-    double max_weight_imbalance_fraction_;
+    const double max_weight_imbalance_fraction_;
+    const bool verbose_;
     std::map<int, int> variable_index_to_id_;
 
     int GetNodeVariableIndex(

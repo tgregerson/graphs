@@ -58,9 +58,6 @@ void LpSolveInterface::RunSolver(long timeout_s) {
 
   cout << "Solve exited with return code: " << ret << endl;
   cout << "Objective value: " << get_objective(model) << endl;
-
-  // TODO remove
-  write_lp(model, "tmp.txt");
 }
 
 LpSolveInterface::LpSolveState::LpSolveState() : model_(nullptr, delete_lp) {
@@ -69,6 +66,20 @@ LpSolveInterface::LpSolveState::LpSolveState() : model_(nullptr, delete_lp) {
     throw LpSolveException("Failed to create LPREC model.");
   }
   model_.reset(model);
+}
+
+LpSolveInterface::GraphParsingState::GraphParsingState(
+    Node* graph, double max_imbalance)
+    : graph_(CHECK_NOTNULL(graph)),
+      max_weight_imbalance_fraction_(max_imbalance) {
+  if (graph->internal_nodes().empty()) {
+    throw LpSolveException("Provided empty graph.");
+  }
+  num_resources_ =
+    CHECK_NOTNULL(graph->internal_nodes().begin()->second)->num_resources();
+  if (num_resources_ <= 0) {
+    throw LpSolveException("Weight vector has invalid number of resources");
+  }
 }
 
 lprec* LpSolveInterface::GraphParsingState::ConstructModel() {
@@ -144,7 +155,7 @@ void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
 
   // Need 2 * #resources constraints. They are added empty, since they will
   // be populated by adding nodes.
-  for (size_t res = 0; res < (2 * max_weight_imbalance_fraction_.size());
+  for (size_t res = 0; res < (2 * num_resources_);
        ++res) {
     if (!add_constraint(model, nullptr, GE, 0.0)) {
       throw LpSolveException("Failed to add imbalance constraints.");
@@ -175,9 +186,6 @@ void LpSolveInterface::GraphParsingState::AddNodeToModel(
   }
   int new_row_index = get_Nrows(model);
   int num_resources = node.num_resources();
-  if (num_resources != max_weight_imbalance_fraction_.size()) {
-    throw LpSolveException("Mismatch between number of resources");
-  }
 
   // The new columns should contain a 1 in the new row. Additionally, they must
   // add entries in the weight imbalance constraint rows. There are a pair of

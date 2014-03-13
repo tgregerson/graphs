@@ -7,15 +7,15 @@
 using namespace std;
 
 void print_usage_and_exit() {
-  cout << "Usage: lp_solve_interface INPUT_ARGS [ADDITIONAL_OPTIONS*]" << endl
+  cout << "Usage: lp_solve_interface REQUIRED_ARGS [OPTIONS*]" << endl
        << endl
-       << "INPUT_ARGS: " << endl
+       << "REQUIRED_ARGS: " << endl
        << "(-chaco chaco_graph_input_file] | "
        << "-ntl ntl_input_file | "
        << "-mps mps_input_file) " << endl
        << endl
-       << "ADDITIONAL_OPTIONS:" << endl
-       << "-imbalance imbalance_float" << endl
+       << "OPTIONS:" << endl
+       << "-imbalance max_imbalance_fraction" << endl
        << "-solve [SOLVE_OPTIONS*]" << endl
        << "-write_mps mps_output_file" << endl
        << endl
@@ -26,24 +26,20 @@ void print_usage_and_exit() {
 }
 
 int main(int argc, char *argv[]) {
-
-  if (argc < 4) {
-    print_usage_and_exit();
-  }
-
   bool solve = false;
   bool use_chaco = false;
   bool use_ntl = false;
   bool use_mps = false;
   bool write_mps = false;
   long timeout_s = 0;
+  double max_imbalance_fraction = 0.01;
 
   string input_filename;
   string output_filename;
 
   // Parse command-line arguments
   try {
-    TCLAP::CmdLine cmd("Command description message", ' ', '0.0');
+    TCLAP::CmdLine cmd("Command description message", ' ', "0.0");
 
     vector<TCLAP::Arg*> input_file_args;
     TCLAP::ValueArg<string> chaco_input_file_flag(
@@ -64,12 +60,16 @@ int main(int argc, char *argv[]) {
     cmd.xorAdd(input_file_args);
 
     TCLAP::ValueArg<string> mps_output_file_flag(
-        "o", "output_mps", "Output MPS file name", false, "string", cmd,
+        "o", "output_mps", "Output MPS file name", false, "", "string", cmd,
         nullptr);
 
     TCLAP::ValueArg<long> solver_timeout_flag(
-        "t", "timeout_s", "Solver timeout in seconds", false, "long", cmd,
+        "t", "timeout_s", "Solver timeout in seconds", false, 0, "long", cmd,
         nullptr);
+
+    TCLAP::ValueArg<double> max_imbalance_fraction_flag(
+        "i", "max_imbalance", "Maximum resource imbalance fraction", false,
+        0.01, "double", cmd, nullptr);
 
     TCLAP::SwitchArg solve_switch(
         "s", "solve", "Solve LP model", cmd, false);
@@ -92,6 +92,10 @@ int main(int argc, char *argv[]) {
       output_filename = mps_output_file_flag.getValue();
     }
 
+    if (max_imbalance_fraction_flag.isSet()) {
+      max_imbalance_fraction = max_imbalance_fraction_flag.getValue();
+    }
+
     solve = solve_switch.getValue();
 
     if (solve && solver_timeout_flag.isSet()) {
@@ -102,7 +106,7 @@ int main(int argc, char *argv[]) {
     cerr << "Error: " << e.error() << " for arg " << e.argId() << endl;
   }
 
-  LpSolveInterface interface;
+  LpSolveInterface interface(max_imbalance_fraction);
   if (use_chaco) {
     interface.LoadFromChaco(input_filename);
   } else if (use_ntl) {

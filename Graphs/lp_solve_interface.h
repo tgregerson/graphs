@@ -15,7 +15,9 @@ class Node;
 
 class LpSolveInterface {
  public:
-  LpSolveInterface() : state_(nullptr) {}
+  LpSolveInterface() : state_(nullptr), max_imbalance_(0.01) {}
+  LpSolveInterface(double max_imbalance)
+      : state_(nullptr), max_imbalance_(max_imbalance) {}
   ~LpSolveInterface() {}
 
   // If model has been previously constructed and written to a file, it can
@@ -57,10 +59,7 @@ class LpSolveInterface {
  private:
   class GraphParsingState {
    public:
-    GraphParsingState(Node* graph) : graph_(CHECK_NOTNULL(graph)) {
-      // TODO: Properly populate
-      max_weight_imbalance_fraction_ = {0.5, 0.5, 0.5};
-    }
+    GraphParsingState(Node* graph, double max_imbalance);
 
     // Returns an LP model using the structure in 'graph_'. Caller takes
     // ownership of model.
@@ -81,7 +80,8 @@ class LpSolveInterface {
     void AddEdgeToModel(lprec* model, const Edge& edge);
 
     Node* graph_;
-    std::vector<double> max_weight_imbalance_fraction_;
+    int num_resources_;
+    double max_weight_imbalance_fraction_;
     std::map<int, int> variable_index_to_id_;
 
     int GetNodeVariableIndex(
@@ -119,6 +119,7 @@ class LpSolveInterface {
   };
 
   std::unique_ptr<LpSolveState> state_;
+  const double max_imbalance_;
 };
 
 #endif // LP_SOLVE_INTERFACE_H_

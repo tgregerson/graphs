@@ -73,6 +73,9 @@ void LpSolveInterface::RunSolver(long timeout_s) {
     set_timeout(model, timeout_s);
   }
 
+  if (verbose_) {
+    set_verbose(model, DETAILED);
+  }
   int ret = solve(model);
 
   cout << "Solve exited with return code: " << ret << endl;

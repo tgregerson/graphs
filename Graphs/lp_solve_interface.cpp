@@ -50,7 +50,9 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
 
 void LpSolveInterface::RunSolver(long timeout_s) {
   lprec* model = CHECK_NOTNULL(state_.get())->model();
-  set_timeout(model, timeout_s);
+  if (timeout_s > 0) {
+    set_timeout(model, timeout_s);
+  }
 
   int ret = solve(model);
 

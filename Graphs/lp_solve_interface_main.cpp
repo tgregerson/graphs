@@ -10,17 +10,18 @@ void print_usage_and_exit() {
   cout << "Usage: lp_solve_interface REQUIRED_ARGS [OPTIONS*]" << endl
        << endl
        << "REQUIRED_ARGS: " << endl
-       << "(-chaco chaco_graph_input_file] | "
-       << "-ntl ntl_input_file | "
-       << "-mps mps_input_file) " << endl
+       << "(--chaco chaco_graph_input_file] | "
+       << "--ntl ntl_input_file | "
+       << "--mps mps_input_file) " << endl
        << endl
        << "OPTIONS:" << endl
-       << "-imbalance max_imbalance_fraction" << endl
-       << "-solve [SOLVE_OPTIONS*]" << endl
-       << "-write_mps mps_output_file" << endl
+       << "--imbalance max_imbalance_fraction" << endl
+       << "--solve [SOLVE_OPTIONS*]" << endl
+       << "--write_lp mps_output_file" << endl
+       << "--write_mps mps_output_file" << endl
        << endl
        << "SOLVE_OPTIONS:" << endl
-       << "-timeout timeout_s "
+       << "--timeout timeout_s "
        << endl;
   exit(1);
 }
@@ -30,12 +31,14 @@ int main(int argc, char *argv[]) {
   bool use_chaco = false;
   bool use_ntl = false;
   bool use_mps = false;
+  bool write_lp = false;
   bool write_mps = false;
   long timeout_s = 0;
   double max_imbalance_fraction = 0.01;
 
   string input_filename;
-  string output_filename;
+  string output_mps_filename;
+  string output_lp_filename;
 
   // Parse command-line arguments
   try {
@@ -59,8 +62,12 @@ int main(int argc, char *argv[]) {
 
     cmd.xorAdd(input_file_args);
 
+    TCLAP::ValueArg<string> lp_output_file_flag(
+        "l", "write_lp", "Output LP file name", false, "", "string", cmd,
+        nullptr);
+
     TCLAP::ValueArg<string> mps_output_file_flag(
-        "o", "output_mps", "Output MPS file name", false, "", "string", cmd,
+        "o", "write_mps", "Output MPS file name", false, "", "string", cmd,
         nullptr);
 
     TCLAP::ValueArg<long> solver_timeout_flag(
@@ -87,9 +94,14 @@ int main(int argc, char *argv[]) {
       input_filename = mps_input_file_flag.getValue();
     }
 
+    if (lp_output_file_flag.isSet()) {
+      write_lp = true;
+      output_lp_filename = lp_output_file_flag.getValue();
+    }
+
     if (mps_output_file_flag.isSet()) {
       write_mps = true;
-      output_filename = mps_output_file_flag.getValue();
+      output_mps_filename = mps_output_file_flag.getValue();
     }
 
     if (max_imbalance_fraction_flag.isSet()) {
@@ -115,12 +127,16 @@ int main(int argc, char *argv[]) {
     interface.LoadFromMps(input_filename);
   }
 
-  if (solve) {
-    interface.RunSolver(timeout_s);
+  if (write_mps) {
+    interface.WriteToMps(output_mps_filename);
   }
 
-  if (write_mps) {
-    interface.WriteToMps(output_filename);
+  if (write_lp) {
+    interface.WriteToLp(output_lp_filename);
+  }
+
+  if (solve) {
+    interface.RunSolver(timeout_s);
   }
 
   return 0;

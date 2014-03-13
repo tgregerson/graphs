@@ -22,12 +22,16 @@ class LpSolveInterface {
 
   // If model has been previously constructed and written to a file, it can
   // be loaded without additional construction.
-  void WriteToMps(const std::string& filename) const;
   void LoadFromMps(const std::string& filename);
 
   // Load and construct ILP model from CHACO graph or netlist format.
   void LoadFromChaco(const std::string& filename);
   void LoadFromNtl(const std::string& filename);
+
+  // After loading a model, it can be written to a native ILP format for much
+  // faster parsing in the future.
+  void WriteToLp(const std::string& filename) const;
+  void WriteToMps(const std::string& filename) const;
 
   // Run the solver for 'timeout_s' seconds.
   void RunSolver(long timeout_s);

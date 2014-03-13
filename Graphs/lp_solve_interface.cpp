@@ -7,17 +7,6 @@
 
 using namespace std;
 
-void LpSolveInterface::WriteToMps(const string& filename) const {
-  cout << "Writing MPS model to " << filename << endl;
-  if (state_.get() == nullptr) {
-    throw LpSolveException("Trying to write MPS without creating model.");
-  }
-  lprec* model = CHECK_NOTNULL(state_.get())->model();
-  if (!write_mps(model, const_cast<char*>(filename.c_str()))) {
-    throw LpSolveException("Could not write file " + filename);
-  }
-}
-
 void LpSolveInterface::LoadFromMps(const string& filename) {
   cout << "Reading MPS model from " << filename << "...";
   lprec* model = read_MPS(const_cast<char*>(filename.c_str()), NORMAL);
@@ -46,6 +35,28 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
   }
   GraphParsingState gpstate(&graph);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
+}
+
+void LpSolveInterface::WriteToLp(const string& filename) const {
+  cout << "Writing LP model to " << filename << endl;
+  if (state_.get() == nullptr) {
+    throw LpSolveException("Trying to write LP without creating model.");
+  }
+  lprec* model = CHECK_NOTNULL(state_.get())->model();
+  if (!write_lp(model, const_cast<char*>(filename.c_str()))) {
+    throw LpSolveException("Could not write file " + filename);
+  }
+}
+
+void LpSolveInterface::WriteToMps(const string& filename) const {
+  cout << "Writing MPS model to " << filename << endl;
+  if (state_.get() == nullptr) {
+    throw LpSolveException("Trying to write MPS without creating model.");
+  }
+  lprec* model = CHECK_NOTNULL(state_.get())->model();
+  if (!write_mps(model, const_cast<char*>(filename.c_str()))) {
+    throw LpSolveException("Could not write file " + filename);
+  }
 }
 
 void LpSolveInterface::RunSolver(long timeout_s) {

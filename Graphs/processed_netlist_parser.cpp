@@ -31,15 +31,16 @@ void ProcessedNetlistParser::Parse(
 
   cout << "Reading graph from " << filename << endl;
   string line;
+  std::getline(input_file, line);
   while (!input_file.eof()) {
     // Keep namespace to differentiate from getline syscall.
-    std::getline(input_file, line);
     assert(line == "module_begin");
     std::getline(input_file, line);
     vector<string> module_lines;
-    while (line != "end_module") {
+    while (line != "module_end") {
       assert(!input_file.eof());
       module_lines.push_back(line);
+      std::getline(input_file, line);
     }
 
     assert (module_lines.size() >=2);
@@ -62,6 +63,11 @@ void ProcessedNetlistParser::Parse(
             << module.instance_name << ". Normal?" << endl;
     }
     parsed_modules_.push_back(module);
+    if (parsed_modules_.size() % 1000 == 0) {
+      cout << "Parsed " << parsed_modules_.size() << " modules." << endl;
+    }
+
+    do { std::getline(input_file, line); } while (line.empty() && !input_file.eof());
   }
 
   PopulateGraph(graph, edge_id_to_name);

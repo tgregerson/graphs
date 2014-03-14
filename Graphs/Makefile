@@ -10,45 +10,37 @@ CXXFLAGS = $(CXXFLAGS_DEBUG)
 LDFLAGS = -lrt -v `xml2-config --libs` -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
-GRAPH_BASE_O = $(addprefix $(OBJDIR)/,edge.o id_manager.o node.o port.o weight_score.o)
-
 CHACO_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o)
-
-NTL_BASE_O = $(addprefix $(OBJDIR)/,processed_netlist_parser.o) \
-             $(GRAPH_BASE_O)
-             
-SNP_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_parser.o)
-
+GRAPH_BASE_O = $(addprefix $(OBJDIR)/,edge.o id_manager.o node.o port.o weight_score.o)
+KLFM_BASE_O = $(addprefix $(OBJDIR)/,edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o partition_engine_klfm.o partitioner_config.o preprocessor.o testbench_generator.o) \
+              $(GRAPH_BASE_O)
 LPSI_BASE_O = $(addprefix $(OBJDIR)/,lp_solve_interface.o) \
               $(CHACO_BASE_O) \
               $(GRAPH_BASE_O) \
               $(NTL_BASE_O)
+NTL_BASE_O = $(addprefix $(OBJDIR)/,processed_netlist_parser.o) \
+             $(GRAPH_BASE_O)
+SNP_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_parser.o)
+VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_parser.o)
 LPSI_BIN_O = $(OBJDIR)/lp_solve_interface_main.o \
              $(LPSI_BASE_O)
-
-KLFM_BASE_O = $(addprefix $(OBJDIR)/,edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o partition_engine_klfm.o partitioner_config.o preprocessor.o testbench_generator.o) \
-              $(GRAPH_BASE_O)
-
 PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o partitioner_config.o preprocessor.o processed_netlist_parser.o xml_config_reader.o) \
             $(CHACO_BASE_O) \
             $(GRAPH_BASE_O) \
             $(KLFM_BASE_O) \
             $(NTL_BASE_O)
-PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
 
+NFC_BIN_O = $(OBJDIR)/ntl_format_converter.o
+PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
 SNP_BIN_O = $(OBJDIR)/structural_netlist_parser_main.o \
             $(SNP_BASE_O)
-
 VDG_BIN_O = $(addprefix $(OBJDIR)/,vcd_parser.o vcd_dumpvars_generator_main.o)
-
-VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_parser.o)
 VP_BIN_O = $(VP_BASE_O) $(OBJDIR)/vcd_parser_main.o
-
 WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \
            $(GRAPH_BASE_O)
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main lp_solve_interface structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
+BINARIES = $(addprefix $(BINDIR)/,partition_main lp_solve_interface ntl_format_converter structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -66,6 +58,9 @@ $(BINDIR)/partition_main: $(PM_BIN_O)
 
 $(BINDIR)/lp_solve_interface: $(LPSI_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LPSOLVE_LDFLAGS)
+	
+$(BINDIR)/ntl_format_converter: $(NFC_BIN_O)	
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/structural_netlist_parser: $(SNP_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
@@ -159,6 +154,9 @@ $(OBJDIR)/lp_solve_interface_main.o: $(lp_solve_interface_H) lp_solve_interface_
 
 $(OBJDIR)/node.o: $(id_manager_H) $(universal_macros_H) $(node_H) $(weight_score_H) node.cpp
 	$(CXX) -c node.cpp $(CXXFLAGS) -o $@
+	
+$(OBJDIR)/ntl_format_converter.o: ntl_format_converter.cpp
+	$(CXX) -c ntl_format_converter.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/partition_engine_klfm.o: $(gain_bucket_manager_single_resource_H) $(gain_bucket_manager_multi_resource_exclusive_H) $(gain_bucket_manager_multi_resource_mixed_H) $(id_manager_H) $(universal_macros_H) $(weight_score_H) $(partition_engine_klfm_H) partition_engine_klfm.cpp
 	$(CXX) -c partition_engine_klfm.cpp $(CXXFLAGS) -o $@

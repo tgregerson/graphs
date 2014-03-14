@@ -599,7 +599,8 @@ void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
       coeffs[i++] = 1.0;
     }
   }
-  if (!add_constraintex(model, num_nonzero, coeffs, indices , LE, 1.0)) {
+  //if (!add_constraintex(model, num_nonzero, coeffs, indices , LE, 1.0)) {
+  if (!AddConstraintEx(model, num_nonzero, coeffs, indices, LE, 1.0)) {
     throw LpSolveException("Failed to add empty row to model.");
   }
 }
@@ -618,7 +619,8 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     and_variable_indices1[i + 1] =
         GetEdgePartitionConnectivityVariableIndex(edge.id, i);
   }
-  if (!add_constraintex(
+  //if (!add_constraintex(
+  if (!AddConstraintEx(
       model, 1 + num_partitions_, and_coeffs1, and_variable_indices1, GE,
       (REAL)(1 - num_partitions_))) {
     throw LpSolveException("Failed to add AND constraint.");
@@ -632,7 +634,8 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
         GetEdgePartitionConnectivityVariableIndex(edge.id, i);
     and_coeffs[0] = 1.0;
     and_coeffs[1] = -1.0;
-    if (!add_constraintex(model, 2, and_coeffs,
+    //if (!add_constraintex(model, 2, and_coeffs,
+    if (!AddConstraintEx(model, 2, and_coeffs,
                           and_variable_indices, LE, 0.0)) {
       throw LpSolveException("Failed to add AND constraint.");
     }
@@ -660,7 +663,8 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
         or_coeffs[1] = -1.0;
         or_variable_indices[0] = partition_variable_index;
         or_variable_indices[1] = node_variable_index;
-        if (!add_constraintex(
+        //if (!add_constraintex(
+        if (!AddConstraintEx(
                 model, 2, or_coeffs, or_variable_indices, GE, 0.0)) {
           throw LpSolveException("Failed to add OR constraint.");
         }
@@ -676,7 +680,8 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
       or_variable_indices1[i] = eq1_index_coeff_pairs[i].first;
       or_coeffs1[i] = eq1_index_coeff_pairs[i].second;
     }
-    if (!add_constraintex(
+    //if (!add_constraintex(
+    if (!AddConstraintEx(
         model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0)) {
       throw LpSolveException("Failed to add OR constraint.");
     }
@@ -721,13 +726,21 @@ int LpSolveInterface::GraphParsingState::NumEdgeConstraintsNeeded() {
   return num_and_constraints_needed + num_or_constraints_needed;
 }
 
-void LpSolveInterface::GraphParsingState::AddConstraintEx(
-    lprec* model, int count, int* indices, REAL* coeffs) {
+char LpSolveInterface::GraphParsingState::AddConstraintEx(
+    lprec* model, int count, REAL* coeffs, int* indices, int ctype, REAL rhs) {
+  char ret;
   if (full_row_.get() == nullptr) {
     int num_variables = NumNodeVariablesNeeded() + NumEdgeVariablesNeeded();
     full_row_.reset((REAL*)(calloc(sizeof(int), num_variables + 1)));
   }
+  REAL* row = full_row_.get();
   for (int i = 0; i < count; ++i) {
-
+    row[indices[i]] = coeffs[i];
   }
+  ret = add_constraint(model, row, ctype, rhs);
+  // Restore zeroes.
+  for (int i = 0; i < count; ++i) {
+    row[indices[i]] = 0;
+  }
+  return ret;
 }

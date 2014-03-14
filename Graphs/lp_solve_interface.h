@@ -128,7 +128,8 @@ class LpSolveInterface {
     int NumNodeConstraintsNeeded();
     int NumEdgeConstraintsNeeded();
 
-    void AddConstraintEx(lprec* model, int count, int* indices, REAL* coeffs);
+    char AddConstraintEx(lprec* model, int count, REAL* coeffs, int* indices,
+                         int ctype, REAL rhs);
 
     // Indexed [NodeId][NodePartitionId][NodePersonalityId]
     // Partition and Personality IDs start at zero and are sequential.

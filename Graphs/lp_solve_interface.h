@@ -68,6 +68,7 @@ class LpSolveInterface {
     // Returns an LP model using the structure in 'graph_'. Caller takes
     // ownership of model.
     lprec* ConstructModel();
+    lprec* ConstructModelRowMode();
 
    private:
     // Pre-allocation is not necessary, but can improve performance.
@@ -79,7 +80,7 @@ class LpSolveInterface {
     // 1. Imbalance constraints
     // 2. Nodes
     // 3. Edges
-    void AddImbalanceConstraintsToModel(lprec* model);
+    void AddEmptyImbalanceConstraintsToModel(lprec* model);
     void AddNodeToModel(lprec* model, const Node& node);
     void AddEdgeToModel(lprec* model, const Edge& edge);
 
@@ -106,10 +107,28 @@ class LpSolveInterface {
     void SetEdgePartitionConnectivityVariableIndex(
         int edge_id, int partition_num, int index);
 
-    // For fast row mode
+    // For fast row mode.
+    void AssignAllVariableIndices();
+    void AssignAllNodeVariableIndices();
+    void AssignAllEdgeVariableIndices();
+    void AssignNodeVariableIndices(const Node& node);
+    void AssignEdgeVariableIndices(const Edge& edge);
+
+    void AddAllConstraintsToModel(lprec* model);
+    void AddAllNodeConstraintsToModel(lprec* model);
+    void AddAllEdgeConstraintsToModel(lprec* model);
     void AddImbalanceConstraintsToModel(lprec* model);
-    void AddNodeConstraintToModel(lprec* model, const Node& node);
+    void AddNodeConstraintsToModel(lprec* model, const Node& node);
     void AddEdgeConstraintsToModel(lprec* model, const Edge& edge);
+
+    void SetAllVariablesBinary(lprec* model);
+    
+    int NumNodeVariablesNeeded();
+    int NumEdgeVariablesNeeded();
+    int NumNodeConstraintsNeeded();
+    int NumEdgeConstraintsNeeded();
+
+    void AddConstraintEx(lprec* model, int count, int* indices, REAL* coeffs);
 
     // Indexed [NodeId][NodePartitionId][NodePersonalityId]
     // Partition and Personality IDs start at zero and are sequential.
@@ -123,9 +142,12 @@ class LpSolveInterface {
     std::map<int, std::vector<int>>
         edge_to_partition_connectivity_variable_indices_;
 
+    std::unique_ptr<REAL, void (*)(void*)> full_row_;
+
     // For now, only support bipartitioning.
     const int num_partitions_ = 2;
     const int kIndexGuard = -1;
+    int next_variable_index_;
   };
 
   std::unique_ptr<LpSolveState> state_;

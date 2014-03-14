@@ -135,6 +135,10 @@ class Node {
     return SelectedWeightVector().size();
   }
 
+  int num_personalities() const {
+    return weight_vectors_.size();
+  }
+
   // 'SetSelectedWeightVector' only changes the weight vector. The previous
   // weight vector index is unchanged.
   void SetSelectedWeightVector(int index);

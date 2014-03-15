@@ -1,5 +1,7 @@
 #include "lp_solve_interface.h"
 
+#include <cstdlib>
+
 #include "chaco_parser.h"
 #include "edge.h"
 #include "node.h"

@@ -36,6 +36,11 @@ class LpSolveInterface {
   // Run the solver for 'timeout_s' seconds.
   void RunSolver(long timeout_s);
 
+  enum MpsNameType {
+    kDefaultNames,
+    kCompressedNames,
+  };
+
   // Encapsulates state related to lp_solve.
   class LpSolveState {
    public:
@@ -67,8 +72,13 @@ class LpSolveInterface {
 
     // Returns an LP model using the structure in 'graph_'. Caller takes
     // ownership of model.
+
+    // Uses mix of row and column additions.
     lprec* ConstructModel();
+    // Uses row-centric model building.
     lprec* ConstructModelRowMode();
+    // Uses column-centric model building.
+    lprec* ConstructModelColumnMode();
 
    private:
     // Pre-allocation is not necessary, but can improve performance.
@@ -114,12 +124,17 @@ class LpSolveInterface {
     void AssignNodeVariableIndices(const Node& node);
     void AssignEdgeVariableIndices(const Edge& edge);
 
-    void AddAllConstraintsToModel(lprec* model);
-    void AddAllNodeConstraintsToModel(lprec* model);
-    void AddAllEdgeConstraintsToModel(lprec* model);
-    void AddImbalanceConstraintsToModel(lprec* model);
-    void AddNodeConstraintsToModel(lprec* model, const Node& node);
-    void AddEdgeConstraintsToModel(lprec* model, const Edge& edge);
+    // If 'defer_to_columns' is true, these methods will add empty constraints,
+    // setting only the RHS and will add the variable indices and coefficients
+    // to the columns_ex_ data structure for later addition via adding columns.
+    void AddAllConstraintsToModel(lprec* model, bool defer_to_columns);
+    void AddAllNodeConstraintsToModel(lprec* model, bool defer_to_columns);
+    void AddAllEdgeConstraintsToModel(lprec* model, bool defer_to_columns);
+    void AddImbalanceConstraintsToModel(lprec* model, bool defer_to_columns);
+    void AddNodeConstraintsToModel(lprec* model, const Node& node,
+                                   bool defer_to_columns);
+    void AddEdgeConstraintsToModel(lprec* model, const Edge& edge,
+                                   bool defer_to_columns);
 
     void SetAllVariablesBinary(lprec* model);
     
@@ -128,6 +143,11 @@ class LpSolveInterface {
     int NumNodeConstraintsNeeded();
     int NumEdgeConstraintsNeeded();
 
+    void ConstraintExToDeferredColumns(
+        int row_num, int count, REAL* constraint_coeffs,
+        int* constraint_indices);
+    void AddDeferredColumnsEx(lprec* model);
+    char AddColumnEx(lprec* model, int count, REAL* coeffs, int* indices);
     char AddConstraintEx(lprec* model, int count, REAL* coeffs, int* indices,
                          int ctype, REAL rhs);
 
@@ -143,12 +163,14 @@ class LpSolveInterface {
     std::map<int, std::vector<int>>
         edge_to_partition_connectivity_variable_indices_;
 
-    std::unique_ptr<REAL, void (*)(void*)> full_row_;
+    int columns_ex_next_row_;
+    std::map<int, std::vector<std::pair<int, REAL>>> columns_ex_;
 
     // For now, only support bipartitioning.
     const int num_partitions_ = 2;
     const int kIndexGuard = -1;
     int next_variable_index_;
+    const int kVerboseAddQuanta = 10000;
   };
 
   std::unique_ptr<LpSolveState> state_;

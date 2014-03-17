@@ -30,7 +30,7 @@ void LpSolveInterface::LoadFromNtl(const string& filename) {
   Node graph;
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
-  state_.reset(new LpSolveState(gpstate.ConstructModelRowMode()));
+  state_.reset(new LpSolveState(gpstate.ConstructModelColumnMode()));
 }
 
 void LpSolveInterface::LoadFromChaco(const string& filename) {
@@ -40,7 +40,7 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
     throw LpSolveException("Error parsing CHACO graph from: " + filename);
   }
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
-  state_.reset(new LpSolveState(gpstate.ConstructModelRowMode()));
+  state_.reset(new LpSolveState(gpstate.ConstructModelColumnMode()));
 }
 
 void LpSolveInterface::WriteToLp(const string& filename) const {
@@ -98,7 +98,7 @@ LpSolveInterface::GraphParsingState::GraphParsingState(
       max_weight_imbalance_fraction_(max_imbalance),
       verbose_(verbose),
       next_variable_index_(1),
-      full_row_(nullptr, std::free){
+      columns_ex_next_row_(1) {
   if (graph->internal_nodes().empty()) {
     throw LpSolveException("Provided empty graph.");
   }
@@ -124,7 +124,7 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModel() {
   for (const auto& node_id_ptr_pair : graph_->internal_nodes()) {
     AddNodeToModel(model, *(node_id_ptr_pair.second));
     if (verbose_) {
-      if (++num_nodes_added % 10000 == 0) {
+      if (++num_nodes_added % kVerboseAddQuanta == 0) {
         cout << "Added " << num_nodes_added << " nodes." << endl;
         cout << "Current Variables: " << get_Ncolumns(model) << endl;
         cout << "Current Constraints: " << get_Nrows(model) << endl;
@@ -134,7 +134,7 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModel() {
   for (const auto& edge_id_ptr_pair : graph_->internal_edges()) {
     AddEdgeToModel(model, *(edge_id_ptr_pair.second));
     if (verbose_) {
-      if (++num_edges_added % 1000 == 0) {
+      if (++num_edges_added % kVerboseAddQuanta == 0) {
         cout << "Added " << num_edges_added << " edges." << endl;
         cout << "Current Variables: " << get_Ncolumns(model) << endl;
         cout << "Current Constraints: " << get_Nrows(model) << endl;
@@ -159,8 +159,29 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelRowMode() {
 
   set_add_rowmode(model, TRUE);
   SetObjectiveFunction(model);
-  AddAllConstraintsToModel(model);
+  AddAllConstraintsToModel(model, false);
   set_add_rowmode(model, FALSE);
+
+  SetAllVariablesBinary(model);
+
+  if (verbose_) {
+    cout << "Total Variables: " << get_Ncolumns(model) << endl;
+    cout << "Total Constraints: " << get_Nrows(model) << endl;
+  }
+  return model;
+}
+
+lprec* LpSolveInterface::GraphParsingState::ConstructModelColumnMode() {
+  lprec* model = make_lp(0, 0);
+  if (model == nullptr) {
+    throw LpSolveException("Error creating model.");
+  }
+  PreAllocateModelMemory(model);
+  AssignAllVariableIndices();
+
+  SetObjectiveFunction(model);
+  AddAllConstraintsToModel(model, true);
+  AddDeferredColumnsEx(model);
 
   SetAllVariablesBinary(model);
 
@@ -195,9 +216,7 @@ void LpSolveInterface::GraphParsingState::AddEmptyImbalanceConstraintsToModel(
   // be populated by adding nodes.
   for (size_t res = 0; res < (2 * num_resources_);
        ++res) {
-    if (!add_constraint(model, nullptr, GE, 0.0)) {
-      throw LpSolveException("Failed to add imbalance constraints.");
-    }
+    AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
   }
 }
 
@@ -219,9 +238,7 @@ void LpSolveInterface::GraphParsingState::AddNodeToModel(
  
   // Add empty row first, then columns, since the new row is all zero in the
   // pre-existing columns.
-  if (!add_constraintex(model, 0, nullptr, nullptr, EQ, 1.0)) {
-    throw LpSolveException("Failed to add empty row to model.");
-  }
+  AddConstraintEx(model, 0, nullptr, nullptr, EQ, 1.0);
   int new_row_index = get_Nrows(model);
   int num_resources = node.num_resources();
 
@@ -268,9 +285,7 @@ void LpSolveInterface::GraphParsingState::AddNodeToModel(
       }
 
       SetNodeVariableIndex(node.id, par, per, new_variable_index);
-      if (!add_columnex(model, count, coeffs, row_nums)) {
-        throw LpSolveException("Error adding variable.");
-      }
+      AddColumnEx(model, count, coeffs, row_nums);
       if (!set_binary(model, new_variable_index, TRUE)) {
         throw LpSolveException("Error setting variable to binary.");
       }
@@ -328,9 +343,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeToModel(
   int edge_crossing_variable_index = new_variable_index;
   REAL objective_coefficient = (REAL)edge.weight;
   int row_num = 0;
-  if (!add_columnex(model, 1, &objective_coefficient, &row_num)) {
-    throw LpSolveException("Failed to add edge crossing variable.");
-  }
+  AddColumnEx(model, 1, &objective_coefficient, &row_num);
   if (!set_binary(model, new_variable_index, TRUE)) {
     throw LpSolveException("Error setting variable to binary.");
   }
@@ -339,9 +352,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeToModel(
   // Add Partition connectivity variables
   for (int p = 0; p < num_partitions_; ++p) {
     // These variables have no weight in existing constraints.
-    if (!add_columnex(model, 0, nullptr, nullptr)) {
-      throw LpSolveException("Failed to add partition connectivity variable.");
-    }
+    AddColumnEx(model, 0, nullptr, nullptr);
     if (!set_binary(model, new_variable_index, TRUE)) {
       throw LpSolveException("Error setting variable to binary.");
     }
@@ -367,11 +378,8 @@ void LpSolveInterface::GraphParsingState::AddEdgeToModel(
     and_variable_indices1[i + 1] =
         GetEdgePartitionConnectivityVariableIndex(edge.id, i);
   }
-  if (!add_constraintex(
-      model, 1 + num_partitions_, and_coeffs1, and_variable_indices1, GE,
-      (REAL)(1 - num_partitions_))) {
-    throw LpSolveException("Failed to add AND constraint.");
-  }
+  AddConstraintEx(model, 1 + num_partitions_, and_coeffs1,
+      and_variable_indices1, GE, (REAL)(1 - num_partitions_));
 
   for (int i = 0; i < num_partitions_; ++i) {
     int and_variable_indices[2];
@@ -381,10 +389,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeToModel(
         GetEdgePartitionConnectivityVariableIndex(edge.id, i);
     and_coeffs[0] = 1.0;
     and_coeffs[1] = -1.0;
-    if (!add_constraintex(model, 2, and_coeffs,
-                          and_variable_indices, LE, 0.0)) {
-      throw LpSolveException("Failed to add AND constraint.");
-    }
+    AddConstraintEx(model, 2, and_coeffs, and_variable_indices, LE, 0.0);
   }
 
   // OR constraints
@@ -409,10 +414,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeToModel(
         or_coeffs[1] = -1.0;
         or_variable_indices[0] = partition_variable_index;
         or_variable_indices[1] = node_variable_index;
-        if (!add_constraintex(
-                model, 2, or_coeffs, or_variable_indices, GE, 0.0)) {
-          throw LpSolveException("Failed to add OR constraint.");
-        }
+        AddConstraintEx(model, 2, or_coeffs, or_variable_indices, GE, 0.0);
         eq1_index_coeff_pairs.push_back(make_pair(node_variable_index, -1.0));
       }
     }
@@ -425,10 +427,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeToModel(
       or_variable_indices1[i] = eq1_index_coeff_pairs[i].first;
       or_coeffs1[i] = eq1_index_coeff_pairs[i].second;
     }
-    if (!add_constraintex(
-        model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0)) {
-      throw LpSolveException("Failed to add OR constraint.");
-    }
+    AddConstraintEx(model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0);
   }
 }
 
@@ -504,20 +503,20 @@ void LpSolveInterface::GraphParsingState::AssignEdgeVariableIndices(
 }
 
 void LpSolveInterface::GraphParsingState::AddAllConstraintsToModel(
-    lprec* model) {
-  AddImbalanceConstraintsToModel(model);
-  AddAllNodeConstraintsToModel(model);
-  AddAllEdgeConstraintsToModel(model);
+    lprec* model, bool defer_to_columns) {
+  AddImbalanceConstraintsToModel(model, defer_to_columns);
+  AddAllNodeConstraintsToModel(model, defer_to_columns);
+  AddAllEdgeConstraintsToModel(model, defer_to_columns);
 }
 
 void LpSolveInterface::GraphParsingState::AddAllNodeConstraintsToModel(
-    lprec* model) {
+    lprec* model, bool defer_to_columns) {
   int num_nodes_added = 0;
   for (const pair<int, Node*>& p : graph_->internal_nodes()) {
-    AddNodeConstraintsToModel(model, *(p.second));
+    AddNodeConstraintsToModel(model, *(p.second), defer_to_columns);
     if (verbose_) {
       ++num_nodes_added;
-      if (num_nodes_added % 10000 == 0) {
+      if (num_nodes_added % kVerboseAddQuanta == 0) {
         cout << "Added constraints for " << num_nodes_added << " nodes." << endl;
       }
     }
@@ -525,13 +524,13 @@ void LpSolveInterface::GraphParsingState::AddAllNodeConstraintsToModel(
 }
 
 void LpSolveInterface::GraphParsingState::AddAllEdgeConstraintsToModel(
-    lprec* model) {
+    lprec* model, bool defer_to_columns) {
   int num_edges_added = 0;
   for (const pair<int, Edge*>& p : graph_->internal_edges()) {
-    AddEdgeConstraintsToModel(model, *(p.second));
+    AddEdgeConstraintsToModel(model, *(p.second), defer_to_columns);
     if (verbose_) {
       ++num_edges_added;
-      if (num_edges_added % 1000 == 0) {
+      if (num_edges_added % kVerboseAddQuanta == 0) {
         cout << "Added constraints for " << num_edges_added << " edges." << endl;
       }
     }
@@ -539,7 +538,7 @@ void LpSolveInterface::GraphParsingState::AddAllEdgeConstraintsToModel(
 }
 
 void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
-    lprec* model) {
+    lprec* model, bool defer_to_columns) {
   vector<vector<pair<REAL, REAL>>> coefficients;
   vector<vector<int>> variable_indices;
   coefficients.resize(num_resources_);
@@ -580,17 +579,24 @@ void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
       gz_coeffs.get()[i] = coefficients[res][i].first;
       lz_coeffs.get()[i] = coefficients[res][i].second;
     }
-    if (!add_constraintex(model, num_nonzero, gz_coeffs.get(), indices.get(),
-                          GE, 0.0) ||
-        !add_constraintex(model, num_nonzero, lz_coeffs.get(), indices.get(),
-                          GE, 0.0)) {
-      throw LpSolveException("Failed to imbalance constraint to model.");
+    if (defer_to_columns) {
+      AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
+      ConstraintExToDeferredColumns(
+          columns_ex_next_row_++, num_nonzero, gz_coeffs.get(), indices.get());
+      AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
+      ConstraintExToDeferredColumns(
+          columns_ex_next_row_++, num_nonzero, lz_coeffs.get(), indices.get());
+    } else {
+      AddConstraintEx(
+          model, num_nonzero, gz_coeffs.get(), indices.get(), GE, 0.0);
+      AddConstraintEx(
+          model, num_nonzero, lz_coeffs.get(), indices.get(), GE, 0.0);
     }
   }
 }
 
 void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
-    lprec* model, const Node& node) {
+    lprec* model, const Node& node, bool defer_to_columns) {
   int num_nonzero = num_partitions_ * node.WeightVectors().size();
   int indices[num_nonzero];
   REAL coeffs[num_nonzero];
@@ -601,14 +607,17 @@ void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
       coeffs[i++] = 1.0;
     }
   }
-  //if (!add_constraintex(model, num_nonzero, coeffs, indices , LE, 1.0)) {
-  if (!AddConstraintEx(model, num_nonzero, coeffs, indices, LE, 1.0)) {
-    throw LpSolveException("Failed to add empty row to model.");
+  if (defer_to_columns) {
+    AddConstraintEx(model, 0, nullptr, nullptr , LE, 1.0);
+    ConstraintExToDeferredColumns(
+        columns_ex_next_row_++, num_nonzero, coeffs, indices);
+  } else {
+    AddConstraintEx(model, num_nonzero, coeffs, indices, LE, 1.0);
   }
 }
 
 void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
-    lprec* model, const Edge& edge) {
+    lprec* model, const Edge& edge, bool defer_to_columns) {
   int edge_crossing_variable_index =
       GetEdgeCrossingVariableIndex(edge.id);
   REAL and_coeffs1[1 + num_partitions_];
@@ -621,11 +630,15 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     and_variable_indices1[i + 1] =
         GetEdgePartitionConnectivityVariableIndex(edge.id, i);
   }
-  //if (!add_constraintex(
-  if (!AddConstraintEx(
-      model, 1 + num_partitions_, and_coeffs1, and_variable_indices1, GE,
-      (REAL)(1 - num_partitions_))) {
-    throw LpSolveException("Failed to add AND constraint.");
+  if (defer_to_columns) {
+    AddConstraintEx(model, 0, nullptr, nullptr, GE, REAL(1 - num_partitions_));
+    ConstraintExToDeferredColumns(
+        columns_ex_next_row_++, 1 + num_partitions_, and_coeffs1,
+        and_variable_indices1);
+  } else {
+    AddConstraintEx(
+        model, 1 + num_partitions_, and_coeffs1, and_variable_indices1, GE,
+        (REAL)(1 - num_partitions_));
   }
 
   for (int i = 0; i < num_partitions_; ++i) {
@@ -636,10 +649,12 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
         GetEdgePartitionConnectivityVariableIndex(edge.id, i);
     and_coeffs[0] = 1.0;
     and_coeffs[1] = -1.0;
-    //if (!add_constraintex(model, 2, and_coeffs,
-    if (!AddConstraintEx(model, 2, and_coeffs,
-                          and_variable_indices, LE, 0.0)) {
-      throw LpSolveException("Failed to add AND constraint.");
+    if (defer_to_columns) {
+      AddConstraintEx(model, 0, nullptr, nullptr, LE, 0.0);
+      ConstraintExToDeferredColumns(
+          columns_ex_next_row_++, 2, and_coeffs, and_variable_indices);
+    } else {
+      AddConstraintEx(model, 2, and_coeffs, and_variable_indices, LE, 0.0);
     }
   }
 
@@ -665,10 +680,13 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
         or_coeffs[1] = -1.0;
         or_variable_indices[0] = partition_variable_index;
         or_variable_indices[1] = node_variable_index;
-        //if (!add_constraintex(
-        if (!AddConstraintEx(
-                model, 2, or_coeffs, or_variable_indices, GE, 0.0)) {
-          throw LpSolveException("Failed to add OR constraint.");
+        if (defer_to_columns) {
+          AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
+          ConstraintExToDeferredColumns(
+              columns_ex_next_row_++, 2, or_coeffs, or_variable_indices);
+        } else {
+          AddConstraintEx(
+              model, 2, or_coeffs, or_variable_indices, GE, 0.0);
         }
         eq1_index_coeff_pairs.push_back(make_pair(node_variable_index, -1.0));
       }
@@ -682,10 +700,13 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
       or_variable_indices1[i] = eq1_index_coeff_pairs[i].first;
       or_coeffs1[i] = eq1_index_coeff_pairs[i].second;
     }
-    //if (!add_constraintex(
-    if (!AddConstraintEx(
-        model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0)) {
-      throw LpSolveException("Failed to add OR constraint.");
+    if (defer_to_columns) {
+      AddConstraintEx(model, 0, nullptr, nullptr, LE, 0.0);
+      ConstraintExToDeferredColumns(
+          columns_ex_next_row_++, num_vals, or_coeffs1, or_variable_indices1);
+    } else {
+      AddConstraintEx(
+          model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0);
     }
   }
 }
@@ -728,21 +749,51 @@ int LpSolveInterface::GraphParsingState::NumEdgeConstraintsNeeded() {
   return num_and_constraints_needed + num_or_constraints_needed;
 }
 
+void LpSolveInterface::GraphParsingState::ConstraintExToDeferredColumns(
+    int row_num, int count, REAL* constraint_coeffs,
+    int* constraint_indices) {
+  for (int i = 0; i < count; ++i) {
+    // OK if this creates the entry or if it already exists.
+    vector<pair<int, REAL>>& column_ex = columns_ex_[constraint_indices[i]];
+    column_ex.push_back(make_pair(row_num, constraint_coeffs[i]));
+  }
+}
+
+void LpSolveInterface::GraphParsingState::AddDeferredColumnsEx(lprec* model) {
+  int num_cols_added = 0;
+  for (const pair<int, vector<pair<int, REAL>>>& column_ex_pair : columns_ex_) {
+    const vector<pair<int, REAL>>& column_ex = column_ex_pair.second;
+    int num_entries = column_ex.size();
+    int indices[num_entries];
+    REAL coeffs[num_entries];
+    for (int i = 0; i < num_entries; ++i) {
+      indices[i] = column_ex[i].first;
+      coeffs[i] = column_ex[i].second;
+    }
+    AddColumnEx(model, num_entries, coeffs, indices);
+    if (verbose_) {
+      ++num_cols_added;
+      if (num_cols_added % kVerboseAddQuanta == 0) {
+        cout << "Added " << num_cols_added << " columns." << endl;
+      }
+    }
+  }
+}
+
+char LpSolveInterface::GraphParsingState::AddColumnEx(
+    lprec* model, int count, REAL* coeffs, int* indices) {
+  char ret = add_columnex(model, count, coeffs, indices);
+  if (!ret) {
+    throw LpSolveException("Failed adding column");
+  }
+  return ret;
+}
+
 char LpSolveInterface::GraphParsingState::AddConstraintEx(
     lprec* model, int count, REAL* coeffs, int* indices, int ctype, REAL rhs) {
-  char ret;
-  if (full_row_.get() == nullptr) {
-    int num_variables = NumNodeVariablesNeeded() + NumEdgeVariablesNeeded();
-    full_row_.reset((REAL*)(calloc(sizeof(int), num_variables + 1)));
-  }
-  REAL* row = full_row_.get();
-  for (int i = 0; i < count; ++i) {
-    row[indices[i]] = coeffs[i];
-  }
-  ret = add_constraint(model, row, ctype, rhs);
-  // Restore zeroes.
-  for (int i = 0; i < count; ++i) {
-    row[indices[i]] = 0;
+  char ret = add_constraintex(model, count, coeffs, indices, ctype, rhs);
+  if (!ret) {
+    throw LpSolveException("Failed adding constraint");
   }
   return ret;
 }

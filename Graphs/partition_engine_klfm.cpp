@@ -1219,7 +1219,6 @@ void PartitionEngineKlfm::GenerateInitialPartitionRandom(
   part_b_current_weight.insert(
       part_b_current_weight.begin(), num_resources_per_node_, 0);
   current_balance.insert(current_balance.begin(), num_resources_per_node_, 0);
-  int total_nodes = internal_node_map_.size();
   vector<int> node_ids;
   for (auto it : internal_node_map_) {
     node_ids.push_back(it.first);

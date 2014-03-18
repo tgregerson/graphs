@@ -83,7 +83,6 @@ int main(int argc, char *argv[]) {
   }
   bool k_way = true;
   int num_ways = 32;
-  int num_additional_bipartitions = 4;
 
   ostream& os = output_file.is_open() ? output_file : cout;
   ostream& ls = log_file.is_open() ? log_file : cout;

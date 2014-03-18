@@ -11,8 +11,6 @@ void GainBucketStandard::Add(GainBucketEntry entry) {
            gain_index);
   }
 
-  BucketContents::iterator orig_front = buckets_[gain_index].begin();
-
   // Gains can be positive or negative, so add offset to index into buckets.
   if (buckets_[gain_index].empty()) {
     occupied_buckets_by_index_.insert(gain_index);

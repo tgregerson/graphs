@@ -5,11 +5,13 @@
 using namespace std;
 
 PartitionerConfig::PartitionerConfig()
-  : preprocessor_options_set(false),
-    klfm_options_set(false),
-    postprocessor_options_set(false),
+  : preprocessor_policy(kNullPreprocessorPolicy),
     use_fixed_random_seed(false),
     fixed_random_seed(0),
+    universal_resource_id(0),
+    preprocessor_capacity_type(kNullCapacity),
+    gain_bucket_type(kNullBucketType),
+    gain_bucket_selection_policy(kNullSelectionPolicy),
     use_multilevel_constraint_relaxation(false),
     use_adaptive_node_implementations(false),
     use_ratio_in_imbalance_score(false),
@@ -23,10 +25,9 @@ PartitionerConfig::PartitionerConfig()
     rebalance_on_demand(false),
     rebalance_on_demand_cap_per_run(0),
     rebalance_on_demand_cap_per_pass(0),
-    preprocessor_policy(kNullPreprocessorPolicy),
-    preprocessor_capacity_type(kNullCapacity),
-    gain_bucket_type(kNullBucketType),
-    gain_bucket_selection_policy(kNullSelectionPolicy) {}
+    preprocessor_options_set(false),
+    klfm_options_set(false),
+    postprocessor_options_set(false) {}
 
 void PartitionerConfig::PrintPreprocessorOptions(ostream& os) {
   os << "Preprocessor Options: " << endl;

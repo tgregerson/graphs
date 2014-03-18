@@ -21,10 +21,10 @@ class Port {
   void Print() const;
 
   int id;
-  std::string name;
-  PortType type;
   int internal_edge_id;
   int external_edge_id;
+  PortType type;
+  std::string name;
 };
 
 #endif /* PORT_H_ */

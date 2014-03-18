@@ -4,8 +4,8 @@
 #include <exception>
 #include <map>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "lp_solve/lp_lib.h"
 #include "universal_macros.h"
@@ -71,62 +71,49 @@ class LpSolveInterface {
     GraphParsingState(Node* graph, double max_imbalance, bool verbose);
 
     // Returns an LP model using the structure in 'graph_'. Caller takes
-    // ownership of model.
+    // ownership of model. Can choose between using row or column building
+    // mode. Typically column mode is much faster, but requires more memory
+    // to build model.
+    lprec* ConstructModel(bool column_mode = true);
 
-    // Uses mix of row and column additions.
-    lprec* ConstructModel();
+   private:
     // Uses row-centric model building.
     lprec* ConstructModelRowMode();
     // Uses column-centric model building.
     lprec* ConstructModelColumnMode();
 
-   private:
     // Pre-allocation is not necessary, but can improve performance.
     // This function should be called after the graph has been populated, but
     // prior to adding nodes/edges to the model
     void PreAllocateModelMemory(lprec* model);
     void SetObjectiveFunction(lprec* model);
-    // Elements must be added to the model in the following order:
-    // 1. Imbalance constraints
-    // 2. Nodes
-    // 3. Edges
-    void AddEmptyImbalanceConstraintsToModel(lprec* model);
-    void AddNodeToModel(lprec* model, const Node& node);
-    void AddEdgeToModel(lprec* model, const Edge& edge);
 
-    const Node* const graph_;
-    int num_resources_;
-    const double max_weight_imbalance_fraction_;
-    const bool verbose_;
-    std::map<int, int> variable_index_to_id_;
-
-    int GetNodeVariableIndex(
+    // Convenience methods for accessing the variable index data structure.
+    inline int GetNodeVariableIndex(
         int node_id, int partition_num, int personality_num) {
       return node_to_variable_indices_[node_id][partition_num][personality_num];
     }
     void SetNodeVariableIndex(
         int node_id, int partition_num, int personality_num, int index);
-    int GetEdgeCrossingVariableIndex(int edge_id) {
+
+    inline int GetEdgeCrossingVariableIndex(int edge_id) {
       return edge_to_crossing_variable_indices_[edge_id];
     }
     void SetEdgeCrossingVariableIndex(int edge_id, int index);
-    int GetEdgePartitionConnectivityVariableIndex(
+
+    inline int GetEdgePartitionConnectivityVariableIndex(
         int edge_id, int partition_num) {
       return edge_to_partition_connectivity_variable_indices_[edge_id][partition_num];
     }
     void SetEdgePartitionConnectivityVariableIndex(
         int edge_id, int partition_num, int index);
 
-    // For fast row mode.
     void AssignAllVariableIndices();
     void AssignAllNodeVariableIndices();
     void AssignAllEdgeVariableIndices();
     void AssignNodeVariableIndices(const Node& node);
     void AssignEdgeVariableIndices(const Edge& edge);
 
-    // If 'defer_to_columns' is true, these methods will add empty constraints,
-    // setting only the RHS and will add the variable indices and coefficients
-    // to the columns_ex_ data structure for later addition via adding columns.
     void AddAllConstraintsToModel(lprec* model, bool defer_to_columns);
     void AddAllNodeConstraintsToModel(lprec* model, bool defer_to_columns);
     void AddAllEdgeConstraintsToModel(lprec* model, bool defer_to_columns);
@@ -135,21 +122,37 @@ class LpSolveInterface {
                                    bool defer_to_columns);
     void AddEdgeConstraintsToModel(lprec* model, const Edge& edge,
                                    bool defer_to_columns);
+    void AddEdgeConstraintsNewToModel(lprec* model, const Edge& edge,
+                                      bool defer_to_columns);
 
     void SetAllVariablesBinary(lprec* model);
     
-    int NumNodeVariablesNeeded();
-    int NumEdgeVariablesNeeded();
-    int NumNodeConstraintsNeeded();
-    int NumEdgeConstraintsNeeded();
+    int NumTotalNodeVariablesNeeded();
+    int NumTotalEdgeVariablesNeeded();
+    int NumTotalNodeConstraintsNeeded();
+    int NumTotalEdgeConstraintsNeeded();
 
+    // For Deferred column construction.
     void ConstraintExToDeferredColumns(
-        int row_num, int count, REAL* constraint_coeffs,
-        int* constraint_indices);
+        int count, const REAL* const constraint_coeffs,
+        const int* const constraint_indices);
+    void ConstraintExToDeferredColumns(
+        const std::vector<REAL>& constraint_coeffs,
+        const std::vector<int>& constraint_indices);
     void AddDeferredColumnsEx(lprec* model);
-    char AddColumnEx(lprec* model, int count, REAL* coeffs, int* indices);
-    char AddConstraintEx(lprec* model, int count, REAL* coeffs, int* indices,
-                         int ctype, REAL rhs);
+    char AddColumnEx(lprec* model, int count, const REAL* const coeffs,
+                     const int* const indices);
+    char AddColumnEx(lprec* model, const std::vector<REAL>& coeffs,
+                     const std::vector<int>& indices);
+    char AddConstraintEx(lprec* model, int count, const REAL* const coeffs,
+                         const int* const indices, int ctype, REAL rhs);
+    char AddConstraintEx(lprec* model, const std::vector<REAL>& coeffs,
+                         const std::vector<int>& indices, int ctype, REAL rhs);
+
+    const Node* const graph_;
+    int num_resources_;
+    const double max_weight_imbalance_fraction_;
+    const bool verbose_;
 
     // Indexed [NodeId][NodePartitionId][NodePersonalityId]
     // Partition and Personality IDs start at zero and are sequential.
@@ -162,14 +165,15 @@ class LpSolveInterface {
     // Edge Personality IDs start at zero and are sequential.
     std::map<int, std::vector<int>>
         edge_to_partition_connectivity_variable_indices_;
+    int next_variable_index_;
 
+    // Used in deferred column construction method.
     int columns_ex_next_row_;
     std::map<int, std::vector<std::pair<int, REAL>>> columns_ex_;
 
     // For now, only support bipartitioning.
     const int num_partitions_ = 2;
     const int kIndexGuard = -1;
-    int next_variable_index_;
     const int kVerboseAddQuanta = 10000;
   };
 

@@ -18,7 +18,7 @@ void print_usage_and_exit() {
        << "--imbalance max_imbalance_fraction" << endl
        << "--solve [SOLVE_OPTIONS*]" << endl
        << "--verbose" << endl
-       << "--write_lp mps_output_file" << endl
+       << "--write_lp lp_output_file" << endl
        << "--write_mps mps_output_file" << endl
        << endl
        << "SOLVE_OPTIONS:" << endl

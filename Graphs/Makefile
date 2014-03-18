@@ -4,8 +4,8 @@ CXX_GCC = g++
 CXX_CLANG = clang++
 CXX = $(CXX_CLANG)
 XML2_FLAGS = `xml2-config --cflags`
-CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3 -flto
-CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS)
+CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3 -flto -Wall -Werror
+CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS) -Wall -Werror
 CXXFLAGS = $(CXXFLAGS_DEBUG)
 LDFLAGS = -lrt -v `xml2-config --libs` -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)

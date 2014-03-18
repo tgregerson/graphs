@@ -30,7 +30,7 @@ void LpSolveInterface::LoadFromNtl(const string& filename) {
   Node graph;
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
-  state_.reset(new LpSolveState(gpstate.ConstructModelColumnMode()));
+  state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }
 
 void LpSolveInterface::LoadFromChaco(const string& filename) {
@@ -40,7 +40,7 @@ void LpSolveInterface::LoadFromChaco(const string& filename) {
     throw LpSolveException("Error parsing CHACO graph from: " + filename);
   }
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
-  state_.reset(new LpSolveState(gpstate.ConstructModelColumnMode()));
+  state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }
 
 void LpSolveInterface::WriteToLp(const string& filename) const {
@@ -109,47 +109,18 @@ LpSolveInterface::GraphParsingState::GraphParsingState(
   }
 }
 
-lprec* LpSolveInterface::GraphParsingState::ConstructModel() {
-  lprec* model = make_lp(0, 0);
-  if (model == nullptr) {
-    throw LpSolveException("Error creating empty model.");
+lprec* LpSolveInterface::GraphParsingState::ConstructModel(bool column_mode) {
+  if (column_mode) {
+    return ConstructModelColumnMode();
+  } else {
+    return ConstructModelRowMode();
   }
-
-  PreAllocateModelMemory(model);
-
-  SetObjectiveFunction(model);
-  AddEmptyImbalanceConstraintsToModel(model);
-  int num_nodes_added = 0;
-  int num_edges_added = 0;
-  for (const auto& node_id_ptr_pair : graph_->internal_nodes()) {
-    AddNodeToModel(model, *(node_id_ptr_pair.second));
-    if (verbose_) {
-      if (++num_nodes_added % kVerboseAddQuanta == 0) {
-        cout << "Added " << num_nodes_added << " nodes." << endl;
-        cout << "Current Variables: " << get_Ncolumns(model) << endl;
-        cout << "Current Constraints: " << get_Nrows(model) << endl;
-      }
-    }
-  }
-  for (const auto& edge_id_ptr_pair : graph_->internal_edges()) {
-    AddEdgeToModel(model, *(edge_id_ptr_pair.second));
-    if (verbose_) {
-      if (++num_edges_added % kVerboseAddQuanta == 0) {
-        cout << "Added " << num_edges_added << " edges." << endl;
-        cout << "Current Variables: " << get_Ncolumns(model) << endl;
-        cout << "Current Constraints: " << get_Nrows(model) << endl;
-      }
-    }
-  }
-  if (verbose_) {
-    cout << "Total Variables: " << get_Ncolumns(model) << endl;
-    cout << "Total Constraints: " << get_Nrows(model) << endl;
-  }
-  return model;
 }
 
 lprec* LpSolveInterface::GraphParsingState::ConstructModelRowMode() {
-  int num_variables = NumNodeVariablesNeeded() + NumEdgeVariablesNeeded();
+  cout << "Using Row Mode" << endl;
+  int num_variables =
+      NumTotalNodeVariablesNeeded() + NumTotalEdgeVariablesNeeded();
   lprec* model = make_lp(0, num_variables);
   if (model == nullptr) {
     throw LpSolveException("Error creating model.");
@@ -167,11 +138,25 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelRowMode() {
   if (verbose_) {
     cout << "Total Variables: " << get_Ncolumns(model) << endl;
     cout << "Total Constraints: " << get_Nrows(model) << endl;
+    int node_variables = 0;
+    for (const auto& n : node_to_variable_indices_) {
+      for (const auto& v : n.second) {
+        node_variables += v.size();
+      }
+    }
+    cout << node_variables << " node variables" << endl;
+    cout << edge_to_crossing_variable_indices_.size() << " edge crossing variables" << endl;
+    int edge_connectivity_variables = 0;
+    for (const auto& v : edge_to_partition_connectivity_variable_indices_) {
+      edge_connectivity_variables += v.second.size();
+    }
+    cout << edge_connectivity_variables << " edge connectivity variables" << endl;
   }
   return model;
 }
 
 lprec* LpSolveInterface::GraphParsingState::ConstructModelColumnMode() {
+  cout << "Using Column Mode" << endl;
   lprec* model = make_lp(0, 0);
   if (model == nullptr) {
     throw LpSolveException("Error creating model.");
@@ -179,23 +164,41 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelColumnMode() {
   PreAllocateModelMemory(model);
   AssignAllVariableIndices();
 
-  SetObjectiveFunction(model);
   AddAllConstraintsToModel(model, true);
   AddDeferredColumnsEx(model);
+
+  // Must be set after columns are added.
+  SetObjectiveFunction(model);
 
   SetAllVariablesBinary(model);
 
   if (verbose_) {
     cout << "Total Variables: " << get_Ncolumns(model) << endl;
     cout << "Total Constraints: " << get_Nrows(model) << endl;
+    int node_variables = 0;
+    for (const auto& n : node_to_variable_indices_) {
+      for (const auto& v : n.second) {
+        node_variables += v.size();
+      }
+    }
+    cout << node_variables << " node variables" << endl;
+    cout << edge_to_crossing_variable_indices_.size() << " edge crossing variables" << endl;
+    int edge_connectivity_variables = 0;
+    for (const auto& v : edge_to_partition_connectivity_variable_indices_) {
+      edge_connectivity_variables += v.second.size();
+    }
+    cout << edge_connectivity_variables << " edge connectivity variables" << endl;
+    cout << columns_ex_.size() << " EX columns" << endl;
   }
   return model;
 }
 
 void LpSolveInterface::GraphParsingState::PreAllocateModelMemory(lprec* model) {
-  int num_variables = NumNodeVariablesNeeded() + NumEdgeVariablesNeeded();
-  int num_constraints = NumNodeConstraintsNeeded() + NumEdgeConstraintsNeeded() +
-                        (2 * num_resources_);
+  int num_variables =
+      NumTotalNodeVariablesNeeded() + NumTotalEdgeVariablesNeeded();
+  int num_constraints =
+      NumTotalNodeConstraintsNeeded() + NumTotalEdgeConstraintsNeeded() +
+      (2 * num_resources_);
   if (verbose_) {
     cout << "Pre-allocating memory for " << num_constraints
          << " constraints and " << num_variables << " variables." << endl;
@@ -205,235 +208,18 @@ void LpSolveInterface::GraphParsingState::PreAllocateModelMemory(lprec* model) {
   }
 }
 
-void LpSolveInterface::GraphParsingState::AddEmptyImbalanceConstraintsToModel(
-    lprec* model) {
-  // Imbalance constraints must be present prior to node constraints, so
-  // require they are added first.
-  assert (get_Nrows(model) == 0);
-  assert (get_Ncolumns(model) == 0);
-
-  // Need 2 * #resources constraints. They are added empty, since they will
-  // be populated by adding nodes.
-  for (size_t res = 0; res < (2 * num_resources_);
-       ++res) {
-    AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
-  }
-}
-
-void LpSolveInterface::GraphParsingState::AddNodeToModel(
-    lprec* model, const Node& node) {
-  CHECK_NOTNULL(model);
-
-  int num_personalities = node.WeightVectors().size();
-  int num_new_variables = num_partitions_ * num_personalities;
-  assert(num_new_variables > 0);
-
-  // Need to add #partitions * #personalities variables (columns).
-  // Each variable is a unique <node, partition, personality> 3-tuple with a
-  // binary value.
- 
-  // Need to add 1 constraint equation (row) to limit that only one
-  // <node, partition, personality> can be selected per node. This can be done
-  // using just one equation because the variables are restricted to binary.
- 
-  // Add empty row first, then columns, since the new row is all zero in the
-  // pre-existing columns.
-  AddConstraintEx(model, 0, nullptr, nullptr, EQ, 1.0);
-  int new_row_index = get_Nrows(model);
-  int num_resources = node.num_resources();
-
-  // The new columns should contain a 1 in the new row. Additionally, they must
-  // add entries in the weight imbalance constraint rows. There are a pair of
-  // constraints per resource, and the constraints start in row 1. The
-  // coefficient for the first constraint in the pair is (I_n + 1)*W_n and the
-  // coefficient for the second constraint is (I_n - 1)*W_n, where I_n is the
-  // maximum allowed imbalance in resource n, expressed as a fraction of the
-  // total weight in that resource, and W_n is the weight in that resource of
-  // the given personality.
-
-  // This algorithm only works for 2 partitions.
-  assert(num_partitions_ == 2);
-
-  // +1 because lp_solve ignores position 0 in its rows.
-  int new_variable_index = get_Ncolumns(model) + 1;
-  double imbalance_fraction = max_weight_imbalance_fraction_;
-  for (int par = 0; par < num_partitions_; ++par) {
-    for (int per = 0; per < num_personalities; ++per) {
-      vector<pair<int, REAL>> row_num_and_coeff;
-      for (int res = 0; res < num_resources; ++res) {
-        int row_num_1 = 1 + 2 * res;
-        double scaling1 = (par == 0) ? (imbalance_fraction + 1) :
-                                       (imbalance_fraction - 1);
-        REAL coeff_1 = scaling1 * ((REAL)node.WeightVector(per).at(res));
-        row_num_and_coeff.push_back(make_pair(row_num_1, coeff_1));
-
-        int row_num_2 = 2 + 2 * res;
-        double scaling2 = (par == 0) ? (imbalance_fraction - 1) :
-                                       (imbalance_fraction + 1);
-        REAL coeff_2 = scaling2 * ((REAL)node.WeightVector(per).at(res));
-        row_num_and_coeff.push_back(make_pair(row_num_2, coeff_2));
-      }
-      row_num_and_coeff.push_back(make_pair(new_row_index, 1.0));
-      int count = row_num_and_coeff.size();
-      int row_nums[count];
-      REAL coeffs[count];
-
-      for (int i = 0; i < count; ++i) {
-        const pair<int, REAL>& rn_c = row_num_and_coeff.at(i);
-        row_nums[i] = rn_c.first;
-        coeffs[i] = rn_c.second;
-      }
-
-      SetNodeVariableIndex(node.id, par, per, new_variable_index);
-      AddColumnEx(model, count, coeffs, row_nums);
-      if (!set_binary(model, new_variable_index, TRUE)) {
-        throw LpSolveException("Error setting variable to binary.");
-      }
-      ++new_variable_index;
-    }
-  }
-}
-
-void LpSolveInterface::GraphParsingState::AddEdgeToModel(
-    lprec* model, const Edge& edge) {
-  CHECK_NOTNULL(model);
-  // Adding an edge to the model potentially adds multiple variables and
-  // constraints.
-  //
-  // The number of new variables is 1 + #partitions.
-  // One of these variables is a Boolean variable indicating whether the edge
-  // crosses a partition boundary. This variable has a coefficient of its
-  // edge weight in the objective function, and a coefficient of 1 in each
-  // of its constraint equations.
-  //
-  // The other variables are Boolean variables that indicate whether the edge
-  // has any connected nodes in a given partition.
-  //
-  // The edge constraints are created from Boolean equations in the form:
-  //
-  // E(n) = P_1(n) && P_2(n) .... && P_#partitions(n)
-  //
-  // The AND operation can be decomposed into 1 + #partitions linear equations.
-  // Shown here for #partitions = 4:
-  // E(n) - P_1(n) - P_2(n) - P_3(n) - P_4(n) >= (1 - #partitions)
-  // E(n) - P_1(n) <= 0
-  // E(n) - P_2(n) <= 0
-  // E(n) - P_3(n) <= 0
-  // E(n) - P_4(n) <= 0
-  //
-  // P_k(n) = logical OR of the Boolean node variables in Partition k for nodes
-  //          connected to the edge.
-  //
-  // The number of Boolean node variables in each logical OR is the summation of
-  // the number of personalities for all nodes connected to the edge.
-  //
-  // The OR operation can be decomposed into 1 + #variables linear equations.
-  // Shown here for #variables = 3:
-  // P_k(n) - V1 - V2 - V3 =< 0
-  // P_k(n) - V1 => 0
-  // P_k(n) - V2 => 0
-  // P_k(n) - V3 => 0
-  //
-  // A set of OR constraints must be added for each partition.
-  
-  // Add the new variables
-  int new_variable_index = get_Ncolumns(model) + 1;
-  
-  // Add edge crossing variable
-  int edge_crossing_variable_index = new_variable_index;
-  REAL objective_coefficient = (REAL)edge.weight;
-  int row_num = 0;
-  AddColumnEx(model, 1, &objective_coefficient, &row_num);
-  if (!set_binary(model, new_variable_index, TRUE)) {
-    throw LpSolveException("Error setting variable to binary.");
-  }
-  SetEdgeCrossingVariableIndex(edge.id, new_variable_index++);
-
-  // Add Partition connectivity variables
-  for (int p = 0; p < num_partitions_; ++p) {
-    // These variables have no weight in existing constraints.
-    AddColumnEx(model, 0, nullptr, nullptr);
-    if (!set_binary(model, new_variable_index, TRUE)) {
-      throw LpSolveException("Error setting variable to binary.");
-    }
-    SetEdgePartitionConnectivityVariableIndex(edge.id, p, new_variable_index++);
-  }
-
-  // Add the new constraints
-  
-  // AND constraints
-  //
-  // E(n) - P_1(n) - P_2(n) - P_3(n) - P_4(n) >= (1 - #partitions)
-  // E(n) - P_1(n) <= 0
-  // E(n) - P_2(n) <= 0
-  // E(n) - P_3(n) <= 0
-  // E(n) - P_4(n) <= 0
-  REAL and_coeffs1[1 + num_partitions_];
-  int and_variable_indices1[1 + num_partitions_];
-  
-  and_coeffs1[0] = 1.0;
-  and_variable_indices1[0] = edge_crossing_variable_index;
-  for (int i = 0; i < num_partitions_; ++i) {
-    and_coeffs1[i + 1] = -1.0;
-    and_variable_indices1[i + 1] =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, i);
-  }
-  AddConstraintEx(model, 1 + num_partitions_, and_coeffs1,
-      and_variable_indices1, GE, (REAL)(1 - num_partitions_));
-
-  for (int i = 0; i < num_partitions_; ++i) {
-    int and_variable_indices[2];
-    REAL and_coeffs[2];
-    and_variable_indices[0] = edge_crossing_variable_index;
-    and_variable_indices[1] =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, i);
-    and_coeffs[0] = 1.0;
-    and_coeffs[1] = -1.0;
-    AddConstraintEx(model, 2, and_coeffs, and_variable_indices, LE, 0.0);
-  }
-
-  // OR constraints
-  //
-  // P_k(n) - V1 - V2 - V3 <= 0
-  // P_k(n) - V1 >= 0
-  // P_k(n) - V2 >= 0
-  // P_k(n) - V3 >= 0
-  //
-  // Repeat for all partitions.
-  for (int part = 0; part < num_partitions_; ++part) {
-    int partition_variable_index =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, part);
-    vector<pair<int, REAL>> eq1_index_coeff_pairs;
-    for (int node_id : edge.connection_ids) {
-      Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));
-      for (size_t per = 0; per < node->WeightVectors().size(); ++per) {
-        int node_variable_index = GetNodeVariableIndex(node_id, part, per);
-        REAL or_coeffs[2];
-        int or_variable_indices[2];
-        or_coeffs[0] = 1.0;
-        or_coeffs[1] = -1.0;
-        or_variable_indices[0] = partition_variable_index;
-        or_variable_indices[1] = node_variable_index;
-        AddConstraintEx(model, 2, or_coeffs, or_variable_indices, GE, 0.0);
-        eq1_index_coeff_pairs.push_back(make_pair(node_variable_index, -1.0));
-      }
-    }
-    eq1_index_coeff_pairs.push_back(make_pair(partition_variable_index, 1.0));
-
-    int num_vals = eq1_index_coeff_pairs.size();
-    REAL or_coeffs1[num_vals];
-    int or_variable_indices1[num_vals];
-    for (size_t i = 0; i < eq1_index_coeff_pairs.size(); ++i) {
-      or_variable_indices1[i] = eq1_index_coeff_pairs[i].first;
-      or_coeffs1[i] = eq1_index_coeff_pairs[i].second;
-    }
-    AddConstraintEx(model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0);
-  }
-}
-
 void LpSolveInterface::GraphParsingState::SetObjectiveFunction(lprec* model) {
-  // Coefficients are set when adding edges. This just ensures fn is minimized.
   set_minim(CHECK_NOTNULL(model));
+  int num_x_vars = edge_to_crossing_variable_indices_.size();
+  unique_ptr<int[]> indices(new int[num_x_vars]);
+  unique_ptr<REAL[]> coeffs(new REAL[num_x_vars]);
+  int added = 0;
+  for (const pair<int, int>& e : edge_to_crossing_variable_indices_) {
+    indices[added] = e.second;
+    Edge* edge = graph_->internal_edges().at(e.first);
+    coeffs[added++] = (REAL)(edge->weight);
+  }
+  set_obj_fnex(model, num_x_vars, coeffs.get(), indices.get());
 }
 
 void LpSolveInterface::GraphParsingState::SetNodeVariableIndex(
@@ -505,8 +291,11 @@ void LpSolveInterface::GraphParsingState::AssignEdgeVariableIndices(
 void LpSolveInterface::GraphParsingState::AddAllConstraintsToModel(
     lprec* model, bool defer_to_columns) {
   AddImbalanceConstraintsToModel(model, defer_to_columns);
+  cout << get_Nrows(model) << " constraints after imbalance" << endl;
   AddAllNodeConstraintsToModel(model, defer_to_columns);
+  cout << get_Nrows(model) << " constraints after nodes" << endl;
   AddAllEdgeConstraintsToModel(model, defer_to_columns);
+  cout << get_Nrows(model) << " constraints after edges" << endl;
 }
 
 void LpSolveInterface::GraphParsingState::AddAllNodeConstraintsToModel(
@@ -527,7 +316,7 @@ void LpSolveInterface::GraphParsingState::AddAllEdgeConstraintsToModel(
     lprec* model, bool defer_to_columns) {
   int num_edges_added = 0;
   for (const pair<int, Edge*>& p : graph_->internal_edges()) {
-    AddEdgeConstraintsToModel(model, *(p.second), defer_to_columns);
+    AddEdgeConstraintsNewToModel(model, *(p.second), defer_to_columns);
     if (verbose_) {
       ++num_edges_added;
       if (num_edges_added % kVerboseAddQuanta == 0) {
@@ -537,8 +326,40 @@ void LpSolveInterface::GraphParsingState::AddAllEdgeConstraintsToModel(
   }
 }
 
+// Discussion below only applies to Bipartitioning.
+// Imbalance constraints are in the following form:
+// C_1*V_1 + C_2*V_2 + ... + C_N*V_N <= 0
+//
+// The number of imbalance constraints is 2 * #Resources. There is a pair of
+// constraints associated with each resource.
+//
+// Where the variables, V, are all of the possible node identity variables.
+// A node identity variable indicates whether the node with that identity
+// exists with a specific personality and in a specific partition. See the
+// node constraints for more details.
+//
+// The coefficients, C, are based on the maximum allowed imbalance in that
+// resource between partitions, and the weight of V's personality in that
+// resource. Additionally, calculation depends on which partition the
+// node identity is associated with. For example, in Partition A, the
+// coefficient might be computed as:
+//
+// C_1 = W_1 * (I + 1)
+//
+// And for identities in Partition B:
+//
+// C_2 = W_2 * (I - 1)
+//
+// Each resource has a pair of constraints. For the second constraint, the
+// coefficient calculation are done as the reverse of what is shown above;
+// that is, nodes in Partition B use the first equation and in Partition A
+// use the second equation.
 void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
     lprec* model, bool defer_to_columns) {
+  // Constraint equations depend on number of partitions, and currently only
+  // support 2.
+  assert(num_partitions_ == 2);
+
   vector<vector<pair<REAL, REAL>>> coefficients;
   vector<vector<int>> variable_indices;
   coefficients.resize(num_resources_);
@@ -554,12 +375,16 @@ void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
             graph_->internal_nodes().at(node_id)->WeightVector(per);
         for (int res = 0; res < num_resources_; ++res) {
           int weight = wv[res];
-          if (res != 0) {
-            variable_indices[res].push_back(nid_mapping.second[part][per]);
+          variable_indices[res].push_back(nid_mapping.second[part][per]);
+          // This part needs to change to support k-way partitioning.
+          if (part != 0) {
             coefficients[res].push_back(make_pair(
                 (REAL)(weight * (max_weight_imbalance_fraction_ + 1)),
                 (REAL)(weight * (max_weight_imbalance_fraction_ - 1))));
-
+          } else {
+            coefficients[res].push_back(make_pair(
+                (REAL)(weight * (max_weight_imbalance_fraction_ - 1)),
+                (REAL)(weight * (max_weight_imbalance_fraction_ + 1))));
           }
         }
       }
@@ -582,10 +407,10 @@ void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
     if (defer_to_columns) {
       AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
       ConstraintExToDeferredColumns(
-          columns_ex_next_row_++, num_nonzero, gz_coeffs.get(), indices.get());
+          num_nonzero, gz_coeffs.get(), indices.get());
       AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
       ConstraintExToDeferredColumns(
-          columns_ex_next_row_++, num_nonzero, lz_coeffs.get(), indices.get());
+          num_nonzero, lz_coeffs.get(), indices.get());
     } else {
       AddConstraintEx(
           model, num_nonzero, gz_coeffs.get(), indices.get(), GE, 0.0);
@@ -595,6 +420,22 @@ void LpSolveInterface::GraphParsingState::AddImbalanceConstraintsToModel(
   }
 }
 
+// Node constraints are 'set partitioning constraints'. That is, they are
+// designed to ensure that exactly one variable in a set is 1 and the others
+// are zero.
+//
+// The set of variables that must be partitioned are the node identity
+// variables associated with a given node. Each node has
+// #Partitions * #Personalities identity variables, and if an identity
+// variable is set, it indicates that the node has that personality and is
+// located in that partition. A node must have exactly one personality
+// and be in exactly one partition, hence the set partitioning constraint.
+//
+// To construct the set partitioning constraint, The node constraint must
+// set a coefficient of 1 for all of its identity variables, and 0 for
+// all other variables in the model. Setting the constraint = 1 and
+// using binary bounds on each variable (done later in the algorithm)
+// completes the set partitioning constraint.
 void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
     lprec* model, const Node& node, bool defer_to_columns) {
   int num_nonzero = num_partitions_ * node.WeightVectors().size();
@@ -608,16 +449,158 @@ void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
     }
   }
   if (defer_to_columns) {
-    AddConstraintEx(model, 0, nullptr, nullptr , LE, 1.0);
-    ConstraintExToDeferredColumns(
-        columns_ex_next_row_++, num_nonzero, coeffs, indices);
+    AddConstraintEx(model, 0, nullptr, nullptr , EQ, 1.0);
+    ConstraintExToDeferredColumns(num_nonzero, coeffs, indices);
   } else {
-    AddConstraintEx(model, num_nonzero, coeffs, indices, LE, 1.0);
+    AddConstraintEx(model, num_nonzero, coeffs, indices, EQ, 1.0);
   }
 }
 
+// New version uses threshold constraints that leverage the fact that all of
+// the variables are binary. This requires fewer constraints.
+//
+// An edge requires multiple constraints. The purpose of the edge constraints
+// is to define an 'edge crossing variable', which is set to 1 if the edge
+// crosses partition boundaries or set to 0 if the edge is completely internal
+// to a partition.
+//
+// X1 = (P_A1 + P_B1 + ... + P_K1 >= 2)
+//   Note: Since at least one connectivity variable will always be set, we can
+//         also use '!= 1' instead of '>= 2'.
+//
+// Where 'P_A1' is the edge 1's partition connectivity variable for partition A.
+// A partition connectivity variable is set to 1 if the edge is connected to
+// any nodes located in the specified partition, or 0 if it is not.
+//
+// P_A1 = (V_A1 + V_A2 + ... + V_AM >= 1)
+//
+// Where V_A1 .. V_AM are all the nodes in partition P that are connected to
+// the edge.
+//
+// The threshold assignments above can be implemented using two constraints for
+// each threshold. In general, for X = (V_1 + V_2 + ... + V_M >= T):
+//
+// (M + 1 - T)*X - V_1 - V_2 - ... - V_M >= 1 - T
+//           T*X - V_1 - V_2 - ... - V_M <= 0
+//
+// In this case, T is strictly positive, so it is sufficient to use:
+//
+// M*X - V_1 - V_2 - ... - V_M >= 1 - T
+// T*X - V_1 - V_2 - ... - V_M <= 0
+void LpSolveInterface::GraphParsingState::AddEdgeConstraintsNewToModel(
+    lprec* model, const Edge& edge, bool defer_to_columns) {
+
+  int edge_crossing_variable_index =
+      GetEdgeCrossingVariableIndex(edge.id);
+
+  // All of the coefficients for the two equations are the same, except for the
+  // first element, so just re-use the same array and set the first element.
+  REAL x_coeffs[1 + num_partitions_];
+  int x_variable_indices[1 + num_partitions_];
+
+  const int x_thresh = 2;
+  x_variable_indices[0] = edge_crossing_variable_index;
+
+  for (int i = 0; i < num_partitions_; ++i) {
+    x_coeffs[i + 1] = -1.0;
+    x_variable_indices[i + 1] =
+        GetEdgePartitionConnectivityVariableIndex(edge.id, i);
+  }
+  if (defer_to_columns) {
+    x_coeffs[0] = (REAL)num_partitions_;
+    AddConstraintEx(model, 0, nullptr, nullptr, GE, (REAL)(1 - x_thresh));
+    ConstraintExToDeferredColumns(
+        1 + num_partitions_, x_coeffs, x_variable_indices);
+    x_coeffs[0] = x_thresh;
+    AddConstraintEx(model, 0, nullptr, nullptr, LE, 0.0);
+    ConstraintExToDeferredColumns(
+        1 + num_partitions_, x_coeffs, x_variable_indices);
+  } else {
+    x_coeffs[0] = (REAL)num_partitions_;
+    AddConstraintEx(model, 1 + num_partitions_, x_coeffs, x_variable_indices,
+                    GE, (REAL)(1 - x_thresh));
+    x_coeffs[0] = x_thresh;
+    AddConstraintEx(model, 1 + num_partitions_, x_coeffs, x_variable_indices,
+                    LE, 0.0);
+  }
+
+  const int p_thresh = 1;
+  for (int part = 0; part < num_partitions_; ++part) {
+    vector<int> p_indices;
+    vector<REAL> p_coeffs;
+    p_indices.push_back(
+        GetEdgePartitionConnectivityVariableIndex(edge.id, part));
+    for (int node_id : edge.connection_ids) {
+      Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));
+      for (size_t per = 0; per < node->WeightVectors().size(); ++per) {
+        p_indices.push_back(GetNodeVariableIndex(node_id, part, per));
+      }
+    }
+    p_coeffs.resize(p_indices.size(), -1.0);
+    if (defer_to_columns) {
+      p_coeffs[0] = p_indices.size() - 1;
+      AddConstraintEx(model, 0, nullptr, nullptr, GE, (REAL)(1 - p_thresh));
+      ConstraintExToDeferredColumns(p_coeffs, p_indices);
+      p_coeffs[0] = p_thresh;
+      AddConstraintEx(model, 0, nullptr, nullptr, LE, 0.0);
+      ConstraintExToDeferredColumns(p_coeffs, p_indices);
+    } else {
+      p_coeffs[0] = p_indices.size() - 1;
+      AddConstraintEx(model, p_coeffs, p_indices, GE, REAL(1 - p_thresh));
+      p_coeffs[0] = p_thresh;
+      AddConstraintEx(model, p_coeffs, p_indices, LE, 0.0);
+    }
+  }
+}
+
+// Old version uses OR and AND equations. Keep around while validating new
+// method.
+// An edge requires multiple constraints. The purpose of the edge constraints
+// is to define an 'edge crossing variable', which is set to 1 if the edge
+// crosses partition boundaries or set to 0 if the edge is completely internal
+// to a partition.
+//
+// The edge crossing variable, X, is defined by adding a Boolean assignment that
+// of the form:
+//
+// X1 = P_A1 && P_B1  // For 2 partitions
+//
+// Where 'P_A' is the edge's partition connectivity variable for partition A.
+// A partition connectivity variable is set to 1 if the edge is connected to
+// any nodes located in the specified partition, or 0 if it is not.
+//
+// The partition connectivity can be defined by a Boolean assignment using the
+// node identity variables (see discussion of node constraints). For instance,
+//
+// P_A = V_A1 || V_A2 || ... || V_AM
+//
+// Where V_A1 .. V_AM are all of the node identity variables associated with
+// partition A.
+//
+// Assembling the Boolean assignment can be done as follows:
+//
+// OR assignment:
+//
+// To implement the OR assignment requires M + 1 constraints of the form:
+//
+// P_A - V_A1 - V_A2 - ... - V_AM <= 0
+// P_A - V_A1 >= 0
+// P_A - V_A2 >= 0
+// ...
+// P_A - V_AM >= 0
+//
+// AND assignment:
+//
+// To implement an AND assignment requires K + 1 constraints of the form:
+//
+// X1 - P_A1 - P_B1 - ... - P_K1 >= 1 - K
+// X1 - P_A1 <= 0
+// ...
+// X1 - P_K1 <= 0
 void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     lprec* model, const Edge& edge, bool defer_to_columns) {
+  assert (num_partitions_ == 2);
+
   int edge_crossing_variable_index =
       GetEdgeCrossingVariableIndex(edge.id);
   REAL and_coeffs1[1 + num_partitions_];
@@ -633,8 +616,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
   if (defer_to_columns) {
     AddConstraintEx(model, 0, nullptr, nullptr, GE, REAL(1 - num_partitions_));
     ConstraintExToDeferredColumns(
-        columns_ex_next_row_++, 1 + num_partitions_, and_coeffs1,
-        and_variable_indices1);
+        1 + num_partitions_, and_coeffs1, and_variable_indices1);
   } else {
     AddConstraintEx(
         model, 1 + num_partitions_, and_coeffs1, and_variable_indices1, GE,
@@ -652,7 +634,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     if (defer_to_columns) {
       AddConstraintEx(model, 0, nullptr, nullptr, LE, 0.0);
       ConstraintExToDeferredColumns(
-          columns_ex_next_row_++, 2, and_coeffs, and_variable_indices);
+          2, and_coeffs, and_variable_indices);
     } else {
       AddConstraintEx(model, 2, and_coeffs, and_variable_indices, LE, 0.0);
     }
@@ -683,7 +665,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
         if (defer_to_columns) {
           AddConstraintEx(model, 0, nullptr, nullptr, GE, 0.0);
           ConstraintExToDeferredColumns(
-              columns_ex_next_row_++, 2, or_coeffs, or_variable_indices);
+              2, or_coeffs, or_variable_indices);
         } else {
           AddConstraintEx(
               model, 2, or_coeffs, or_variable_indices, GE, 0.0);
@@ -703,7 +685,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     if (defer_to_columns) {
       AddConstraintEx(model, 0, nullptr, nullptr, LE, 0.0);
       ConstraintExToDeferredColumns(
-          columns_ex_next_row_++, num_vals, or_coeffs1, or_variable_indices1);
+          num_vals, or_coeffs1, or_variable_indices1);
     } else {
       AddConstraintEx(
           model, num_vals, or_coeffs1, or_variable_indices1, LE, 0.0);
@@ -720,7 +702,7 @@ void LpSolveInterface::GraphParsingState::SetAllVariablesBinary(
   }
 }
 
-int LpSolveInterface::GraphParsingState::NumNodeVariablesNeeded() {
+int LpSolveInterface::GraphParsingState::NumTotalNodeVariablesNeeded() {
   int total_personalities = 0;
   for (const pair<int, Node*>& p : graph_->internal_nodes()) {
     total_personalities += p.second->num_personalities();
@@ -728,16 +710,15 @@ int LpSolveInterface::GraphParsingState::NumNodeVariablesNeeded() {
   return total_personalities * num_partitions_;
 }
 
-int LpSolveInterface::GraphParsingState::NumEdgeVariablesNeeded() {
+int LpSolveInterface::GraphParsingState::NumTotalEdgeVariablesNeeded() {
   return (1 + num_partitions_) * graph_->internal_edges().size();
 }
 
-int LpSolveInterface::GraphParsingState::NumNodeConstraintsNeeded() {
+int LpSolveInterface::GraphParsingState::NumTotalNodeConstraintsNeeded() {
   return graph_->internal_nodes().size();
 }
 
-int LpSolveInterface::GraphParsingState::NumEdgeConstraintsNeeded() {
-  return (1 + num_partitions_) * graph_->internal_edges().size();
+int LpSolveInterface::GraphParsingState::NumTotalEdgeConstraintsNeeded() {
   int total_connections = 0;
   for (const pair<int, Edge*>& p : graph_->internal_edges()) {
     total_connections += p.second->degree();
@@ -746,31 +727,41 @@ int LpSolveInterface::GraphParsingState::NumEdgeConstraintsNeeded() {
       (1 + num_partitions_) * graph_->internal_edges().size();
   int num_or_constraints_needed =
       total_connections + graph_->internal_edges().size();
-  return num_and_constraints_needed + num_or_constraints_needed;
+  return num_partitions_ *
+        (num_and_constraints_needed + num_or_constraints_needed);
 }
 
 void LpSolveInterface::GraphParsingState::ConstraintExToDeferredColumns(
-    int row_num, int count, REAL* constraint_coeffs,
-    int* constraint_indices) {
+    int count, const REAL* const constraint_coeffs,
+    const int* const constraint_indices) {
   for (int i = 0; i < count; ++i) {
     // OK if this creates the entry or if it already exists.
     vector<pair<int, REAL>>& column_ex = columns_ex_[constraint_indices[i]];
-    column_ex.push_back(make_pair(row_num, constraint_coeffs[i]));
+    column_ex.push_back(
+        make_pair(columns_ex_next_row_, constraint_coeffs[i]));
   }
+  columns_ex_next_row_++;
+}
+
+void LpSolveInterface::GraphParsingState::ConstraintExToDeferredColumns(
+    const vector<REAL>& constraint_coeffs,
+    const vector<int>& constraint_indices) {
+  ConstraintExToDeferredColumns(constraint_coeffs.size(),
+                                constraint_coeffs.data(),
+                                constraint_indices.data());
 }
 
 void LpSolveInterface::GraphParsingState::AddDeferredColumnsEx(lprec* model) {
   int num_cols_added = 0;
   for (const pair<int, vector<pair<int, REAL>>>& column_ex_pair : columns_ex_) {
     const vector<pair<int, REAL>>& column_ex = column_ex_pair.second;
-    int num_entries = column_ex.size();
-    int indices[num_entries];
-    REAL coeffs[num_entries];
-    for (int i = 0; i < num_entries; ++i) {
+    unique_ptr<int[]> indices(new int[column_ex.size()]);
+    unique_ptr<REAL[]> coeffs(new REAL[column_ex.size()]);
+    for (int i = 0; i < column_ex.size(); ++i) {
       indices[i] = column_ex[i].first;
       coeffs[i] = column_ex[i].second;
     }
-    AddColumnEx(model, num_entries, coeffs, indices);
+    AddColumnEx(model, column_ex.size(), coeffs.get(), indices.get());
     if (verbose_) {
       ++num_cols_added;
       if (num_cols_added % kVerboseAddQuanta == 0) {
@@ -781,19 +772,36 @@ void LpSolveInterface::GraphParsingState::AddDeferredColumnsEx(lprec* model) {
 }
 
 char LpSolveInterface::GraphParsingState::AddColumnEx(
-    lprec* model, int count, REAL* coeffs, int* indices) {
-  char ret = add_columnex(model, count, coeffs, indices);
+    lprec* model, int count, const REAL* const coeffs,
+    const int* const indices) {
+  char ret = add_columnex(
+      model, count, const_cast<REAL*>(coeffs), const_cast<int*>(indices));
   if (!ret) {
     throw LpSolveException("Failed adding column");
   }
   return ret;
 }
 
+char LpSolveInterface::GraphParsingState::AddColumnEx(
+    lprec* model, const vector<REAL>& coeffs, const vector<int>& indices) {
+  return AddColumnEx(model, coeffs.size(), coeffs.data(), indices.data());
+}
+
+
 char LpSolveInterface::GraphParsingState::AddConstraintEx(
-    lprec* model, int count, REAL* coeffs, int* indices, int ctype, REAL rhs) {
-  char ret = add_constraintex(model, count, coeffs, indices, ctype, rhs);
+    lprec* model, int count, const REAL* const coeffs, const int* const indices,
+    int ctype, REAL rhs) {
+  char ret = add_constraintex(model, count, const_cast<REAL*>(coeffs),
+                              const_cast<int*>(indices), ctype, rhs);
   if (!ret) {
     throw LpSolveException("Failed adding constraint");
   }
   return ret;
+}
+
+char LpSolveInterface::GraphParsingState::AddConstraintEx(
+    lprec* model, const std::vector<REAL>& coeffs,
+    const std::vector<int>& indices, int ctype, REAL rhs) {
+  return AddConstraintEx(model, coeffs.size(), coeffs.data(), indices.data(),
+                         ctype, rhs);
 }

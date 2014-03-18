@@ -244,7 +244,6 @@ std::vector<int> ChacoParser::ExtractIntsFromLine(const string& line) const {
 }
 
 bool ChacoParser::ParseExternalWeightFile() {
-  int num_nodes = parsed_nodes_.size();
   string weight_filename = base_filename_;
   weight_filename.append(".wt");
   printf("Parse: Extracting weights from file %s.\n", weight_filename.c_str());
@@ -276,8 +275,6 @@ bool ChacoParser::ParseExternalWeightFile() {
     vector<int> weight_vectors = ExtractIntsFromLine(cur_line);
     cur_line.clear();
     assert(weight_vectors.size() % num_entries_per_weight_vector_ == 0);
-    int num_weight_vectors =
-        weight_vectors.size() / num_entries_per_weight_vector_;
     for (int start_offset = 0; start_offset < weight_vectors.size();
          start_offset += num_entries_per_weight_vector_) {
       vector<int> weight_vector;

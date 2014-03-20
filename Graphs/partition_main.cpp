@@ -54,7 +54,7 @@ string clean_edge_string(const string& my_str) {
 int main(int argc, char *argv[]) {
   xmlKeepBlanksDefault(0);
 
-  if (argc < 4 && argc > 6) {
+  if (argc < 4 || argc > 6) {
     printf("\nIncorrect number of arguments: %d\n", argc);
     printf("Use: partition <graph> <config.xml> num_runs "
            "[result_output_file] [result_log_file]\n\n");

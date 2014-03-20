@@ -134,7 +134,6 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
   // This is done for simplification while developing the KLFM algorithm.
   // Later may want to restore the concept of ports to consider partitioning
   // of bandwidth. 
-  // TODO: Maybe create a special type of node in place of the port?
   NodeIdSet port_ids;
   for (auto& port_pair : graph->ports()) {
     port_ids.insert(port_pair.first);
@@ -988,8 +987,7 @@ void PartitionEngineKlfm::MoveNodeAndUpdateBalance(
 void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     Node* moved_node, bool from_part_a) {
   for (auto& port_pair : moved_node->ports()) {
-    // TODO Remove this profiling info
-    uint64_t temp_start_time = GetTimeUsec();
+
     num_connected_edges_++;
     const int connected_edge_id = port_pair.second.external_edge_id;
     EdgeKlfm* connected_edge = internal_edge_map_[connected_edge_id];
@@ -998,8 +996,7 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     EdgeKlfm::NodeIdVector nodes_to_decrease_gain;
     connected_edge->MoveNode(moved_node->id, &nodes_to_increase_gain,
                              &nodes_to_decrease_gain);
-    uint64_t diff_time = GetTimeUsec() - temp_start_time;
-    move_node_time_ += diff_time;
+
     // Due to the nature of the KLFM algorithm, the nodes that have their
     // gains increased are always in the same partition that the node was
     // moved from and the gains to be decreased are in the partition it
@@ -1007,7 +1004,6 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     int gain_modifier = connected_edge->weight;
     gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
                                       nodes_to_decrease_gain, from_part_a);
-    update_gains_time_ += (GetTimeUsec() - diff_time - temp_start_time);
   }
 }
 

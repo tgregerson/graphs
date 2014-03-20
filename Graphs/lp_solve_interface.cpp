@@ -695,7 +695,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
 
 void LpSolveInterface::GraphParsingState::SetAllVariablesBinary(
     lprec* model) {
-  for (int i = 1; i < get_Ncolumns(model); ++i) {
+  for (int i = 1; i <= get_Ncolumns(model); ++i) {
     if (!set_binary(model, i, TRUE)) {
       throw LpSolveException("Error setting variable to binary.");
     }

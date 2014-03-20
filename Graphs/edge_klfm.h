@@ -40,8 +40,8 @@ class EdgeKlfm : public Edge {
              part_a_connected_unlocked_nodes.empty());
   }
   bool TouchesPartitionB() const {
-    return !(part_a_connected_locked_nodes.empty() &&
-             part_a_connected_unlocked_nodes.empty());
+    return !(part_b_connected_locked_nodes.empty() &&
+             part_b_connected_unlocked_nodes.empty());
   }
   bool CrossesPartitions() const {
     return TouchesPartitionA() && TouchesPartitionB();

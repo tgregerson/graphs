@@ -85,7 +85,9 @@ class PartitionEngineKlfm : public PartitionEngine {
         rebalance_on_demand_cap_per_run(1),
         rebalance_on_demand_cap_per_pass(1),
         num_resources_per_node(1),
-        enable_print_output(true) {
+        enable_print_output(true),
+        multilevel(true),
+        export_initial_sol_only(false) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -113,7 +115,9 @@ class PartitionEngineKlfm : public PartitionEngine {
         rebalance_on_demand_cap_per_run(1),
         rebalance_on_demand_cap_per_pass(1),
         num_resources_per_node(num_resources),
-        enable_print_output(true) {
+        enable_print_output(true),
+        multilevel(true),
+        export_initial_sol_only(false) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -216,6 +220,24 @@ class PartitionEngineKlfm : public PartitionEngine {
 
     // Controls whether the algorithm prints its output.
     bool enable_print_output;
+
+    // Controls whether the algorithm performs multi-level partitioning.
+    bool multilevel;
+
+    // If non-empty, will output a basic testbench skeleton for monitoring the
+    // signal values of edges included in the cutset at the end of partitioning.
+    std::string testbench_filename;
+
+    // If non-empty, will output the initial .SOL to file.
+    std::string initial_sol_filename;
+
+    // If non-empty, will output the final .SOL to file.
+    std::string final_sol_filename;
+
+    // If set to true, will write the initial .SOL file after the first pass
+    // that meets balance constraints, then exit. 'initial_sol_filename' must
+    // be non-empty.
+    bool export_initial_sol_only;
   };
 
  private:

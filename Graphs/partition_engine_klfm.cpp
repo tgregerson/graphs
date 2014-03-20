@@ -183,8 +183,21 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
       ResetImplementations(initial_implementations);
       RecomputeTotalWeightAndMaxImbalance();
     }
+
+    if (!options_.initial_sol_filename.empty()) {
+      NodePartitions pre_run_partitions;
+      int temp_cost;
+      vector<int> temp_balance;
+      GenerateInitialPartition(&pre_run_partitions, &temp_cost, &temp_balance);
+      WriteScipSol(pre_run_partitions, options_.initial_sol_filename);
+      if (options_.export_initial_sol_only) {
+        exit(0);
+      }
+    }
+
     VLOG(1) << endl << "########### Begin Run " << cur_run + 1 << "/"
             << options_.num_runs << " ###########" << endl;
+
     ExecuteRun(cur_run, &this_run_summaries);
     for (const auto& it : this_run_summaries) {
       if (options_.enable_print_output) {
@@ -324,6 +337,8 @@ void PartitionEngineKlfm::ExecuteRun(
   coarsened_partition.second.clear();
   DeCoarsen();
 
+  PopulateEdgePartitionConnections(decoarsened_partition);
+
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
     assert(current_partition_cost == RecomputeCurrentCost());
   }
@@ -344,10 +359,14 @@ void PartitionEngineKlfm::ExecuteRun(
         decoarsened_partition, current_partition_balance, true, true);
   }
 
+
   num_passes += RunKlfmAlgorithm(
       cur_run, decoarsened_partition, current_partition_cost,
       current_partition_balance);
 
+  if (!options_.final_sol_filename.empty()) {
+    WriteScipSol(decoarsened_partition, options_.final_sol_filename);
+  }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
     assert(current_partition_cost == RecomputeCurrentCost());
   }
@@ -2514,6 +2533,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
+    // TODO: Something is broken here; every edge is reported as crossing.
     if (edge->CrossesPartitions()) {
       of << "X" << edge->id << " 1\t (obj:" << edge->weight << ")" << endl;
     }

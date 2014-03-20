@@ -6,6 +6,7 @@
 
 #include "edge.h"
 
+#include <algorithm>
 #include <iostream>
 #include <set>
 #include <unordered_set>
@@ -13,14 +14,11 @@
 
 class EdgeKlfm : public Edge {
  public:
-  typedef Edge::NodeIdSet NodeIdSet;
-  //typedef std::unordered_set<int> NodeIdSet;
   typedef std::vector<int> NodeIdVector;
 
   EdgeKlfm(int edge_id, int weight, const std::string& edge_name);
   explicit EdgeKlfm(Edge* edge);
   virtual ~EdgeKlfm() {
-    //std::cout << "Deleting Edge " << id << std::endl;
   }
 
   // Print debug information about the edge.
@@ -31,8 +29,23 @@ class EdgeKlfm : public Edge {
   // in initial partition A and initial partition B connected to the edge at
   // the start of the iteration. This method also sets the edge's critical
   // status based on these initial partition connections.
-  void KlfmReset(const NodeIdVector& part_a_connections,
-                 const NodeIdVector& part_b_connections);
+  template<typename T>
+  void KlfmReset(const std::pair<T, T>& partitions);
+
+  template<typename T>
+  void PopulatePartitionNodeIds(const std::pair<T,T>& partitions);
+
+  bool TouchesPartitionA() const {
+    return !(part_a_connected_locked_nodes.empty() &&
+             part_a_connected_unlocked_nodes.empty());
+  }
+  bool TouchesPartitionB() const {
+    return !(part_a_connected_locked_nodes.empty() &&
+             part_a_connected_unlocked_nodes.empty());
+  }
+  bool CrossesPartitions() const {
+    return TouchesPartitionA() && TouchesPartitionB();
+  }
 
   // This method should be called once a node has been selected by the KLFM
   // algorithm for movement, and should be called for all edges that are
@@ -54,15 +67,6 @@ class EdgeKlfm : public Edge {
   // An edge is locked non-critical iff both partitions have at least one
   // locked node from the edge's connected nodes.
   bool locked_noncritical;
-  // TODO Experiment with making this a vector instead to save memory.
-  // Probably most edges will not have high enough fanout that there is really
-  // even a performance reason to use set.
-  /*
-  NodeIdSet part_a_connected_unlocked_nodes;
-  NodeIdSet part_b_connected_unlocked_nodes;
-  NodeIdSet part_a_connected_locked_nodes;
-  NodeIdSet part_b_connected_locked_nodes;
-  */
   NodeIdVector part_a_connected_unlocked_nodes;
   NodeIdVector part_b_connected_unlocked_nodes;
   NodeIdVector part_a_connected_locked_nodes;
@@ -71,5 +75,32 @@ class EdgeKlfm : public Edge {
  private:
   void SetInitialCriticality();
 };
+
+template<typename T>
+void EdgeKlfm::PopulatePartitionNodeIds(const std::pair<T,T>& partitions) {
+  part_a_connected_locked_nodes.clear();
+  part_b_connected_locked_nodes.clear();
+  part_a_connected_unlocked_nodes.clear();
+  part_b_connected_unlocked_nodes.clear();
+  for (int node_id : partitions.first) {
+    if (binary_search(
+        connection_ids().begin(), connection_ids().end(), node_id)) {
+      part_a_connected_unlocked_nodes.push_back(node_id);
+    }
+  }
+  for (int node_id : partitions.second) {
+    if (binary_search(
+        connection_ids().begin(), connection_ids().end(), node_id)) {
+      part_b_connected_unlocked_nodes.push_back(node_id);
+    }
+  }
+}
+
+template<typename T>
+void EdgeKlfm::KlfmReset(const std::pair<T,T>& partitions) {
+  PopulatePartitionNodeIds(partitions);
+  locked_noncritical = false;
+  SetInitialCriticality();
+}
 
 #endif /* EDGE_KLFM_H_ */

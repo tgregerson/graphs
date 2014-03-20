@@ -530,7 +530,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsNewToModel(
     vector<REAL> p_coeffs;
     p_indices.push_back(
         GetEdgePartitionConnectivityVariableIndex(edge.id, part));
-    for (int node_id : edge.connection_ids) {
+    for (int node_id : edge.connection_ids()) {
       Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));
       for (size_t per = 0; per < node->WeightVectors().size(); ++per) {
         p_indices.push_back(GetNodeVariableIndex(node_id, part, per));
@@ -652,7 +652,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     int partition_variable_index =
         GetEdgePartitionConnectivityVariableIndex(edge.id, part);
     vector<pair<int, REAL>> eq1_index_coeff_pairs;
-    for (int node_id : edge.connection_ids) {
+    for (int node_id : edge.connection_ids()) {
       Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));
       for (size_t per = 0; per < node->WeightVectors().size(); ++per) {
         int node_variable_index = GetNodeVariableIndex(node_id, part, per);

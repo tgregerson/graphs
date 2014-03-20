@@ -339,7 +339,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
       for (auto& port_pair : node->ports()) {
         int edge_id = port_pair.second.external_edge_id;
         Edge* edge = graph.internal_edges().at(edge_id);
-        for (auto cnx_node_id : edge->connection_ids) {
+        for (auto cnx_node_id : edge->connection_ids()) {
           if (unassigned_node_ids.find(cnx_node_id) !=
               unassigned_node_ids.end()) {
             possibly_free_neighbors_by_res_id[res_id].insert(cnx_node_id);

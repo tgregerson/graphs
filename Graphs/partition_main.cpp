@@ -230,9 +230,9 @@ void RepartitionKway(int num_ways, int cur_lev, Node* graph,
   set<int> edges_to_remove;
   for (auto edge_pair : graph_copy.internal_edges()) {
     // Currently only supports graphs, not hypergraphs.
-    assert(edge_pair.second->connection_ids.size() == 2);
+    assert(edge_pair.second->connection_ids().size() == 2);
     int home_part = -1;
-    int first_node = *(edge_pair.second->connection_ids.begin());
+    int first_node = *(edge_pair.second->connection_ids().begin());
     for (int part_num = 0; part_num < starting_partitions.size(); part_num++) {
       if (starting_partitions[part_num].find(first_node) !=
           starting_partitions[part_num].end()) {
@@ -242,7 +242,7 @@ void RepartitionKway(int num_ways, int cur_lev, Node* graph,
     }
     assert(home_part >= 0);
     bool remove = false;
-    for (auto node_id : edge_pair.second->connection_ids) {
+    for (auto node_id : edge_pair.second->connection_ids()) {
       if (starting_partitions[home_part].find(node_id) ==
           starting_partitions[home_part].end()) {
         // Edge spans partitions.
@@ -252,7 +252,7 @@ void RepartitionKway(int num_ways, int cur_lev, Node* graph,
     }
     if (remove) {
       edges_to_remove.insert(edge_pair.first);
-      for (auto node_id : edge_pair.second->connection_ids) {
+      for (auto node_id : edge_pair.second->connection_ids()) {
         graph_copy.internal_nodes().at(node_id)->RemoveConnection(
             edge_pair.first);
       }

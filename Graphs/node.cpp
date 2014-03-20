@@ -20,17 +20,6 @@ Node::Node(int node_id, const string& node_name)
   : id(node_id), name(node_name), is_locked(false),
     selected_weight_vector_index_(0), prev_selected_weight_vector_index_(0),
     registered_(false), latency_(0.0) {
-  // TODO - Not inserting a name saves memory. Maybe only enable it as a debug
-  // option, since it can be useful for that.
-  /*
-  if (name.empty()) {
-    // Create generic name.
-    name = "Node";
-    ostringstream oss;
-    oss << node_id;
-    name.append(oss.str());
-  }
-  */
 }
 
 void Node::AddConnection(int connected_id) {
@@ -218,7 +207,7 @@ vector<int> Node::TotalInternalSelectedWeight(
 
 void Node::TransferEdgeConnectionsExcluding(
     Edge* from_edge, Edge* to_edge, int exclude_id) {
-  for (auto entity_id : from_edge->connection_ids) {
+  for (auto entity_id : from_edge->connection_ids()) {
     if (entity_id != exclude_id) {
       to_edge->AddConnection(entity_id);
       if (internal_nodes_.count(entity_id) != 0) {

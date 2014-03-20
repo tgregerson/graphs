@@ -45,21 +45,28 @@ const std::string Edge::GenerateSplitEdgeName(int new_id) const {
 }
 
 void Edge::AddConnection(int cnx_id) {
-  // Assert that the ID hasn't already been added.
-  connection_ids.push_back(cnx_id);
+  // Insert keeps connection_ids sorted
+  if (connection_ids_.empty() || connection_ids_.back() <= cnx_id) {
+    connection_ids_.push_back(cnx_id);
+  } else {
+    connection_ids_.insert(
+        lower_bound(connection_ids_.begin(), connection_ids_.end(), cnx_id),
+        cnx_id);
+  }
 }
 
 void Edge::RemoveConnection(int cnx_id) {
-  auto erase_it = find(connection_ids.begin(), connection_ids.end(), cnx_id);
-  assert(erase_it != connection_ids.end());
-  connection_ids.erase(erase_it);
+  auto erase_it =
+      lower_bound(connection_ids_.begin(), connection_ids_.end(), cnx_id);
+  assert(erase_it != connection_ids_.end() && *erase_it == cnx_id);
+  connection_ids_.erase(erase_it);
 }
 
 void Edge::CopyFrom(Edge* src) {
   id = src->id;
   weight = src->weight;
   name = src->name;
-  connection_ids = src->connection_ids;
+  connection_ids_ = src->connection_ids();
 }
 
 void Edge::Print() const {
@@ -67,7 +74,7 @@ void Edge::Print() const {
   printf("Weight: %d\n", weight);
   printf("Degree: %d\n", degree());
   printf("Connected IDs: ");
-  for (auto it : connection_ids) {
+  for (auto it : connection_ids_) {
     printf("%d ", it);
   }
   printf("\n");
@@ -75,9 +82,9 @@ void Edge::Print() const {
 
 void Edge::Compress() {
   //name.clear();
-  connection_ids.shrink_to_fit();
+  connection_ids_.shrink_to_fit();
 }
 
 int Edge::degree() const {
-  return connection_ids.size();
+  return connection_ids_.size();
 }

@@ -37,12 +37,16 @@ class Edge {
   // Reduces the memory size of the object by removing its name and resizing its containers.
   virtual void Compress();
 
-  //std::unordered_set<int> connection_ids;
-  //NodeIdSet connection_ids;
-  NodeIdVector connection_ids;
+  const NodeIdVector& connection_ids() const {
+    return connection_ids_;
+  }
+
+  // connection_ids is kept sorted for fast searching.
   int id;
   int weight;
   std::string name;
+ private:
+  NodeIdVector connection_ids_;
 };
 
 #endif /* EDGE_H_ */

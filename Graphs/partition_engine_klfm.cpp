@@ -186,7 +186,7 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
     VLOG(1) << endl << "########### Begin Run " << cur_run + 1 << "/"
             << options_.num_runs << " ###########" << endl;
     ExecuteRun(cur_run, &this_run_summaries);
-    for (auto it : this_run_summaries) {
+    for (const auto& it : this_run_summaries) {
       if (options_.enable_print_output) {
         PrintResultFull(it, cur_run);
       }
@@ -274,8 +274,7 @@ void PartitionEngineKlfm::ExecuteRun(
     }
   }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
-    assert(current_partition_cost ==
-           RecomputeCurrentCost(coarsened_partition));
+    assert(current_partition_cost == RecomputeCurrentCost());
   }
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 0) {
     vector<int> rec_balance = RecomputeCurrentBalance(coarsened_partition);
@@ -326,8 +325,7 @@ void PartitionEngineKlfm::ExecuteRun(
   DeCoarsen();
 
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
-    assert(current_partition_cost ==
-           RecomputeCurrentCost(decoarsened_partition));
+    assert(current_partition_cost == RecomputeCurrentCost());
   }
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 0) {
     vector<int> rec_balance = RecomputeCurrentBalance(decoarsened_partition);
@@ -351,8 +349,7 @@ void PartitionEngineKlfm::ExecuteRun(
       current_partition_balance);
 
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
-    assert(current_partition_cost ==
-           RecomputeCurrentCost(decoarsened_partition));
+    assert(current_partition_cost == RecomputeCurrentCost());
   }
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 0) {
     assert(current_partition_balance ==
@@ -589,8 +586,6 @@ void PartitionEngineKlfm::ExecutePass(
 
     DLOG(DEBUG_OPT_TRACE, 2) << "Reset pass state." << endl;
     ResetNodeAndEdgeKlfmState(current_partition);
-    //gain_bucket_manager_->Print(true);
-    //assert(false);
 
     // This is used to track the moves we have made since the best result for
     // a given pass. At the end of the pass, it is used to roll back
@@ -675,15 +670,7 @@ void PartitionEngineKlfm::RefreshProfilingData(bool record_previous_results) {
 }
 
 void PartitionEngineKlfm::ResetNodeAndEdgeKlfmState(
-    const NodePartitions& partition) {
-
-  // This container is indexed by edge IDs (matching those in
-  // 'interal_edge_set'. It contains a pair which is the sets of nodes that
-  // are connected to the edge and are in partition A and partition B
-  // respectively.
-  NodeVectorPairMap edge_connected_nodes;
-
-  PopulateEdgePartitionConnections(partition, &edge_connected_nodes);
+    const NodePartitions& partitions) {
 
   // Unlock all nodes.
   for (auto node_pair : internal_node_map_) {
@@ -691,21 +678,14 @@ void PartitionEngineKlfm::ResetNodeAndEdgeKlfmState(
   }
   // Reset all edges and set their criticality.
   for (auto edge_pair : internal_edge_map_) {
-    const NodeIdVector& a_nodes =
-        edge_connected_nodes[edge_pair.first].first;
-    const NodeIdVector& b_nodes =
-        edge_connected_nodes[edge_pair.first].second;
-    edge_pair.second->KlfmReset(a_nodes, b_nodes);
+    edge_pair.second->KlfmReset(partitions);
   }
 
   // Compute initial gain of each node.
   for (auto node_pair : internal_node_map_) {
-    bool in_part_a = (partition.first.count(node_pair.first) != 0);
+    bool in_part_a = (partitions.first.count(node_pair.first) != 0);
     ComputeInitialNodeGainAndUpdateBuckets(node_pair.second, in_part_a);
   }
-  // This no longer works with some adaptive gain_bucket_managers.
-  //assert(gain_bucket_manager_->NumUnlockedNodes() ==
-  //       internal_node_map_.size());
 }
 
 void PartitionEngineKlfm::ComputeInitialNodeGainAndUpdateBuckets(
@@ -919,7 +899,7 @@ void PartitionEngineKlfm::MakeKlfmMove(
   // Check if the best solution result needs updating.
   current_partition_cost -= gain;
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 1) {
-    int rec_cost = RecomputeCurrentCost(current_partition);
+    int rec_cost = RecomputeCurrentCost();
     assert(current_partition_cost == rec_cost);
   }
 
@@ -1054,7 +1034,7 @@ void PartitionEngineKlfm::RollBackToBestResultOfPass(
     assert(cur_max_imbalance == max_weight_imbalance_);
   }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 1) {
-    int rec_cost = RecomputeCurrentCost(current_partition);
+    int rec_cost = RecomputeCurrentCost();
     assert(current_partition_cost == rec_cost);
   }
 }
@@ -1113,7 +1093,7 @@ void PartitionEngineKlfm::StripPorts(
   unordered_set<int> edges_to_remove;
   for (auto edge_pair : *edge_set) {
     unordered_set<int> ports_to_remove;
-    for (auto cnx_id : edge_pair.second->connection_ids) {
+    for (auto cnx_id : edge_pair.second->connection_ids()) {
       if (port_ids.count(cnx_id) != 0) {
         ports_to_remove.insert(cnx_id);
       }
@@ -1121,7 +1101,7 @@ void PartitionEngineKlfm::StripPorts(
     for (auto port_id : ports_to_remove) {
       edge_pair.second->RemoveConnection(port_id);
     }
-    if (edge_pair.second->connection_ids.size() < 2) {
+    if (edge_pair.second->connection_ids().size() < 2) {
       // Identify edges that are now invalid due to having their port
       // connections removed.
       edges_to_remove.insert(edge_pair.first);
@@ -1152,21 +1132,10 @@ void PartitionEngineKlfm::StripPorts(
 }
 
 void PartitionEngineKlfm::PopulateEdgePartitionConnections(
-    const NodePartitions& partition, NodeVectorPairMap* edge_connected_nodes) {
-
-  edge_connected_nodes->clear();
+    const NodePartitions& partition) {
   for (auto edge_pair : internal_edge_map_) {
-    auto& connected_sets = (*edge_connected_nodes)[edge_pair.first];
-    connected_sets.first.clear();
-    connected_sets.second.clear();
     EdgeKlfm* edge = edge_pair.second;
-    for (auto connection_id : edge->connection_ids) {
-      if (partition.first.count(connection_id) != 0) {
-        connected_sets.first.push_back(connection_id);
-      } else {
-        connected_sets.second.push_back(connection_id);
-      }
-    }
+    edge->PopulatePartitionNodeIds(partition);
   }
 }
 
@@ -1190,7 +1159,7 @@ void PartitionEngineKlfm::GenerateInitialPartition(
       DLOG(DEBUG_OPT_TRACE, 1) <<
           "Generating initial partition using SIMPLE DETERMINISTIC policy." <<
           endl;
-      GenerateInitialPartitionSimpleDeterministic(partition, cost, balance);
+      assert(false);  // No longer supported.
       break;
     default:
       printf("Invalid seed partition mode set: %d\n", options_.seed_mode);
@@ -1266,48 +1235,12 @@ void PartitionEngineKlfm::GenerateInitialPartitionRandom(
     }
   }
   *balance = current_balance;
-
   assert(!partition->first.empty() && !partition->second.empty());
 
-  // Get the initial cost.
-  *cost = RecomputeCurrentCost(*partition);
-}
-
-void PartitionEngineKlfm::GenerateInitialPartitionSimpleDeterministic(
-    NodePartitions* partition, int* cost, vector<int>* balance) {
-
-  // Simply divide in half by order.
-  int i = 0;
-  int half = internal_node_map_.size() / 2;
-  for (auto it : internal_node_map_) {
-    if (i < half) {
-      partition->first.insert(it.first);
-    } else {
-      partition->second.insert(it.first);
-    }
-    i++;
-  }
-  assert(!partition->first.empty() && !partition->second.empty());
-
-  // Get the initial weight balance.
-  vector<int> current_balance;
-  current_balance.insert(current_balance.begin(), num_resources_per_node_, 0);
-  for (auto node_id : partition->first) {
-    vector<int> wv = internal_node_map_.at(node_id)->SelectedWeightVector();
-    for (int i = 0; i < num_resources_per_node_; i++) {
-      current_balance[i] += wv[i];
-    }
-  }
-  for (auto node_id : partition->second) {
-    vector<int> wv = internal_node_map_.at(node_id)->SelectedWeightVector();
-    for (int i = 0; i < num_resources_per_node_; i++) {
-      current_balance[i] -= wv[i];
-    }
-  }
-  *balance = current_balance;
+  PopulateEdgePartitionConnections(*partition);
 
   // Get the initial cost.
-  *cost = RecomputeCurrentCost(*partition);
+  *cost = RecomputeCurrentCost();
 }
 
 void PartitionEngineKlfm::FixInitialWeightImbalance(
@@ -1358,24 +1291,21 @@ void PartitionEngineKlfm::RecomputeTotalWeightAndMaxImbalance() {
   }
 }
 
-int PartitionEngineKlfm::RecomputeCurrentCost(const NodePartitions& partition) {
+int PartitionEngineKlfm::RecomputeCurrentCost() {
   int current_cost = 0;
   for (auto it : internal_edge_map_) {
-    const Edge* edge = it.second;
-    int a_count = 0;
-    int b_count = 0;
-    for (auto node_id : edge->connection_ids) {
-      if (partition.first.count(node_id) != 0) {
-        a_count++;
-      } else {
-        b_count++;
-      }
-    }
-    if (a_count != 0 && b_count != 0) {
-      current_cost += edge->weight;
-    }
+    const EdgeKlfm* edge = CHECK_NOTNULL(it.second);
+    current_cost += ComputeEdgeCost(*edge);
   }
   return current_cost;
+}
+
+int PartitionEngineKlfm::ComputeEdgeCost(const EdgeKlfm& edge) {
+  if (edge.CrossesPartitions()) {
+    return edge.weight;
+  } else {
+    return 0;
+  }
 }
 
 void PartitionEngineKlfm::GetCutSet(const NodePartitions& partition,
@@ -1384,7 +1314,7 @@ void PartitionEngineKlfm::GetCutSet(const NodePartitions& partition,
     const Edge* edge = it.second;
     int a_count = 0;
     int b_count = 0;
-    for (auto node_id : edge->connection_ids) {
+    for (auto node_id : edge->connection_ids()) {
       if (partition.first.count(node_id) != 0) {
         a_count++;
       } else {
@@ -1404,7 +1334,7 @@ void PartitionEngineKlfm::GetCutSetNames(
     const Edge* edge = it.second;
     int a_count = 0;
     int b_count = 0;
-    for (auto node_id : edge->connection_ids) {
+    for (auto node_id : edge->connection_ids()) {
       if (partition.first.count(node_id) != 0) {
         a_count++;
       } else {
@@ -1799,7 +1729,7 @@ void PartitionEngineKlfm::CoarsenMaxNodeDegree(
       int found_nodes = 1;
       for (auto& port_pair : node->ports()) {
         Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
-        for (auto cnx_node_id : edge->connection_ids) {
+        for (auto cnx_node_id : edge->connection_ids()) {
           auto vn_it = valid_node_ids.find(cnx_node_id);
           if (vn_it != valid_node_ids.end()) {
             valid_node_ids.erase(vn_it);
@@ -1869,7 +1799,7 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
     Node* seed_node = internal_node_map_.at(seed_node_id);
     for (auto& port_pair : seed_node->ports()) {
       Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
-      for (auto neighbor_node_id : edge->connection_ids) {
+      for (auto neighbor_node_id : edge->connection_ids()) {
         auto vn_it = available_node_ids.find(neighbor_node_id);
         if (vn_it != available_node_ids.end()) {
           available_node_ids.erase(vn_it);
@@ -1893,7 +1823,7 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
         int supernode_neighbors_connectivity_weight = 0;
         for (auto& port_pair : neighbor_node->ports()) {
           Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
-          for (auto connected_node_id : edge->connection_ids) {
+          for (auto connected_node_id : edge->connection_ids()) {
             auto sn_it = nodes_in_supernode.find(connected_node_id);
             if (sn_it != nodes_in_supernode.end()) {
               supernode_connectivity_weight += edge->weight;
@@ -1928,7 +1858,7 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
       Node* newly_added_node = internal_node_map_.at(max_it->first);
       for (auto& port_pair : newly_added_node->ports()) {
         Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
-        for (auto neighbor_node_id : edge->connection_ids) {
+        for (auto neighbor_node_id : edge->connection_ids()) {
           auto vn_it = available_node_ids.find(neighbor_node_id);
           if (vn_it != available_node_ids.end()) {
             available_node_ids.erase(vn_it);
@@ -1988,7 +1918,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
       Node* seed_node = internal_node_map_.at(node_id);
       for (auto& port_pair : seed_node->ports()) {
         Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
-        for (auto neighbor_node_id : edge->connection_ids) {
+        for (auto neighbor_node_id : edge->connection_ids()) {
           int neighbor_sn_index =
               node_id_to_current_supernode_index.at(neighbor_node_id);
           if (neighbor_sn_index != sn_index) {
@@ -2030,7 +1960,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
           for (auto& port_pair : neighbor_node->ports()) {
             Edge* edge =
                 internal_edge_map_.at(port_pair.second.external_edge_id);
-            for (auto connected_node_id : edge->connection_ids) {
+            for (auto connected_node_id : edge->connection_ids()) {
               int connected_index =
                   node_id_to_current_supernode_index.at(connected_node_id);
               if (connected_index == sn_index) {
@@ -2118,7 +2048,7 @@ void PartitionEngineKlfm::CoarsenSimple(int num_nodes_per_supernode) {
     for (auto& port_pair : node->ports()) {
       int edge_id = port_pair.second.external_edge_id;
       Edge* edge = internal_edge_map_.at(edge_id);
-      for (auto cnx_node_id : edge->connection_ids) {
+      for (auto cnx_node_id : edge->connection_ids()) {
         if (not_yet_processed_node_ids.count(cnx_node_id) != 0 &&
             component_nodes.count(cnx_node_id) == 0) {
           component_nodes.insert(cnx_node_id);
@@ -2170,9 +2100,6 @@ int PartitionEngineKlfm::MakeSupernode(const NodeIdSet& component_nodes,
   int supernode_id = IdManager::AcquireNodeId();
   Node* supernode = new Node(supernode_id);
   ostringstream oss;
-  /*oss << "Supernode";
-  oss << supernode->id;
-  supernode->name.append(oss.str()); */
 
   // TODO: Check that component nodes are all connected?
 
@@ -2194,7 +2121,7 @@ int PartitionEngineKlfm::MakeSupernode(const NodeIdSet& component_nodes,
   for (auto edge_id : touching_edges) {
     is_wholly_internal = true;
     Edge* edge = edge_map->at(edge_id);
-    for (auto cnx_id : edge->connection_ids) {
+    for (auto cnx_id : edge->connection_ids()) {
       if (component_nodes.count(cnx_id) == 0) {
         supernode_external_edges.insert(edge_id);
         is_wholly_internal = false;
@@ -2292,7 +2219,7 @@ void PartitionEngineKlfm::SplitSupernodeBoundaryEdges(
     // new.
     vector<int> entities_to_remove_from_edge;
 
-    for (auto entity_id : edge->connection_ids) {
+    for (auto entity_id : edge->connection_ids()) {
       // If the node/port is not one of the components that make up
       // the new supernode, the edge connection to it must be split.
       if (component_nodes.count(entity_id) == 0) {
@@ -2397,7 +2324,7 @@ void PartitionEngineKlfm::MergeSupernodeBoundaryEdges(
     // Transfer references to all of the external edge's connections to the
     // internal edge and update the connecting nodes and ports with the
     // internal edge's ID.
-    for (auto entity_id : external_edge->connection_ids) {
+    for (auto entity_id : external_edge->connection_ids()) {
       if (entity_id != supernode->id) {
         internal_edge->AddConnection(entity_id);
         if (node_map->count(entity_id) != 0) {
@@ -2550,5 +2477,55 @@ void PartitionEngineKlfm::PrintHistogram(
     }
     os_ << "[" << lower_limit << " - " << ceilings[i] << "] "
         << (100 * bucket_counts[i] / values.size()) << "%" << endl;
+  }
+}
+
+void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
+                                       const std::string& filename) {
+  ofstream of(filename.c_str());
+  assert(of.is_open());
+
+  // Use this instead of internal_node_map because we want to guaranteed
+  // order.
+  set<int> combined_node_ids;
+  for (int id : partitions.first) {
+    combined_node_ids.insert(id);
+  }
+  for (int id : partitions.second) {
+    combined_node_ids.insert(id);
+  }
+
+  of << "solution status: unknown" << endl;
+  of << "objective value: " << RecomputeCurrentCost() << endl;
+  // Add node identity variables. This will the variable names for the selected
+  // partitions and personalities.
+  for (int node_id : combined_node_ids) {
+    of << "N" << node_id;
+    char partition_id =
+        (partitions.first.find(node_id) != partitions.first.end()) ? 'A' : 'B';
+    of << partition_id;
+    int personality_id =
+        internal_node_map_.at(node_id)->selected_weight_vector_index();
+    of << personality_id;
+    // Nodes do not contribute to the objective function.
+    of << " 1\t (obj:0)" << endl;
+  }
+  for (pair<int, EdgeKlfm*> ep : internal_edge_map_) {
+    EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
+    // For edge crossing variables, print the names for any edge that crosses
+    // partitions.
+    if (edge->CrossesPartitions()) {
+      of << "X" << edge->id << " 1\t (obj:" << edge->weight << ")" << endl;
+    }
+
+    // For edge partition connectivity variables, print them if the edge touches
+    // the partition. It is not important which partition is denoted as A vs B,
+    // as long as we are consistent with what we did for the nodes.
+    if (edge->TouchesPartitionA()) {
+      of << "C" << edge->id << "A 1\t (obj:0)" << endl;
+    }
+    if (edge->TouchesPartitionB()) {
+      of << "C" << edge->id << "B 1\t (obj:0)" << endl;
+    }
   }
 }

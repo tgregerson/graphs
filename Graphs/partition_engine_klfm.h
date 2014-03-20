@@ -23,6 +23,7 @@
 #include "edge_klfm.h"
 #include "gain_bucket_entry.h"
 #include "gain_bucket_manager.h"
+#include "initial_partition_generator.h"
 #include "node.h"
 #include "partitioner_config.h"
 
@@ -304,9 +305,9 @@ class PartitionEngineKlfm : public PartitionEngine {
   void StripPorts(KlfmNodeMap* node_map, KlfmEdgeMap* edge_set,
                   const NodeIdSet& port_ids);
 
-  void PopulateEdgePartitionConnections(
-      const NodePartitions& current_partition,
-      NodeVectorPairMap* edge_connected_nodes);
+  // Populates the partition-specific node id data structures in all internal
+  // edges.
+  void PopulateEdgePartitionConnections(const NodePartitions& current_partition);
 
   // Returns true if the two pairs of node sets are the same. Order of 
   // node sets does not matter.
@@ -341,7 +342,8 @@ class PartitionEngineKlfm : public PartitionEngine {
   bool ExceedsMaxWeightImbalance(const std::vector<int>& current_balance) const;
 
   void RecomputeTotalWeightAndMaxImbalance();
-  int RecomputeCurrentCost(const NodePartitions& current_partition);
+  int RecomputeCurrentCost();
+  int ComputeEdgeCost(const EdgeKlfm& edge);
   std::vector<int> RecomputeCurrentBalance(
       const NodePartitions& current_partition);
   std::vector<int> RecomputeCurrentBalanceAtBaseLevel(
@@ -451,6 +453,9 @@ class PartitionEngineKlfm : public PartitionEngine {
   void SummarizeResults(const std::vector<PartitionSummary>& summaries);
   void PrintResultFull(const PartitionSummary& summary, int run_num);
   void PrintHistogram(const std::vector<int>& val, bool cummulative);
+  // Write solution in .sol format used by SCIP.
+  void WriteScipSol(const NodePartitions& partition,
+                    const std::string& filename);
 
   // Comparison fn for sort.
   static bool cmp_pair_second_gt(const std::pair<int,int>& lhs,

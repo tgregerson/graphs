@@ -38,19 +38,6 @@ void EdgeKlfm::Print() const {
   printf("\n");
 }
 
-void EdgeKlfm::KlfmReset(
-    const NodeIdVector& part_a_connected_nodes,
-    const NodeIdVector& part_b_connected_nodes) {
-  part_a_connected_unlocked_nodes = part_a_connected_nodes;
-  part_b_connected_unlocked_nodes = part_b_connected_nodes;
-  part_a_connected_locked_nodes.clear();
-  part_b_connected_locked_nodes.clear();
-
-  locked_noncritical = false;
-
-  SetInitialCriticality();
-}
-
 void EdgeKlfm::SetInitialCriticality() {
   // No nodes are locked initially, so this can be done simply.
   is_critical = ((part_a_connected_unlocked_nodes.size() < 2) ||
@@ -81,7 +68,6 @@ void EdgeKlfm::MoveNode(int node_id, NodeIdVector* nodes_to_increase_gain,
       part_b_connected_unlocked_nodes : part_a_connected_unlocked_nodes;
 
   // Perform the move
-  // TODO Change this if we go back to using set instead of vector.
   auto erase_it = find(from_part_connected_unlocked_nodes.begin(),
                        from_part_connected_unlocked_nodes.end(), node_id);
   assert(erase_it != from_part_connected_unlocked_nodes.end());

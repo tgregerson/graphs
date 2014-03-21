@@ -1697,10 +1697,6 @@ void PartitionEngineKlfm::Options::PopulateFromPartitionerConfig(
   rebalance_on_demand_cap_per_pass = config.rebalance_on_demand_cap_per_pass;
 }
 
-// TODO Rather than basing this on the number of nodes, it would be better if
-// it instead used a maximum supernode weight.
-// This is only effective for hypergraphs. Normal graphs should use
-// CoarsenMaxNodeDegree instead.
 void PartitionEngineKlfm::CoarsenMaxEdgeDegree(
     int max_nodes_per_supernode) {
   assert_b(false) {
@@ -2116,8 +2112,6 @@ int PartitionEngineKlfm::MakeSupernode(const NodeIdSet& component_nodes,
   Node* supernode = new Node(supernode_id);
   ostringstream oss;
 
-  // TODO: Check that component nodes are all connected?
-
   EdgeIdSet touching_edges;
   for (auto node_id : component_nodes) {
     // Make a set of all edges that touch the component nodes.
@@ -2529,7 +2523,6 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
-    // TODO: Something is broken here; every edge is reported as crossing.
     if (edge->CrossesPartitions()) {
       of << "X" << edge->id << " 1\t (obj:" << edge->weight << ")" << endl;
     }

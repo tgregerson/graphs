@@ -2,6 +2,8 @@
 
 #include <cstdlib>
 
+#include <sstream>
+
 #include "chaco_parser.h"
 #include "edge.h"
 #include "node.h"
@@ -134,6 +136,7 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelRowMode() {
   set_add_rowmode(model, FALSE);
 
   SetAllVariablesBinary(model);
+  SetAllVariableNames(model);
 
   if (verbose_) {
     cout << "Total Variables: " << get_Ncolumns(model) << endl;
@@ -171,6 +174,7 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelColumnMode() {
   SetObjectiveFunction(model);
 
   SetAllVariablesBinary(model);
+  SetAllVariableNames(model);
 
   if (verbose_) {
     cout << "Total Variables: " << get_Ncolumns(model) << endl;
@@ -698,6 +702,60 @@ void LpSolveInterface::GraphParsingState::SetAllVariablesBinary(
   for (int i = 1; i <= get_Ncolumns(model); ++i) {
     if (!set_binary(model, i, TRUE)) {
       throw LpSolveException("Error setting variable to binary.");
+    }
+  }
+}
+
+void LpSolveInterface::GraphParsingState::SetAllVariableNames(
+    lprec* model) {
+  // Node identity variables
+  // Example: N66B2
+  // (Node 66, in partition B, with personality 2)
+  for (const auto& p_i_vv : node_to_variable_indices_) {
+    int node_id = p_i_vv.first;
+    const vector<vector<int>>& part_per_v = p_i_vv.second;
+    for (int part = 0; part < part_per_v.size(); ++part) {
+      for (int per = 0; per < part_per_v[part].size(); ++per) {
+        assert(part < 2);  // currently only support bipartition.
+        int variable_index = part_per_v[part][per];
+        stringstream name;
+        name << "N" << node_id;
+        if (part == 0) {
+          name << "A";
+        } else {
+          name << "B";
+        }
+        name << per;
+        set_col_name(model, variable_index,
+                     const_cast<char*>(name.str().c_str()));
+      }
+    }
+  }
+
+  // Edge crossing variables
+  // Example: X92
+  // (Edge 92)
+  for (pair<int, int> p : edge_to_crossing_variable_indices_) {
+    stringstream name;
+    name << "X" << p.first;
+    set_col_name(model, p.second, const_cast<char*>(name.str().c_str()));
+  }
+
+  // Edge partition connectivity variables
+  // Example: C92A
+  // (Connectivity of edge 92 to partition A)
+  for (const pair<int, vector<int>>& p :
+       edge_to_partition_connectivity_variable_indices_) {
+    for (int part = 0; part < p.second.size(); ++part) {
+      stringstream name;
+      name << "C" << p.first;
+      if (part == 0) {
+        name << "A";
+      } else {
+        name << "B";
+      }
+      set_col_name(model, p.second[part],
+                   const_cast<char*>(name.str().c_str()));
     }
   }
 }

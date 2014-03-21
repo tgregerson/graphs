@@ -23,7 +23,6 @@
 #include "edge_klfm.h"
 #include "gain_bucket_entry.h"
 #include "gain_bucket_manager.h"
-#include "initial_partition_generator.h"
 #include "node.h"
 #include "partitioner_config.h"
 

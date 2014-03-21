@@ -126,6 +126,7 @@ class LpSolveInterface {
                                       bool defer_to_columns);
 
     void SetAllVariablesBinary(lprec* model);
+    void SetAllVariableNames(lprec* model);
     
     int NumTotalNodeVariablesNeeded();
     int NumTotalEdgeVariablesNeeded();

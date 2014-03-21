@@ -33,7 +33,9 @@ class KlfmRunConfig {
     : num_runs(1),
       num_ways(2),
       graph_file_type(kChacoGraph),
-      export_initial_sol_only(false)
+      export_initial_sol_only(false),
+      sol_scip_format(true),
+      sol_gurobi_format(false)
     {}
   enum GraphFileType {
     kChacoGraph,
@@ -47,9 +49,11 @@ class KlfmRunConfig {
   string result_filename;
   string log_filename;
   string testbench_filename;
-  string initial_sol_filename;
-  string final_sol_filename;
+  string initial_sol_base_filename;
+  string final_sol_base_filename;
   bool export_initial_sol_only;
+  bool sol_scip_format;
+  bool sol_gurobi_format;
 };
 
 void print_usage_and_exit();
@@ -132,9 +136,11 @@ int main(int argc, char *argv[]) {
   PartitionEngineKlfm::Options options;
   options.PopulateFromPartitionerConfig(run_config.partitioner_config);
   options.num_runs = run_config.num_runs;
-  options.initial_sol_filename = run_config.initial_sol_filename;
-  options.final_sol_filename = run_config.final_sol_filename;
+  options.initial_sol_base_filename = run_config.initial_sol_base_filename;
+  options.final_sol_base_filename = run_config.final_sol_base_filename;
   options.export_initial_sol_only = run_config.export_initial_sol_only;
+  options.sol_scip_format = run_config.sol_scip_format;
+  options.sol_gurobi_format = run_config.sol_gurobi_format;
 
   run_config.partitioner_config.PrintPreprocessorOptions(rs);
   options.Print(rs);
@@ -366,15 +372,24 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
       "string", cmd);
 
   TCLAP::ValueArg<string> export_initial_sol_output_file_flag(
-      "i", "export-initial-sol", "Output file for .SOL after one pass", false,
-      "", "string", cmd);
+      "i", "export-initial-sol", "Base output filename for initial solution",
+      false, "", "string", cmd);
 
   TCLAP::ValueArg<string> export_final_sol_output_file_flag(
-      "f", "export-final-sol", "Output file for .SOL after all passes", false,
+      "f", "export-final-sol", "Base output filename for final solution", false,
       "", "string", cmd);
 
   TCLAP::SwitchArg initial_sol_only_switch(
-      "s", "initial-sol-only", "Quit after exporting initial .SOL", cmd, false);
+      "s", "initial-sol-only", "Quit after exporting initial solution", cmd,
+      false);
+
+  TCLAP::SwitchArg sol_scip_format_switch(
+      "", "sol-scip-format", "Write solution in SCIP's .SOL format", cmd,
+      false);
+
+  TCLAP::SwitchArg sol_gurobi_format_switch(
+      "", "sol-gurobi-format", "Write solution in Gurobi's .MST format", cmd,
+      false);
 
   cmd.parse(argc, argv);
 
@@ -400,16 +415,19 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
   run_config.result_filename = result_output_file_flag.getValue();
   run_config.log_filename = log_output_file_flag.getValue();
   run_config.testbench_filename = testbench_output_file_flag.getValue();
-  run_config.initial_sol_filename =
+  run_config.initial_sol_base_filename =
       export_initial_sol_output_file_flag.getValue();
-  run_config.final_sol_filename =
+  run_config.final_sol_base_filename =
       export_final_sol_output_file_flag.getValue();
   run_config.export_initial_sol_only = initial_sol_only_switch.isSet();
   if (run_config.export_initial_sol_only &&
-      run_config.initial_sol_filename.empty()) {
+      run_config.initial_sol_base_filename.empty()) {
     cout << "Must provide a filename to export initial SOL";
     exit(1);
   }
+  run_config.sol_gurobi_format = sol_gurobi_format_switch.isSet();
+  run_config.sol_scip_format = sol_scip_format_switch.isSet() ||
+                               !run_config.sol_gurobi_format;
   return run_config;
 }
 
@@ -423,14 +441,17 @@ void print_usage_and_exit() {
        << endl
        << "OPTIONS:" << endl
        << "--help" << endl
-       << "--nruns              int_val          (default: 1)" << endl
-       << "--nways              int_val          (default: 2)" << endl
-       << "--resultfile         output_file_path (default: std::out)" << endl
-       << "--logfile            output_file_path (default: std::out)" << endl
-       << "--export-testbench   output_file_path (default: none)" << endl
-       << "--export-initial-sol output_file_path (default: none)" << endl
-       << "--export-final-sol   output_file_path (default: none)" << endl
-       << "--initial-sol-only                    (default: false)" << endl
+       << "--nruns              int_val               (default: 1)" << endl
+       << "--nways              int_val               (default: 2)" << endl
+       << "--resultfile         output_file_path      (default: std::out)" << endl
+       << "--logfile            output_file_path      (default: std::out)" << endl
+       << "--export-testbench   output_file_path      (default: none)" << endl
+       << "--export-initial-sol output_file_base_path (default: none)" << endl
+       << "--export-final-sol   output_file_base_path (default: none)" << endl
+       << "--initial-sol-only                         (default: false)" << endl
+       << "--sol-scip-format                          (default: true*)" << endl
+       << "                                            *If no other sol format" << endl
+       << "--sol-gurobi-format                        (default: false)" << endl
        << endl;
   exit(1);
 }

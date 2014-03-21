@@ -183,12 +183,17 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
       RecomputeTotalWeightAndMaxImbalance();
     }
 
-    if (!options_.initial_sol_filename.empty()) {
+    if (!options_.initial_sol_base_filename.empty()) {
       NodePartitions pre_run_partitions;
       int temp_cost;
       vector<int> temp_balance;
       GenerateInitialPartition(&pre_run_partitions, &temp_cost, &temp_balance);
-      WriteScipSol(pre_run_partitions, options_.initial_sol_filename);
+      if (options_.sol_scip_format) {
+        WriteScipSol(pre_run_partitions, options_.initial_sol_base_filename);
+      }
+      if (options_.sol_gurobi_format) {
+        WriteGurobiMst(pre_run_partitions, options_.initial_sol_base_filename);
+      }
       if (options_.export_initial_sol_only) {
         exit(0);
       }
@@ -363,8 +368,13 @@ void PartitionEngineKlfm::ExecuteRun(
       cur_run, decoarsened_partition, current_partition_cost,
       current_partition_balance);
 
-  if (!options_.final_sol_filename.empty()) {
-    WriteScipSol(decoarsened_partition, options_.final_sol_filename);
+  if (!options_.final_sol_base_filename.empty()) {
+    if (options_.sol_scip_format) {
+      WriteScipSol(decoarsened_partition, options_.final_sol_base_filename);
+    }
+    if (options_.sol_gurobi_format) {
+      WriteGurobiMst(decoarsened_partition, options_.final_sol_base_filename);
+    }
   }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
     assert(current_partition_cost == RecomputeCurrentCost());
@@ -2489,12 +2499,15 @@ void PartitionEngineKlfm::PrintHistogram(
   }
 }
 
+// The SCIP SOL format only prints variables if they are non-zero. It also
+// prints their contribution to the objective function.
 void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
-                                       const std::string& filename) {
-  ofstream of(filename.c_str());
+                                       const std::string& base_filename) {
+  string filename_with_extension = base_filename + ".sol";
+  ofstream of(filename_with_extension.c_str());
   assert(of.is_open());
 
-  // Use this instead of internal_node_map because we want to guaranteed
+  // Use this instead of internal_node_map because we want to guarantee
   // order.
   set<int> combined_node_ids;
   for (int id : partitions.first) {
@@ -2519,6 +2532,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     // Nodes do not contribute to the objective function.
     of << " 1\t (obj:0)" << endl;
   }
+  // These will not print in order.
   for (pair<int, EdgeKlfm*> ep : internal_edge_map_) {
     EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
     // For edge crossing variables, print the names for any edge that crosses
@@ -2535,6 +2549,76 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     }
     if (edge->TouchesPartitionB()) {
       of << "C" << edge->id << "B 1\t (obj:0)" << endl;
+    }
+  }
+}
+
+// The Gurobi MST format simply prints the variable name followed by the value
+// for all variables.
+void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
+                                         const std::string& base_filename) {
+  string filename_with_extension = base_filename + ".mst";
+  ofstream of(filename_with_extension.c_str());
+  assert(of.is_open());
+
+  // Use this instead of internal_node_map because we want to guarantee
+  // order.
+  set<int> combined_node_ids;
+  for (int id : partitions.first) {
+    combined_node_ids.insert(id);
+  }
+  for (int id : partitions.second) {
+    combined_node_ids.insert(id);
+  }
+
+  of << "# MIP start" << endl;
+  // Add node identity variables. This will the variable names for the selected
+  // partitions and personalities.
+  for (int node_id : combined_node_ids) {
+    Node* n = CHECK_NOTNULL(internal_node_map_.at(node_id));
+    for (int part = 0; part < 2; ++part) {
+      const NodeIdSet& this_partition = (part == 0) ?
+          partitions.first : partitions.second;
+      bool in_this_partition =
+          this_partition.find(node_id) != this_partition.end();
+      for (int per = 0; per < n->num_personalities(); ++per) {
+        bool uses_this_personality =
+            n->selected_weight_vector_index() == per;
+        of << "N" << node_id << (char)('A' + part) << per;
+        if (uses_this_personality && in_this_partition) {
+          of << " 1" << endl;
+        } else {
+          of << " 0" << endl;
+        }
+      }
+    }
+  }
+  // These will not print in order.
+  for (pair<int, EdgeKlfm*> ep : internal_edge_map_) {
+    EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
+    // For edge crossing variables, print the names for any edge that crosses
+    // partitions.
+    of << "X" << edge->id;;
+    if (edge->CrossesPartitions()) {
+      of << " 1" << endl;
+    } else {
+      of << " 0" << endl;
+    }
+
+    // For edge partition connectivity variables, print them if the edge touches
+    // the partition. It is not important which partition is denoted as A vs B,
+    // as long as we are consistent with what we did for the nodes.
+    of << "C" << edge->id;
+    if (edge->TouchesPartitionA()) {
+      of << "A 1" << endl;
+    } else {
+      of << "A 0" << endl;
+    }
+    of << "C" << edge->id;
+    if (edge->TouchesPartitionB()) {
+      of << "B 1" << endl;
+    } else {
+      of << "B 0" << endl;
     }
   }
 }

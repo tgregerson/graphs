@@ -86,7 +86,9 @@ class PartitionEngineKlfm : public PartitionEngine {
         num_resources_per_node(1),
         enable_print_output(true),
         multilevel(true),
-        export_initial_sol_only(false) {
+        export_initial_sol_only(false),
+        sol_scip_format(true),
+        sol_gurobi_format(false) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -116,7 +118,9 @@ class PartitionEngineKlfm : public PartitionEngine {
         num_resources_per_node(num_resources),
         enable_print_output(true),
         multilevel(true),
-        export_initial_sol_only(false) {
+        export_initial_sol_only(false),
+        sol_scip_format(true),
+        sol_gurobi_format(false) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -227,16 +231,27 @@ class PartitionEngineKlfm : public PartitionEngine {
     // signal values of edges included in the cutset at the end of partitioning.
     std::string testbench_filename;
 
-    // If non-empty, will output the initial .SOL to file.
-    std::string initial_sol_filename;
+    // If non-empty, will output the initial solution to the filename, with an
+    // extension based on the format.
+    std::string initial_sol_base_filename;
 
-    // If non-empty, will output the final .SOL to file.
-    std::string final_sol_filename;
+    // If non-empty, will output the final solution to the filename, with an
+    // extension based on the format.
+    std::string final_sol_base_filename;
 
     // If set to true, will write the initial .SOL file after the first pass
     // that meets balance constraints, then exit. 'initial_sol_filename' must
     // be non-empty.
     bool export_initial_sol_only;
+
+    // If more than one solution format is set, will write multiple files with
+    // different extensions.
+
+    // Will write solutions in the SCIP .SOL format.
+    bool sol_scip_format;
+
+    // Will write solutions in the Gurobi .MST format.
+    bool sol_gurobi_format;
   };
 
  private:
@@ -477,6 +492,9 @@ class PartitionEngineKlfm : public PartitionEngine {
   // Write solution in .sol format used by SCIP.
   void WriteScipSol(const NodePartitions& partition,
                     const std::string& filename);
+  // Write solution in .mst format used by Gurobi.
+  void WriteGurobiMst(const NodePartitions& partition,
+                      const std::string& filename);
 
   // Comparison fn for sort.
   static bool cmp_pair_second_gt(const std::pair<int,int>& lhs,

@@ -45,7 +45,7 @@ class Edge {
   int id;
   int weight;
   std::string name;
- private:
+ protected:
   NodeIdVector connection_ids_;
 };
 

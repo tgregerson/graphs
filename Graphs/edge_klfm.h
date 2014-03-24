@@ -82,15 +82,10 @@ void EdgeKlfm::PopulatePartitionNodeIds(const std::pair<T,T>& partitions) {
   part_b_connected_locked_nodes.clear();
   part_a_connected_unlocked_nodes.clear();
   part_b_connected_unlocked_nodes.clear();
-  for (int node_id : partitions.first) {
-    if (binary_search(
-        connection_ids().begin(), connection_ids().end(), node_id)) {
+  for (int node_id : connection_ids_) {
+    if (partitions.first.find(node_id) != partitions.first.end()) {
       part_a_connected_unlocked_nodes.push_back(node_id);
-    }
-  }
-  for (int node_id : partitions.second) {
-    if (binary_search(
-        connection_ids().begin(), connection_ids().end(), node_id)) {
+    } else {
       part_b_connected_unlocked_nodes.push_back(node_id);
     }
   }

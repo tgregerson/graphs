@@ -295,11 +295,8 @@ void LpSolveInterface::GraphParsingState::AssignEdgeVariableIndices(
 void LpSolveInterface::GraphParsingState::AddAllConstraintsToModel(
     lprec* model, bool defer_to_columns) {
   AddImbalanceConstraintsToModel(model, defer_to_columns);
-  cout << get_Nrows(model) << " constraints after imbalance" << endl;
   AddAllNodeConstraintsToModel(model, defer_to_columns);
-  cout << get_Nrows(model) << " constraints after nodes" << endl;
   AddAllEdgeConstraintsToModel(model, defer_to_columns);
-  cout << get_Nrows(model) << " constraints after edges" << endl;
 }
 
 void LpSolveInterface::GraphParsingState::AddAllNodeConstraintsToModel(

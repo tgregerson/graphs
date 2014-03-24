@@ -43,17 +43,22 @@ void NtlParser::Parse(
       std::getline(input_file, line);
     }
 
-    assert (module_lines.size() >=2);
-    if (module_lines.size() < 4) {
-      cout << "WARNING: Odd number of connections for module type: "
-           << module_lines[0]
-           << " instance: "
-           << module_lines[1]
-           << endl;
-    }
     ParsedModule module;
+
+    assert (module_lines.size() >=2);
     module.type_name = module_lines[0];
     module.instance_name = module_lines[1];
+
+    if (module_lines.size() < 4) {
+      if (module.type_name != "GTECH_ONE" &&
+          module.type_name != "GTECH_ZERO") {
+        cout << "WARNING: Odd number of connections for module type: "
+            << module_lines[0]
+            << " instance: "
+            << module_lines[1]
+            << endl;
+      }
+    }
     for(size_t i = 2; i < module_lines.size(); ++i) {
       module.connected_edge_names.push_back(module_lines[i]);
     }

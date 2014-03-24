@@ -90,11 +90,11 @@ void XmlParser::PopulateConnectionsNodeToEdges(bool source_edges) {
     for (auto edge_cnx_name : edge_connections) {
       assert(edge_name_to_id.count(edge_cnx_name));
       int edge_cnx_id = edge_name_to_id[edge_cnx_name];
-      Port port;
-      port.internal_edge_id = IdManager::kReservedTerminalId;
-      port.external_edge_id = edge_cnx_id;
-      port.id = IdManager::AcquireNodeId();
-      port.type = port_type;
+      Port port(
+        IdManager::AcquireNodeId(),
+        IdManager::kReservedTerminalId,
+        edge_cnx_id,
+        port_type);
       node->AddPort(port.id, port);
     }
   }

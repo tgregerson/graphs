@@ -66,8 +66,7 @@ void Node::CopyFrom(Node* src) {
     internal_edges_.insert(make_pair(it.first, edge));
   }
   for (auto it : src->internal_nodes_) {
-    Node* node = new Node();
-    node->CopyFrom(it.second);
+    Node* node = new Node(it.second);
     internal_nodes_.insert(make_pair(it.first, node));
   }
   for (auto it : src->ports_) {

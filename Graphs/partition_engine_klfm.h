@@ -66,6 +66,8 @@ class PartitionEngineKlfm : public PartitionEngine {
     Options()
       : seed_mode(kSeedModeRandom),
         gain_bucket_type(PartitionerConfig::kGainBucketSingleResource),
+        gain_bucket_selection_policy(
+            PartitionerConfig::kGbmreSelectionPolicyLargestGain),
         use_ratio_in_imbalance_score(false),
         use_ratio_in_partition_quality(false),
         cap_passes(false),
@@ -98,6 +100,8 @@ class PartitionEngineKlfm : public PartitionEngine {
     explicit Options(int num_resources)
       : seed_mode(kSeedModeRandom),
         gain_bucket_type(PartitionerConfig::kGainBucketMultiResourceExclusive),
+        gain_bucket_selection_policy(
+            PartitionerConfig::kGbmreSelectionPolicyLargestGain),
         use_ratio_in_imbalance_score(false),
         use_ratio_in_partition_quality(false),
         cap_passes(false),

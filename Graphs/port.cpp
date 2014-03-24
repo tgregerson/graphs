@@ -2,6 +2,10 @@
 
 #include "id_manager.h"
 
+Port::Port(int id)
+  : id(id), internal_edge_id(IdManager::kReservedTerminalId),
+    external_edge_id(IdManager::kReservedTerminalId), type(kDontCareType) {}
+
 void Port::Print() const {
   printf("Port  ID=%d  Name=%s  Type=", id, name.c_str()); 
   if (type == Port::kInputType) {

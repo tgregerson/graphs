@@ -22,7 +22,6 @@ class Node {
   typedef std::map<int, Edge*> EdgeMap;
   typedef std::map<int, Port> PortMap;
 
-  Node() {}
   explicit Node(Node* src);
   Node(int node_id, const std::string& node_name = "");
   Node(int node_id, int weight, const std::string& node_name = "");
@@ -211,8 +210,6 @@ class Node {
   int selected_weight_vector_index_;
   // Retain the last selected weight vector index.
   int prev_selected_weight_vector_index_;
-
-  int weight_vector_generation;
 
   bool registered_;
   double latency_;

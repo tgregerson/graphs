@@ -21,7 +21,8 @@ class PartitionEngine {
 
 class PartitionSummary {
  public:
-  PartitionSummary() {}
+  PartitionSummary()
+      : total_cost(0), rms_resource_deviation(0.0), num_passes_used(0) {}
   ~PartitionSummary() {}
 
   void Print() {

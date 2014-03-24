@@ -11,8 +11,7 @@ class Port {
     kDontCareType
   } PortType;
 
-  Port() {}
-  explicit Port(int id) : id(id) {}
+  explicit Port(int id);
   Port(int id, int internal_edge_id, int external_edge_id, PortType type,
        std::string name = "")
     : id(id), internal_edge_id(internal_edge_id),

@@ -29,7 +29,7 @@ void LpSolveInterface::LoadFromMps(const string& filename) {
 
 void LpSolveInterface::LoadFromNtl(const string& filename) {
   NtlParser netlist_parser;
-  Node graph;
+  Node graph(-1, "top-level");
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
@@ -37,7 +37,7 @@ void LpSolveInterface::LoadFromNtl(const string& filename) {
 
 void LpSolveInterface::LoadFromChaco(const string& filename) {
   ChacoParser chaco_parser;
-  Node graph;
+  Node graph(-1, "top-level");
   if (!chaco_parser.Parse(&graph, filename.c_str())) {
     throw LpSolveException("Error parsing CHACO graph from: " + filename);
   }

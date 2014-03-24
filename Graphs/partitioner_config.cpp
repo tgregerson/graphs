@@ -56,6 +56,7 @@ void PartitionerConfig::PrintPreprocessorOptions(ostream& os) {
                     "type to be specified was selected, but the capacity "
                     "type was not set.\n");
           }
+        break;
         default:
           assert_b(false) {
             printf("Configuration Error: A policy that requires capacity "
@@ -78,6 +79,7 @@ void PartitionerConfig::PrintPreprocessorOptions(ostream& os) {
                     "type to be specified was selected, but the capacity "
                     "type was not set.\n");
           }
+        break;
         default:
           assert_b(false) {
             printf("Configuration Error: A policy that requires capacity "
@@ -261,6 +263,7 @@ void PartitionerConfig::ValidateOrDiePreprocessorOptions() {
                      "type to be specified was selected, but the capacity "
                      "type was not set.\n");
             }
+          break;
           default:
             assert_b(false) {
               printf("Configuration Error: A policy that requires capacity "
@@ -281,6 +284,7 @@ void PartitionerConfig::ValidateOrDiePreprocessorOptions() {
                      "type to be specified was selected, but the capacity "
                      "type was not set.\n");
             }
+          break;
           default:
             assert_b(false) {
               printf("Configuration Error: A policy that requires capacity "
@@ -392,6 +396,7 @@ void PartitionerConfig::ValidateOrDieKlfmOptions() {
                "options are set, but the Gain Bucket type is uninitialized."
                " Terminating\n");
       }
+    break;
     default:
       assert_b(false) {
         printf("Unexpected error: PartitionerConfig thinks KLFM "

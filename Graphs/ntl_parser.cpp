@@ -1,4 +1,4 @@
-#include "processed_netlist_parser.h"
+#include "ntl_parser.h"
 
 #include <cassert>
 #include <cerrno>
@@ -17,7 +17,7 @@
 
 using namespace std;
 
-void ProcessedNetlistParser::Parse(
+void NtlParser::Parse(
     Node* graph, const char* filename, map<int, string>* edge_id_to_name) {
   parsed_modules_.clear();
 
@@ -73,7 +73,7 @@ void ProcessedNetlistParser::Parse(
   PopulateGraph(graph, edge_id_to_name);
 }
 
-void ProcessedNetlistParser::PopulateModuleTypeImplementationsMap() {
+void NtlParser::PopulateModuleTypeImplementationsMap() {
   module_type_implementations_map_.clear();
  
   string implementation_filename = "implementation_file.txt";
@@ -123,7 +123,7 @@ void ProcessedNetlistParser::PopulateModuleTypeImplementationsMap() {
   assert(module_type_implementations_map_.size() > 0);
 }
 
-void ProcessedNetlistParser::PopulateGraph(
+void NtlParser::PopulateGraph(
     Node* graph, map<int, string>* edge_id_to_name) {
   assert(graph != nullptr);
   cout << "Populating Graph" << endl;
@@ -202,7 +202,7 @@ void ProcessedNetlistParser::PopulateGraph(
   }
 }
 
-void ProcessedNetlistParser::PrintImplementationMap() {
+void NtlParser::PrintImplementationMap() {
   cout << endl << "Printing Implementation Map" << endl;
   if (module_type_implementations_map_.empty()) {
     cout << "<EMPTY>" << endl;

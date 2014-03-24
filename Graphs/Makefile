@@ -18,13 +18,13 @@ LPSI_BASE_O = $(addprefix $(OBJDIR)/,lp_solve_interface.o) \
               $(CHACO_BASE_O) \
               $(GRAPH_BASE_O) \
               $(NTL_BASE_O)
-NTL_BASE_O = $(addprefix $(OBJDIR)/,processed_netlist_parser.o) \
+NTL_BASE_O = $(addprefix $(OBJDIR)/,ntl_parser.o) \
              $(GRAPH_BASE_O)
 SNP_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_parser.o)
 VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_parser.o)
 LPSI_BIN_O = $(OBJDIR)/lp_solve_interface_main.o \
              $(LPSI_BASE_O)
-PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o partitioner_config.o preprocessor.o processed_netlist_parser.o xml_config_reader.o) \
+PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_config.o preprocessor.o xml_config_reader.o) \
             $(CHACO_BASE_O) \
             $(GRAPH_BASE_O) \
             $(KLFM_BASE_O) \
@@ -85,7 +85,7 @@ edge_H = edge.h
 id_manager_H = id_manager.h
 parser_interface_H = parser_interface.h
 port_H = port.h
-processed_netlist_parser_H = processed_netlist_parser.h
+ntl_parser_H = ntl_parser.h
 structural_netlist_parser_H = structural_netlist_parser.h
 testbench_generator_H = testbench_generator.h
 universal_macros_H = universal_macros.h
@@ -116,7 +116,7 @@ partition_engine_klfm_H = $(edge_klfm_H) $(gain_bucket_entry_H) $(gain_bucket_ma
 # ------------------------------------------------------------
 # COMPILER OBJECTS
 
-$(OBJDIR)/partition_main.o: $(chaco_parser_H) $(id_manager_H) $(partition_engine_H) $(partition_engine_klfm_H) $(preprocessor_H) $(processed_netlist_parser_H) $(testbench_generator_H) $(xml_config_reader_H) partition_main.cpp
+$(OBJDIR)/partition_main.o: $(chaco_parser_H) $(id_manager_H) $(ntl_parser_H) $(partition_engine_H) $(partition_engine_klfm_H) $(preprocessor_H) $(testbench_generator_H) $(xml_config_reader_H) partition_main.cpp
 	$(CXX) -c partition_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/chaco_parser.o: $(id_manager_H) $(chaco_parser_H) chaco_parser.cpp
@@ -146,7 +146,7 @@ $(OBJDIR)/gain_bucket_standard.o: $(gain_bucket_standard_H) gain_bucket_standard
 $(OBJDIR)/id_manager.o: $(id_manager_H) id_manager.cpp
 	$(CXX) -c id_manager.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(processed_netlist_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
+$(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(ntl_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
 	$(CXX) -c lp_solve_interface.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/lp_solve_interface_main.o: $(lp_solve_interface_H) lp_solve_interface_main.cpp
@@ -170,8 +170,8 @@ $(OBJDIR)/port.o: $(id_manager_H) $(port_H) port.cpp
 $(OBJDIR)/preprocessor.o: $(universal_macros_H) $(preprocessor_H) preprocessor.cpp
 	$(CXX) -c preprocessor.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/processed_netlist_parser.o: $(edge_H) $(id_manager_H) $(node_H) $(processed_netlist_parser_H) $(universal_macros_H) processed_netlist_parser.cpp
-	$(CXX) -c processed_netlist_parser.cpp $(CXXFLAGS) -o $@
+$(OBJDIR)/ntl_parser.o: $(edge_H) $(id_manager_H) $(node_H) $(universal_macros_H) $(ntl_parser_H) ntl_parser.cpp
+	$(CXX) -c ntl_parser.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/structural_netlist_parser.o: $(universal_macros_H) $(structural_netlist_parser_H) structural_netlist_parser.cpp
 	$(CXX) -c structural_netlist_parser.cpp $(CXXFLAGS) -o $@

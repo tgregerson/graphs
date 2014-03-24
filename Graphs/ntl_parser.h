@@ -13,7 +13,7 @@ struct ParsedModule {
 
 class Node;
 
-class ProcessedNetlistParser {
+class NtlParser {
  public:
   // Opens the file 'filename', reads it in NTL format, and populates the
   // internal nodes and edges of 'graph' with the contents.

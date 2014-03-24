@@ -20,7 +20,7 @@
 #include "partition_engine.h"
 #include "partition_engine_klfm.h"
 #include "preprocessor.h"
-#include "processed_netlist_parser.h"
+#include "ntl_parser.h"
 #include "testbench_generator.h"
 #include "tclap/CmdLine.h"
 #include "xml_config_reader.h"
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     if (run_config.graph_file_type == KlfmRunConfig::kNtlGraph) {
       ls << "Invoking Processed Netlist Parser" << endl;
       run_config.num_ways = 2;
-      ProcessedNetlistParser parser;
+      NtlParser parser;
       parser.Parse(graph, run_config.graph_filename.c_str(), &edge_id_name_map);
     } else {
       ls << "Invoking Chaco Parser" << endl;

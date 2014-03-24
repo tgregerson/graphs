@@ -7,7 +7,7 @@
 #include "chaco_parser.h"
 #include "edge.h"
 #include "node.h"
-#include "processed_netlist_parser.h"
+#include "ntl_parser.h"
 
 using namespace std;
 
@@ -28,7 +28,7 @@ void LpSolveInterface::LoadFromMps(const string& filename) {
 }
 
 void LpSolveInterface::LoadFromNtl(const string& filename) {
-  ProcessedNetlistParser netlist_parser;
+  NtlParser netlist_parser;
   Node graph;
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);

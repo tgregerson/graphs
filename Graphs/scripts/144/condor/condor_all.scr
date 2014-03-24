@@ -1,0 +1,80 @@
+Executable = ./partition_main
+initialdir = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/
+Universe = vanilla
+Getenv = true
+notification = Always
+notify_user = tony.gregerson@gmail.com
+Rank = TARGET.Mips
+request_memory = 3000
+
+Arguments = ./graphs/144.graph ./configs/random_adaptive_affinity_1.xml 1 ./results/144_random_adaptive_affinity_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_affinity_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_affinity_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_affinity_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/random_adaptive_classic_1.xml 1 ./results/144_random_adaptive_classic_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_classic_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_classic_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_classic_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_adaptive_affinity_ratio_1.xml 1 ./results/144_proportional_adaptive_affinity_ratio_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_ratio_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_ratio_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_ratio_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/random_adaptive_affinity_ratio_1.xml 1 ./results/144_random_adaptive_affinity_ratio_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_affinity_ratio_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_affinity_ratio_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_random_adaptive_affinity_ratio_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/universal_resource_single_1.xml 1 ./results/144_universal_resource_single_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_universal_resource_single_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_universal_resource_single_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_universal_resource_single_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/universal_resource_nonadaptive_1.xml 1 ./results/144_universal_resource_nonadaptive_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_universal_resource_nonadaptive_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_universal_resource_nonadaptive_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_universal_resource_nonadaptive_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_adaptive_affinity_1.xml 1 ./results/144_proportional_adaptive_affinity_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_adaptive_classic_1.xml 1 ./results/144_proportional_adaptive_classic_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_classic_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_classic_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_classic_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_nonadaptive_affinity_1.xml 1 ./results/144_proportional_nonadaptive_affinity_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_nonadaptive_affinity_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_nonadaptive_affinity_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_nonadaptive_affinity_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_nonadaptive_classic_1.xml 1 ./results/144_proportional_nonadaptive_classic_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_nonadaptive_classic_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_nonadaptive_classic_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_nonadaptive_classic_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_adaptive_affinity_relaxed_1.xml 1 ./results/144_proportional_adaptive_affinity_relaxed_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_relaxed_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_relaxed_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_relaxed_1_error.txt
+Queue
+
+Arguments = ./graphs/144.graph ./configs/proportional_adaptive_affinity_ratio_relaxed_1.xml 1 ./results/144_proportional_adaptive_affinity_ratio_relaxed_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_ratio_relaxed_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_ratio_relaxed_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/144_proportional_adaptive_affinity_ratio_relaxed_1_error.txt
+Queue

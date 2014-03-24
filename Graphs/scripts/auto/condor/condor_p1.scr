@@ -1,0 +1,31 @@
+Executable = ./partition_main
+initialdir = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/
+Universe = vanilla
+Getenv = true
+notification = Always
+notify_user = tony.gregerson@gmail.com
+Rank = TARGET.Mips
+
+Arguments = ./graphs/auto.graph ./configs/random_adaptive_affinity_1.xml 50 ./results/auto_random_adaptive_affinity_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_affinity_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_affinity_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_affinity_1_error.txt
+Queue
+
+Arguments = ./graphs/auto.graph ./configs/random_adaptive_classic_1.xml 50 ./results/auto_random_adaptive_classic_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_classic_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_classic_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_classic_1_error.txt
+Queue
+
+Arguments = ./graphs/auto.graph ./configs/proportional_adaptive_affinity_ratio_1.xml 50 ./results/auto_proportional_adaptive_affinity_ratio_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_proportional_adaptive_affinity_ratio_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_proportional_adaptive_affinity_ratio_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_proportional_adaptive_affinity_ratio_1_error.txt
+Queue
+
+Arguments = ./graphs/auto.graph ./configs/random_adaptive_affinity_ratio_1.xml 50 ./results/auto_random_adaptive_affinity_ratio_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_affinity_ratio_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_affinity_ratio_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/auto_random_adaptive_affinity_ratio_1_error.txt
+Queue

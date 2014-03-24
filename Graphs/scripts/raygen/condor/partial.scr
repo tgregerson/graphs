@@ -1,0 +1,26 @@
+Executable = ./partition_main
+initialdir = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/
+Universe = vanilla
+Getenv = true
+notification = Always
+notify_user = tony.gregerson@gmail.com
+Rank = TARGET.Mips
+request_memory = 128
+
+Arguments = ./graphs/raygen.ntl ./configs/universal_resource_single_1.xml 50 ./results/raygen_universal_resource_single_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_universal_resource_single_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_universal_resource_single_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_universal_resource_single_1_error.txt
+Queue
+
+Arguments = ./graphs/raygen.ntl ./configs/proportional_adaptive_affinity_1.xml 50 ./results/raygen_proportional_adaptive_affinity_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_proportional_adaptive_affinity_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_proportional_adaptive_affinity_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_proportional_adaptive_affinity_1_error.txt
+Queue
+
+Arguments = ./graphs/raygen.ntl ./configs/proportional_adaptive_affinity_relaxed_1.xml 50 ./results/raygen_proportional_adaptive_affinity_relaxed_1.txt
+Output = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_proportional_adaptive_affinity_relaxed_1_output.txt
+Log = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_proportional_adaptive_affinity_relaxed_1_log.txt
+Error = /research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/results/logs/raygen_proportional_adaptive_affinity_relaxed_1_error.txt
+Queue

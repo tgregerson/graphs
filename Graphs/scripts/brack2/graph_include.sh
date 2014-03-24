@@ -1,0 +1,2 @@
+RUNS_PER_GROUP=50
+GRAPH=brack2.graph

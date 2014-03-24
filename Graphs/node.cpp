@@ -209,11 +209,11 @@ void Node::TransferEdgeConnectionsExcluding(
   for (auto entity_id : from_edge->connection_ids()) {
     if (entity_id != exclude_id) {
       to_edge->AddConnection(entity_id);
-      if (internal_nodes_.count(entity_id) != 0) {
-        internal_nodes_[entity_id]->SwapPortConnection(from_edge->id,
-                                                       to_edge->id);
-      } else if (ports_.count(entity_id) != 0) {
-        Port& p = ports_[entity_id];
+      if (internal_nodes_.find(entity_id) != internal_nodes_.end()) {
+        internal_nodes_.at(entity_id)->SwapPortConnection(from_edge->id,
+                                                          to_edge->id);
+      } else if (ports_.find(entity_id) != ports_.end()) {
+        Port& p = ports_.at(entity_id);
         p.internal_edge_id = to_edge->id;
       } else {
         printf("Fatal error: Edge source not found in internal nodes");

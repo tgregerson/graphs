@@ -127,6 +127,7 @@ class LpSolveInterface {
 
     void SetAllVariablesBinary(lprec* model);
     void SetAllVariableNames(lprec* model);
+    void SetAllConstraintNames(lprec* model);
     
     int NumTotalNodeVariablesNeeded();
     int NumTotalEdgeVariablesNeeded();

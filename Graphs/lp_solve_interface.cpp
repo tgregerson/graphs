@@ -6,6 +6,7 @@
 
 #include "chaco_parser.h"
 #include "edge.h"
+#include "mps_name_hash.h"
 #include "node.h"
 #include "ntl_parser.h"
 
@@ -137,6 +138,7 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelRowMode() {
 
   SetAllVariablesBinary(model);
   SetAllVariableNames(model);
+  SetAllConstraintNames(model);
 
   if (verbose_) {
     cout << "Total Variables: " << get_Ncolumns(model) << endl;
@@ -175,6 +177,7 @@ lprec* LpSolveInterface::GraphParsingState::ConstructModelColumnMode() {
 
   SetAllVariablesBinary(model);
   SetAllVariableNames(model);
+  SetAllConstraintNames(model);
 
   if (verbose_) {
     cout << "Total Variables: " << get_Ncolumns(model) << endl;
@@ -708,6 +711,9 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
   // Node identity variables
   // Example: N66B2
   // (Node 66, in partition B, with personality 2)
+  //
+  // For large graphs, '66' may be replaced with a hashed ID consisting of
+  // numbers and letters.
   for (const auto& p_i_vv : node_to_variable_indices_) {
     int node_id = p_i_vv.first;
     const vector<vector<int>>& part_per_v = p_i_vv.second;
@@ -716,7 +722,7 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
         assert(part < 2);  // currently only support bipartition.
         int variable_index = part_per_v[part][per];
         stringstream name;
-        name << "N" << node_id;
+        name << "N" << mps_name_hash::Hash(node_id);
         if (part == 0) {
           name << "A";
         } else {
@@ -734,7 +740,7 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
   // (Edge 92)
   for (pair<int, int> p : edge_to_crossing_variable_indices_) {
     stringstream name;
-    name << "X" << p.first;
+    name << "X" << mps_name_hash::Hash(p.first);
     set_col_name(model, p.second, const_cast<char*>(name.str().c_str()));
   }
 
@@ -745,7 +751,7 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
        edge_to_partition_connectivity_variable_indices_) {
     for (int part = 0; part < p.second.size(); ++part) {
       stringstream name;
-      name << "C" << p.first;
+      name << "C" << mps_name_hash::Hash(p.first);
       if (part == 0) {
         name << "A";
       } else {
@@ -754,6 +760,15 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
       set_col_name(model, p.second[part],
                    const_cast<char*>(name.str().c_str()));
     }
+  }
+}
+
+void LpSolveInterface::GraphParsingState::SetAllConstraintNames(
+    lprec* model) {
+  set_row_name(model, 0, const_cast<char*>("OBJFN"));
+  for (int i = 1; i <= get_Nrows(model); ++i) {
+    string name = "R" + mps_name_hash::Hash(i);
+    set_row_name(model, i, const_cast<char*>(name.c_str()));
   }
 }
 

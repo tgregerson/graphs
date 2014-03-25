@@ -12,6 +12,7 @@
 #include "gain_bucket_manager_multi_resource_exclusive.h"
 #include "gain_bucket_manager_multi_resource_mixed.h"
 #include "id_manager.h"
+#include "mps_name_hash.h"
 #include "universal_macros.h"
 #include "weight_score.h"
 
@@ -2522,7 +2523,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
   // Add node identity variables. This will the variable names for the selected
   // partitions and personalities.
   for (int node_id : combined_node_ids) {
-    of << "N" << node_id;
+    of << "N" << mps_name_hash::Hash(node_id);
     char partition_id =
         (partitions.first.find(node_id) != partitions.first.end()) ? 'A' : 'B';
     of << partition_id;
@@ -2538,17 +2539,18 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
     if (edge->CrossesPartitions()) {
-      of << "X" << edge->id << " 1\t (obj:" << edge->weight << ")" << endl;
+      of << "X" << mps_name_hash::Hash(edge->id) << " 1\t (obj:" << edge->weight
+         << ")" << endl;
     }
 
     // For edge partition connectivity variables, print them if the edge touches
     // the partition. It is not important which partition is denoted as A vs B,
     // as long as we are consistent with what we did for the nodes.
     if (edge->TouchesPartitionA()) {
-      of << "C" << edge->id << "A 1\t (obj:0)" << endl;
+      of << "C" << mps_name_hash::Hash(edge->id) << "A 1\t (obj:0)" << endl;
     }
     if (edge->TouchesPartitionB()) {
-      of << "C" << edge->id << "B 1\t (obj:0)" << endl;
+      of << "C" << mps_name_hash::Hash(edge->id) << "B 1\t (obj:0)" << endl;
     }
   }
 }
@@ -2584,7 +2586,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
       for (int per = 0; per < n->num_personalities(); ++per) {
         bool uses_this_personality =
             n->selected_weight_vector_index() == per;
-        of << "N" << node_id << (char)('A' + part) << per;
+        of << "N" << mps_name_hash::Hash(node_id) << (char)('A' + part) << per;
         if (uses_this_personality && in_this_partition) {
           of << " 1" << endl;
         } else {
@@ -2598,7 +2600,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
-    of << "X" << edge->id;;
+    of << "X" << mps_name_hash::Hash(edge->id);
     if (edge->CrossesPartitions()) {
       of << " 1" << endl;
     } else {
@@ -2608,7 +2610,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     // For edge partition connectivity variables, print them if the edge touches
     // the partition. It is not important which partition is denoted as A vs B,
     // as long as we are consistent with what we did for the nodes.
-    of << "C" << edge->id;
+    of << "C" << mps_name_hash::Hash(edge->id);
     if (edge->TouchesPartitionA()) {
       of << "A 1" << endl;
     } else {

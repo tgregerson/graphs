@@ -4,6 +4,7 @@ import os.path
 
 bin_path = "/home/gregerso/git/graphs/Graphs/binaries/"
 graph_path = "/research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/graphs/"
+mps_path = "/research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/mps/"
 
 chaco_graphs = [
     "144",
@@ -39,7 +40,7 @@ ntl_graphs = [
 for graph in chaco_graphs:
   binary = bin_path + "lp_solve_interface"
   input_fullname = graph_path + graph + ".graph"
-  output_fullname = graph_path + graph + ".mps"
+  output_fullname = mps_path + graph + ".mps"
   if not os.path.isfile(input_fullname):
     print "Input file: " + input_fullname + " not found. Skipping."
     continue
@@ -67,7 +68,7 @@ for graph in chaco_graphs:
 for graph in ntl_graphs:
   binary = bin_path + "lp_solve_interface"
   input_fullname = graph_path + graph + ".ntl"
-  output_fullname = graph_path + graph + ".mps"
+  output_fullname = mps_path + graph + ".mps"
   if not os.path.isfile(input_fullname):
     print "Input file: " + input_fullname + " not found. Skipping.\n"
     continue

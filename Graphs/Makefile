@@ -6,7 +6,7 @@ CXX = $(CXX_CLANG)
 XML2_FLAGS = `xml2-config --cflags`
 CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3 -flto -Wall -Werror
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS) -Wall -Werror
-CXXFLAGS = $(CXXFLAGS_DEBUG)
+CXXFLAGS = $(CXXFLAGS_OPT)
 LDFLAGS = -lrt -v `xml2-config --libs` -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
@@ -85,6 +85,7 @@ edge_H = edge.h
 id_manager_H = id_manager.h
 parser_interface_H = parser_interface.h
 port_H = port.h
+mps_name_hash_H = mps_name_hash.h
 ntl_parser_H = ntl_parser.h
 structural_netlist_parser_H = structural_netlist_parser.h
 testbench_generator_H = testbench_generator.h
@@ -146,7 +147,7 @@ $(OBJDIR)/gain_bucket_standard.o: $(gain_bucket_standard_H) gain_bucket_standard
 $(OBJDIR)/id_manager.o: $(id_manager_H) id_manager.cpp
 	$(CXX) -c id_manager.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(node_H) $(ntl_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
+$(OBJDIR)/lp_solve_interface.o: $(chaco_parser_H) $(edge_H) $(mps_name_hash_H) $(node_H) $(ntl_parser_H) $(lp_solve_interface_H) lp_solve_interface.cpp
 	$(CXX) -c lp_solve_interface.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/lp_solve_interface_main.o: $(lp_solve_interface_H) lp_solve_interface_main.cpp
@@ -158,7 +159,7 @@ $(OBJDIR)/node.o: $(id_manager_H) $(universal_macros_H) $(node_H) $(weight_score
 $(OBJDIR)/ntl_format_converter.o: ntl_format_converter.cpp
 	$(CXX) -c ntl_format_converter.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/partition_engine_klfm.o: $(gain_bucket_manager_single_resource_H) $(gain_bucket_manager_multi_resource_exclusive_H) $(gain_bucket_manager_multi_resource_mixed_H) $(id_manager_H) $(universal_macros_H) $(weight_score_H) $(partition_engine_klfm_H) partition_engine_klfm.cpp
+$(OBJDIR)/partition_engine_klfm.o: $(gain_bucket_manager_single_resource_H) $(gain_bucket_manager_multi_resource_exclusive_H) $(gain_bucket_manager_multi_resource_mixed_H) $(id_manager_H) $(mps_name_hash_H) $(universal_macros_H) $(weight_score_H) $(partition_engine_klfm_H) partition_engine_klfm.cpp
 	$(CXX) -c partition_engine_klfm.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/partitioner_config.o: $(universal_macros_H) $(partitioner_config_H) partitioner_config.cpp

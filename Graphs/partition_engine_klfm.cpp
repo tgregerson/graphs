@@ -2616,7 +2616,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     } else {
       of << "A 0" << endl;
     }
-    of << "C" << edge->id;
+    of << "C" << mps_name_hash::Hash(edge->id);
     if (edge->TouchesPartitionB()) {
       of << "B 1" << endl;
     } else {

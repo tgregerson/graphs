@@ -8,7 +8,7 @@ namespace mps_name_hash {
     if (bits < 10) {
       return '0' + bits;
     } else {
-      return 'a' + bits;
+      return 'a' + bits - 10;
     }
   }
 

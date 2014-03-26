@@ -722,7 +722,7 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
         assert(part < 2);  // currently only support bipartition.
         int variable_index = part_per_v[part][per];
         stringstream name;
-        name << "N" << mps_name_hash::Hash(node_id);
+        name << "V" << mps_name_hash::Hash(node_id);
         if (part == 0) {
           name << "A";
         } else {

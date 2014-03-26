@@ -136,10 +136,13 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
   // Later may want to restore the concept of ports to consider partitioning
   // of bandwidth. 
   NodeIdSet port_ids;
+  // TODO EXPERIMENT WITH LEAVING PORTS IN
+  /*
   for (auto& port_pair : graph->ports()) {
     port_ids.insert(port_pair.first);
   }
   StripPorts(&internal_node_map_, &internal_edge_map_, port_ids);
+  */
 }
 
 PartitionEngineKlfm::~PartitionEngineKlfm() {
@@ -190,7 +193,7 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
       vector<int> temp_balance;
       GenerateInitialPartition(&pre_run_partitions, &temp_cost, &temp_balance);
       if (options_.sol_scip_format) {
-        WriteScipSol(pre_run_partitions, options_.initial_sol_base_filename);
+        WriteScipSolAlt(pre_run_partitions, options_.initial_sol_base_filename);
       }
       if (options_.sol_gurobi_format) {
         WriteGurobiMst(pre_run_partitions, options_.initial_sol_base_filename);
@@ -371,7 +374,7 @@ void PartitionEngineKlfm::ExecuteRun(
 
   if (!options_.final_sol_base_filename.empty()) {
     if (options_.sol_scip_format) {
-      WriteScipSol(decoarsened_partition, options_.final_sol_base_filename);
+      WriteScipSolAlt(decoarsened_partition, options_.final_sol_base_filename);
     }
     if (options_.sol_gurobi_format) {
       WriteGurobiMst(decoarsened_partition, options_.final_sol_base_filename);
@@ -729,8 +732,7 @@ int PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
   for (auto& port_pair : node->ports()) {
     Port& port = port_pair.second;
     int connecting_edge_id = port.external_edge_id;
-    assert(internal_edge_map_.count(connecting_edge_id) != 0);
-    EdgeKlfm* connecting_edge = internal_edge_map_[connecting_edge_id];
+    EdgeKlfm* connecting_edge = internal_edge_map_.at(connecting_edge_id);
     auto& my_partition_unlocked = (in_part_a) ?
         connecting_edge->part_a_connected_unlocked_nodes :
         connecting_edge->part_b_connected_unlocked_nodes;
@@ -1001,7 +1003,7 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
 
     num_connected_edges_++;
     const int connected_edge_id = port_pair.second.external_edge_id;
-    EdgeKlfm* connected_edge = internal_edge_map_[connected_edge_id];
+    EdgeKlfm* connected_edge = internal_edge_map_.at(connected_edge_id);
     if (connected_edge->is_critical) num_critical_connected_edges_++;
     EdgeKlfm::NodeIdVector nodes_to_increase_gain;
     EdgeKlfm::NodeIdVector nodes_to_decrease_gain;
@@ -2523,7 +2525,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
   // Add node identity variables. This will the variable names for the selected
   // partitions and personalities.
   for (int node_id : combined_node_ids) {
-    of << "N" << mps_name_hash::Hash(node_id);
+    of << "V" << mps_name_hash::Hash(node_id);
     char partition_id =
         (partitions.first.find(node_id) != partitions.first.end()) ? 'A' : 'B';
     of << partition_id;
@@ -2552,6 +2554,83 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     if (edge->TouchesPartitionB()) {
       of << "C" << mps_name_hash::Hash(edge->id) << "B 1\t (obj:0)" << endl;
     }
+  }
+}
+
+void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
+                                          const std::string& base_filename) {
+  string filename_with_extension = base_filename + ".sol";
+  ofstream of(filename_with_extension.c_str());
+  assert(of.is_open());
+
+  // Use this instead of internal_node_map because we want to guarantee
+  // order.
+  set<int> combined_node_ids;
+  for (int id : partitions.first) {
+    combined_node_ids.insert(id);
+  }
+  for (int id : partitions.second) {
+    combined_node_ids.insert(id);
+  }
+  set<int> combined_edge_ids;
+  for (pair<int, EdgeKlfm*> p : internal_edge_map_) {
+    combined_edge_ids.insert(p.first);
+  }
+
+  of << "solution status: unknown" << endl;
+  of << "objective value: " << RecomputeCurrentCost() << endl;
+  // Add node identity variables. This will the variable names for the selected
+  // partitions and personalities.
+  for (int node_id : combined_node_ids) {
+    Node* n = CHECK_NOTNULL(internal_node_map_.at(node_id));
+    for (int part = 0; part < 2; ++part) {
+      const NodeIdSet& this_partition = (part == 0) ?
+          partitions.first : partitions.second;
+      bool in_this_partition =
+          this_partition.find(node_id) != this_partition.end();
+      for (int per = 0; per < n->num_personalities(); ++per) {
+        bool uses_this_personality =
+            n->selected_weight_vector_index() == per;
+        of << "V" << mps_name_hash::Hash(node_id) << (char)('A' + part) << per;
+        if (uses_this_personality && in_this_partition) {
+          of << " 1";
+        } else {
+          of << " 0";
+        }
+        of << "\t (obj:0)" << endl;
+      }
+    }
+  }
+  // These will not print in order.
+  for (int edge_id : combined_edge_ids) {
+    EdgeKlfm* edge = CHECK_NOTNULL(internal_edge_map_.at(edge_id));
+    // For edge crossing variables, print the names for any edge that crosses
+    // partitions.
+    of << "X" << mps_name_hash::Hash(edge->id);
+    if (edge->CrossesPartitions()) {
+      of << " 1\t (obj:" << edge->weight << ")" << endl;
+    } else {
+      of << " 0\t (obj:0)" << endl;
+    }
+
+    // For edge partition connectivity variables, print them if the edge touches
+    // the partition. It is not important which partition is denoted as A vs B,
+    // as long as we are consistent with what we did for the nodes.
+    of << "C" << mps_name_hash::Hash(edge->id) << "A ";
+    if (edge->TouchesPartitionA()) {
+      of << "1";
+    } else {
+      of << "0";
+    }
+    of << "\t (obj:0)" << endl;
+
+    of << "C" << mps_name_hash::Hash(edge->id) << "B ";
+    if (edge->TouchesPartitionB()) {
+      of << "1";
+    } else {
+      of << "0";
+    }
+    of << "\t (obj:0)" << endl;
   }
 }
 
@@ -2586,7 +2665,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
       for (int per = 0; per < n->num_personalities(); ++per) {
         bool uses_this_personality =
             n->selected_weight_vector_index() == per;
-        of << "N" << mps_name_hash::Hash(node_id) << (char)('A' + part) << per;
+        of << "V" << mps_name_hash::Hash(node_id) << (char)('A' + part) << per;
         if (uses_this_personality && in_this_partition) {
           of << " 1" << endl;
         } else {

@@ -496,6 +496,9 @@ class PartitionEngineKlfm : public PartitionEngine {
   // Write solution in .sol format used by SCIP.
   void WriteScipSol(const NodePartitions& partition,
                     const std::string& filename);
+  // Write solution in .sol format used by SCIP.
+  void WriteScipSolAlt(const NodePartitions& partition,
+                       const std::string& filename);
   // Write solution in .mst format used by Gurobi.
   void WriteGurobiMst(const NodePartitions& partition,
                       const std::string& filename);

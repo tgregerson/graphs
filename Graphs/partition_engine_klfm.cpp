@@ -2520,8 +2520,8 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     combined_node_ids.insert(id);
   }
 
-  of << "solution status: unknown" << endl;
-  of << "objective value: " << RecomputeCurrentCost() << endl;
+  of << "solution status: unknown\n";
+  of << "objective value: " << RecomputeCurrentCost() << "\n";
   // Add node identity variables. This will the variable names for the selected
   // partitions and personalities.
   for (int node_id : combined_node_ids) {
@@ -2533,7 +2533,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
         internal_node_map_.at(node_id)->selected_weight_vector_index();
     of << personality_id;
     // Nodes do not contribute to the objective function.
-    of << " 1\t (obj:0)" << endl;
+    of << " 1\t (obj:0)\n";
   }
   // These will not print in order.
   for (pair<int, EdgeKlfm*> ep : internal_edge_map_) {
@@ -2542,17 +2542,17 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     // partitions.
     if (edge->CrossesPartitions()) {
       of << "X" << mps_name_hash::Hash(edge->id) << " 1\t (obj:" << edge->weight
-         << ")" << endl;
+         << ")\n";
     }
 
     // For edge partition connectivity variables, print them if the edge touches
     // the partition. It is not important which partition is denoted as A vs B,
     // as long as we are consistent with what we did for the nodes.
     if (edge->TouchesPartitionA()) {
-      of << "C" << mps_name_hash::Hash(edge->id) << "A 1\t (obj:0)" << endl;
+      of << "C" << mps_name_hash::Hash(edge->id) << "A 1\t (obj:0)\n";
     }
     if (edge->TouchesPartitionB()) {
-      of << "C" << mps_name_hash::Hash(edge->id) << "B 1\t (obj:0)" << endl;
+      of << "C" << mps_name_hash::Hash(edge->id) << "B 1\t (obj:0)\n";
     }
   }
 }
@@ -2577,8 +2577,8 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     combined_edge_ids.insert(p.first);
   }
 
-  of << "solution status: unknown" << endl;
-  of << "objective value: " << RecomputeCurrentCost() << endl;
+  of << "solution status: unknown\n";
+  of << "objective value: " << RecomputeCurrentCost() << "\n";
   // Add node identity variables. This will the variable names for the selected
   // partitions and personalities.
   for (int node_id : combined_node_ids) {
@@ -2597,7 +2597,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
         } else {
           of << " 0";
         }
-        of << "\t (obj:0)" << endl;
+        of << "\t (obj:0)\n";
       }
     }
   }
@@ -2608,9 +2608,9 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     // partitions.
     of << "X" << mps_name_hash::Hash(edge->id);
     if (edge->CrossesPartitions()) {
-      of << " 1\t (obj:" << edge->weight << ")" << endl;
+      of << " 1\t (obj:" << edge->weight << ")\n";
     } else {
-      of << " 0\t (obj:0)" << endl;
+      of << " 0\t (obj:0)\n";
     }
 
     // For edge partition connectivity variables, print them if the edge touches
@@ -2622,7 +2622,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     } else {
       of << "0";
     }
-    of << "\t (obj:0)" << endl;
+    of << "\t (obj:0)\n";
 
     of << "C" << mps_name_hash::Hash(edge->id) << "B ";
     if (edge->TouchesPartitionB()) {
@@ -2630,7 +2630,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     } else {
       of << "0";
     }
-    of << "\t (obj:0)" << endl;
+    of << "\t (obj:0)\n";
   }
 }
 
@@ -2652,7 +2652,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     combined_node_ids.insert(id);
   }
 
-  of << "# MIP start" << endl;
+  of << "# MIP start\n";
   // Add node identity variables. This will the variable names for the selected
   // partitions and personalities.
   for (int node_id : combined_node_ids) {
@@ -2667,9 +2667,9 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
             n->selected_weight_vector_index() == per;
         of << "V" << mps_name_hash::Hash(node_id) << (char)('A' + part) << per;
         if (uses_this_personality && in_this_partition) {
-          of << " 1" << endl;
+          of << " 1\n";
         } else {
-          of << " 0" << endl;
+          of << " 0\n";
         }
       }
     }
@@ -2681,9 +2681,9 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     // partitions.
     of << "X" << mps_name_hash::Hash(edge->id);
     if (edge->CrossesPartitions()) {
-      of << " 1" << endl;
+      of << " 1\n";
     } else {
-      of << " 0" << endl;
+      of << " 0\n";
     }
 
     // For edge partition connectivity variables, print them if the edge touches
@@ -2691,15 +2691,15 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     // as long as we are consistent with what we did for the nodes.
     of << "C" << mps_name_hash::Hash(edge->id);
     if (edge->TouchesPartitionA()) {
-      of << "A 1" << endl;
+      of << "A 1\n";
     } else {
-      of << "A 0" << endl;
+      of << "A 0\n";
     }
     of << "C" << mps_name_hash::Hash(edge->id);
     if (edge->TouchesPartitionB()) {
-      of << "B 1" << endl;
+      of << "B 1\n";
     } else {
-      of << "B 0" << endl;
+      of << "B 0\n";
     }
   }
 }

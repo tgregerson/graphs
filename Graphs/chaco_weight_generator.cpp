@@ -216,7 +216,7 @@ void ChacoWeightGenerator::WriteWeightFile(const std::string& filename) {
 
   // Write header line.
   output_file << gen_options_.num_nodes << " " << gen_options_.num_resources
-              << endl;
+              << "\n";
 
   vector<string> node_strings;
 
@@ -229,7 +229,7 @@ void ChacoWeightGenerator::WriteWeightFile(const std::string& filename) {
 
   // Write each node line.
   for (auto& node_string : node_strings) {
-    output_file << node_string << endl;
+    output_file << node_string << "\n";
     assert(!output_file.bad());
   }
 

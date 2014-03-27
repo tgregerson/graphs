@@ -149,7 +149,7 @@ VlogModule StructuralNetlistParser::VlogModuleFromLine(const string& str) {
 
   try {
     remaining = ConsumeParameterList(remaining, nullptr);
-  } catch (ParsingException e) {
+  } catch (ParsingException& e) {
     // Parameter list is optional, so do nothing if not parsable.
   }
 
@@ -197,7 +197,7 @@ vector<VlogNet> StructuralNetlistParser::VlogNetsFromLine(const string& str) {
         net_type_name.append(" " + next_token);
         remaining = token_removed;
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       // Compound type is optional, so OK to ignore parsing failure.
     }
   }
@@ -207,7 +207,7 @@ vector<VlogNet> StructuralNetlistParser::VlogNetsFromLine(const string& str) {
     string range;
     remaining = ConsumeBitRange(remaining, &range);
     range_ints = ExtractBitRange(range);
-  } catch (ParsingException e) {
+  } catch (ParsingException& e) {
     // Bit range is optional, so OK to ignore parsing failure.
   }
 
@@ -273,33 +273,33 @@ void StructuralNetlistParser::PopulateNets(
 }
 
 void StructuralNetlistParser::PrintModule(const VlogModule& module) {
-  cout << "Module" << endl;
-  cout << "Type: " << module.type_name << endl;
-  cout << "Instance: " << module.instance_name << endl;
-  cout << "Connections" << endl;
+  cout << "Module\n";
+  cout << "Type: " << module.type_name << "\n";
+  cout << "Instance: " << module.instance_name << "\n";
+  cout << "Connections\n";
   for (const string& cn : module.connected_net_names) {
-    cout << cn << endl;
+    cout << cn << "\n";
   }
-  cout << endl;
+  cout << "\n";
 }
 
 void StructuralNetlistParser::PrintModuleNtlFormat(
     const VlogModule& module, ostream& output_stream) {
-  output_stream << "module_begin" << endl;
-  output_stream << module.type_name << endl;
-  output_stream << module.instance_name << endl;
+  output_stream << "module_begin" << "\n";
+  output_stream << module.type_name << "\n";
+  output_stream << module.instance_name << "\n";
   for (const string& cn : module.connected_net_names) {
-    output_stream << cn << endl;
+    output_stream << cn << "\n";
   }
-  output_stream << "module_end" << endl;
+  output_stream << "module_end" << "\n";
 }
 
 void StructuralNetlistParser::PrintNet(const VlogNet& net) {
-  cout << "Net" << endl;
-  cout << "Name: " << net.name << endl;
-  cout << "Width: " << net.width << endl;
-  cout << "Range: [" << net.bit_hi << ":" << net.bit_lo << "]" << endl;
-  cout << endl;
+  cout << "Net" << "\n";
+  cout << "Name: " << net.name << "\n";
+  cout << "Width: " << net.width << "\n";
+  cout << "Range: [" << net.bit_hi << ":" << net.bit_lo << "]" << "\n";
+  cout << "\n";
 }
 
 set<string> StructuralNetlistParser::GetBusNames(
@@ -535,7 +535,7 @@ string StructuralNetlistParser::ConsumeIdentifier(
         // SimpleIdentifier
         remaining = ConsumeSimpleIdentifier(remaining, token);
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   } else {
@@ -561,7 +561,7 @@ string StructuralNetlistParser::ConsumeIdentifierList(
         incremental_token += ", ";
         incremental_token += identifier;
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
     if (token != nullptr) {
@@ -655,7 +655,7 @@ string StructuralNetlistParser::ConsumeConnection(
         // Connection by position.
         remaining = ConsumeConnectedElement(remaining, &incremental_token);
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   }
@@ -698,7 +698,7 @@ string StructuralNetlistParser::ConsumeConnectedElement(
           // BitRange is optional, so do nothing if not present.
         }
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   }
@@ -725,7 +725,7 @@ string StructuralNetlistParser::ConsumeParameterList(
           remaining, &wrapped_connection_list, &ConsumeConnectionList, '(',
           ')');
       incremental_token.append(wrapped_connection_list);
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   }
@@ -778,7 +778,7 @@ string StructuralNetlistParser::ConsumeImmediate(
       } else {
         throw ParsingException("");
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw (e.what() + error_msg);
     }
   }
@@ -801,7 +801,7 @@ string StructuralNetlistParser::ConsumeBinaryImmediate(
     string num_bits;
     try {
       remaining = ConsumeUnbasedImmediate(remaining, &num_bits);
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
     if (remaining.size() < 2 || remaining[0] != '\'' || 
@@ -838,7 +838,7 @@ string StructuralNetlistParser::ConsumeOctalImmediate(
     string num_bits;
     try {
       remaining = ConsumeUnbasedImmediate(remaining, &num_bits);
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
     if (remaining.size() < 2 || remaining[0] != '\'' || 
@@ -875,7 +875,7 @@ string StructuralNetlistParser::ConsumeDecimalImmediate(
     string num_bits;
     try {
       remaining = ConsumeUnbasedImmediate(remaining, &num_bits);
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
     if (remaining.size() < 2 || remaining[0] != '\'' || 
@@ -912,7 +912,7 @@ string StructuralNetlistParser::ConsumeHexImmediate(
     string num_bits;
     try {
       remaining = ConsumeUnbasedImmediate(remaining, &num_bits);
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
     if (remaining.size() < 2 || remaining[0] != '\'' || 
@@ -1021,7 +1021,7 @@ string StructuralNetlistParser::ConsumeBitRange(
         incremental_token.append(":" + second_bit_num);
       }
       incremental_token.append("]");
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   }
@@ -1050,7 +1050,7 @@ string StructuralNetlistParser::ConsumeConnectionList(
         incremental_token += ", ";
         incremental_token += identifier;
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   }
@@ -1109,7 +1109,7 @@ string StructuralNetlistParser::ConsumeWrappedElement(
         incremental_token.push_back(close);
         remaining = remaining.substr(1, string::npos);
       }
-    } catch (ParsingException e) {
+    } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
   }

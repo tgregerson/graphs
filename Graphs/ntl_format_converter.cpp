@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   string token;
   input >> token;
   while (!input.eof()) {
-    output << token << endl;
+    output << token << "\n";
     input >> token;
   }
   return 0;

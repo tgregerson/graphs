@@ -5,6 +5,7 @@ import os.path
 bin_path = "/home/gregerso/git/graphs/Graphs/binaries/"
 graph_path = "/research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/graphs/"
 config_path = "/research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/configs/"
+sol_path = "/research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/sol/"
 
 chaco_graphs = [
     "144",
@@ -42,8 +43,8 @@ for graph in chaco_graphs:
   input_fullname = graph_path + graph + ".graph"
   config_fullname = config_path + "proportional_adaptive_affinity_1.xml"
 
-  initial_output_basename = graph_path + graph + "-solution-initial"
-  final_output_basename = graph_path + graph + "-solution-final"
+  initial_output_basename = sol_path + graph + "-solution-initial"
+  final_output_basename = sol_path + graph + "-solution-final"
 
   initial_output_mst = final_output_basename + ".mst"
   initial_output_sol = final_output_basename + ".sol"
@@ -80,8 +81,8 @@ for graph in ntl_graphs:
   input_fullname = graph_path + graph + ".ntl"
   config_fullname = config_path + "proportional_adaptive_affinity_1.xml"
 
-  initial_output_basename = graph_path + graph + "-solution-initial"
-  final_output_basename = graph_path + graph + "-solution-final"
+  initial_output_basename = sol_path + graph + "-solution-initial"
+  final_output_basename = sol_path + graph + "-solution-final"
 
   initial_output_mst = final_output_basename + ".mst"
   initial_output_sol = final_output_basename + ".sol"

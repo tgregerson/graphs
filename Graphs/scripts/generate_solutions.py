@@ -26,16 +26,16 @@ chaco_graphs = [
 ]
 
 ntl_graphs = [
-    "blob_converted",
-    "boundtop_mod_converted",
-    "diffeq1_converted",
-    "fft128_converted",
-    "isolation_converted",
-    "jet_reconstruction_converted",
-    "mcml_mod_converted",
-    "raygen_converted",
-    "rct_converted",
-    "sha_converted"
+    "blob",
+    "boundtop_mod",
+    "diffeq1",
+    "fft128",
+    "isolation",
+    "jet_reconstruction",
+    "mcml_mod",
+    "raygen",
+    "rct",
+    "sha"
 ]
 
 for graph in chaco_graphs:

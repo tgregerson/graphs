@@ -1,6 +1,7 @@
-import sys
-import subprocess
+import getopt
 import os.path
+import subprocess
+import sys
 
 klfm_path = "/research/gregerso/dev/projects/fpga-hep-dif/trunk/tools/partitioning/klfm/"
 condor_result_path = klfm_path + "results/"
@@ -64,42 +65,50 @@ memory_map = {
   "wing_experimental"     : 6000,
 }
 
-time_map_s = {
-  "144"                   : (12 * 3600),
-  "598a"                  : (12 * 3600),
-  "auto"                  : (12 * 3600),
-  "blob"                  : (12 * 3600),
-  "boundtop_mod"          : (12 * 3600),
-  "brack2"                : (12 * 3600),
-  "cti"                   : (12 * 3600),
-  "diffeq1"               : (12 * 3600),
-  "fe_ocean"              : (12 * 3600),
-  "fe_rotor"              : (12 * 3600),
-  "fe_tooth"              : (12 * 3600),
-  "fft128"                : (12 * 3600),
-  "finan512_experimental" : (12 * 3600),
-  "isolation"             : (12 * 3600),
-  "jet_reconstruction"    : (12 * 3600),
-  "m14b"                  : (12 * 3600),
-  "memplus_experimental"  : (12 * 3600),
-  "mcml_mod"              : (12 * 3600),
-  "raygen"                : (12 * 3600),
-  "rct"                   : (12 * 3600),
-  "sha"                   : (12 * 3600),
-  "vibrobox"              : (12 * 3600),
-  "wave"                  : (12 * 3600),
-  "wing_experimental"     : (12 * 3600),
+time_map_h = {
+  "144"                   : 12,
+  "598a"                  : 12,
+  "auto"                  : 12,
+  "blob"                  : 12,
+  "boundtop_mod"          : 12,
+  "brack2"                : 12,
+  "cti"                   : 12,
+  "diffeq1"               : 12,
+  "fe_ocean"              : 12,
+  "fe_rotor"              : 12,
+  "fe_tooth"              : 12,
+  "fft128"                : 12,
+  "finan512_experimental" : 12,
+  "isolation"             : 12,
+  "jet_reconstruction"    : 12,
+  "m14b"                  : 12,
+  "memplus_experimental"  : 12,
+  "mcml_mod"              : 12,
+  "raygen"                : 12,
+  "rct"                   : 12,
+  "sha"                   : 12,
+  "vibrobox"              : 12,
+  "wave"                  : 12,
+  "wing_experimental"     : 12,
 }
+
+def PrintHelpAndQuit():
+  print 'generate_condor_scripts.py <run_time_in_hours>'
+  sys.exit(2)
+
+if len(sys.argv) != 2:
+  PrintHelpAndQuit()
+time_h = sys.argv[1]
 
 for graph in graphs:
   # Generate batch files.
-  none_file_batch_fullname = script_path + graph + "/condor/batch-none"
-  initial_file_batch_fullname = script_path + graph + "/condor/batch-initial"
-  final_file_batch_fullname = script_path + graph + "/condor/batch-final"
+  none_file_batch_fullname    = script_path + graph + "/condor/batch-none-" + time_h
+  initial_file_batch_fullname = script_path + graph + "/condor/batch-initial-" + time_h
+  final_file_batch_fullname   = script_path + graph + "/condor/batch-final-" + time_h
 
-  none_file_batch = file(none_file_batch_fullname, "w")
+  none_file_batch    = file(none_file_batch_fullname, "w")
   initial_file_batch = file(initial_file_batch_fullname, "w")
-  final_file_batch = file(final_file_batch_fullname, "w")
+  final_file_batch   = file(final_file_batch_fullname, "w")
 
   batch_common_prefix  = 'read ' + mps_path + graph + '.mps '
   none_file_batch.write(batch_common_prefix)
@@ -109,23 +118,23 @@ for graph in graphs:
   initial_file_batch.write('read ' + solution_path + graph + '-solution-initial.sol ')
   final_file_batch.write(  'read ' + solution_path + graph + '-solution-final.sol ')
 
-  batch_common_midfix  = 'set limits time ' + str(time_map_s[graph]) + ' opt write solution '
+  batch_common_midfix  = 'set limits time ' + str(3600 * int(time_h)) + ' opt write solution '
   none_file_batch.write(batch_common_midfix)
   initial_file_batch.write(batch_common_midfix)
   final_file_batch.write(batch_common_midfix)
 
-  none_file_batch.write(   solution_path + graph + '-post-ilp-none.sol quit\n')
-  initial_file_batch.write(solution_path + graph + '-post-ilp-initial.sol quit\n')
-  final_file_batch.write(  solution_path + graph + '-post-ilp-final.sol quit\n')
+  none_file_batch.write(   solution_path + graph + '-post-ilp-none-'    + time_h + '.sol quit\n')
+  initial_file_batch.write(solution_path + graph + '-post-ilp-initial-' + time_h + '.sol quit\n')
+  final_file_batch.write(  solution_path + graph + '-post-ilp-final-'   + time_h + '.sol quit\n')
 
   none_file_batch.close()
   initial_file_batch.close()
   final_file_batch.close()
 
   # Generate condor submit descriptions
-  output_none_fullname    = script_path + graph + "/condor/condor_submit_scip_none.scr"
-  output_initial_fullname = script_path + graph + "/condor/condor_submit_scip_initial.scr"
-  output_final_fullname   = script_path + graph + "/condor/condor_submit_scip_final.scr"
+  output_none_fullname    = script_path + graph + "/condor/condor_submit_scip_none_" + time_h + ".scr"
+  output_initial_fullname = script_path + graph + "/condor/condor_submit_scip_initial_" + time_h + ".scr"
+  output_final_fullname   = script_path + graph + "/condor/condor_submit_scip_final_" + time_h + ".scr"
   
   if (os.path.exists(output_none_fullname)):
     print "File " + output_none_fullname + " already exists. Overwriting."
@@ -140,9 +149,9 @@ for graph in graphs:
   else:
     print "File " + output_final_fullname + " doesn't exist. Creating."
 
-  none_file = file(output_none_fullname, "w")
+  none_file    = file(output_none_fullname, "w")
   initial_file = file(output_initial_fullname, "w")
-  final_file = file(output_final_fullname, "w")
+  final_file   = file(output_final_fullname, "w")
 
   preamble = (
       "Executable = " + binary + "\n",
@@ -167,17 +176,17 @@ for graph in graphs:
   initial_file.write(initial_file_batch_fullname + "\n")
   final_file.write(final_file_batch_fullname + "\n")
 
-  none_file.write(   "Output = " + condor_result_path + "out/" + graph + "-none.out\n")
-  initial_file.write("Output = " + condor_result_path + "out/" + graph + "-initial.out\n")
-  final_file.write(  "Output = " + condor_result_path + "out/" + graph + "-final.out\n")
+  none_file.write(   "Output = " + condor_result_path + "out/" + graph + "-none-"    + time_h + ".out\n")
+  initial_file.write("Output = " + condor_result_path + "out/" + graph + "-initial-" + time_h + ".out\n")
+  final_file.write(  "Output = " + condor_result_path + "out/" + graph + "-final-"   + time_h + ".out\n")
 
-  none_file.write(   "Log = " + condor_result_path + "log/" + graph + "-none.log\n")
-  initial_file.write("Log = " + condor_result_path + "log/" + graph + "-initial.log\n")
-  final_file.write(  "Log = " + condor_result_path + "log/" + graph + "-final.log\n")
+  none_file.write(   "Log = " + condor_result_path + "log/" + graph + "-none-"    + time_h + ".log\n")
+  initial_file.write("Log = " + condor_result_path + "log/" + graph + "-initial-" + time_h + ".log\n")
+  final_file.write(  "Log = " + condor_result_path + "log/" + graph + "-final-"   + time_h + ".log\n")
 
-  none_file.write(   "Error = " + condor_result_path + "err/" + graph + "-none.err\n")
-  initial_file.write("Error = " + condor_result_path + "err/" + graph + "-initial.err\n")
-  final_file.write(  "Error = " + condor_result_path + "err/" + graph + "-final.err\n")
+  none_file.write(   "Error = " + condor_result_path + "err/" + graph + "-none-"    + time_h + ".err\n")
+  initial_file.write("Error = " + condor_result_path + "err/" + graph + "-initial-" + time_h + ".err\n")
+  final_file.write(  "Error = " + condor_result_path + "err/" + graph + "-final-"   + time_h + ".err\n")
 
   none_file.write("Queue\n")
   initial_file.write("Queue\n")

@@ -68,7 +68,7 @@ void NtlParser::Parse(
             << module.instance_name << ". Normal?" << endl;
     }
     parsed_modules_.push_back(module);
-    if (parsed_modules_.size() % 1000 == 0) {
+    if (parsed_modules_.size() % 10000 == 0) {
       cout << "Parsed " << parsed_modules_.size() << " modules." << endl;
     }
 

@@ -32,6 +32,8 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
   random_engine_mutate_.seed(0);
   random_engine_coarsen_.seed(0);
 
+  graph->CheckInternalGraphOrDie();
+
   num_resources_per_node_ = options_.num_resources_per_node;
   total_capacity_ = options_.device_resource_capacities;
   assert_b(
@@ -41,6 +43,15 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
            "not match the number of resources in the graph.");
   }
   total_weight_.insert(total_weight_.begin(), num_resources_per_node_, 0);
+
+  // Remove ports.
+  // This is done for simplification while developing the KLFM algorithm.
+  // Later may want to restore the concept of ports to consider partitioning
+  // of bandwidth.
+  //
+  // TODO: Currently the algorithm doesn't work properly for hypergraphs
+  // without stripping ports.
+  graph->StripPorts();
 
   // Populate internal data structures
   for (auto node_pair : graph->internal_nodes()) {
@@ -131,18 +142,6 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
     }
   }
 
-  // Remove ports.
-  // This is done for simplification while developing the KLFM algorithm.
-  // Later may want to restore the concept of ports to consider partitioning
-  // of bandwidth. 
-  NodeIdSet port_ids;
-  // TODO EXPERIMENT WITH LEAVING PORTS IN
-  /*
-  for (auto& port_pair : graph->ports()) {
-    port_ids.insert(port_pair.first);
-  }
-  StripPorts(&internal_node_map_, &internal_edge_map_, port_ids);
-  */
 }
 
 PartitionEngineKlfm::~PartitionEngineKlfm() {
@@ -1112,51 +1111,6 @@ bool PartitionEngineKlfm::PartitionsIdentical(
 }
 
 void PartitionEngineKlfm::Reset() {
-}
-
-void PartitionEngineKlfm::StripPorts(
-    unordered_map<int, Node*>* node_set,
-    unordered_map<int, EdgeKlfm*>* edge_set,
-    const NodeIdSet& port_ids) {
-  unordered_set<int> edges_to_remove;
-  for (auto edge_pair : *edge_set) {
-    unordered_set<int> ports_to_remove;
-    for (auto cnx_id : edge_pair.second->connection_ids()) {
-      if (port_ids.count(cnx_id) != 0) {
-        ports_to_remove.insert(cnx_id);
-      }
-    }
-    for (auto port_id : ports_to_remove) {
-      edge_pair.second->RemoveConnection(port_id);
-    }
-    if (edge_pair.second->connection_ids().size() < 2) {
-      // Identify edges that are now invalid due to having their port
-      // connections removed.
-      edges_to_remove.insert(edge_pair.first);
-    }
-  }
-  // Remove references to the outdated edges and their connected node ports
-  // from the node set.
-  for (auto node_pair : *node_set) {
-    Node *node = node_pair.second;
-    vector<int> node_ports_to_remove;
-    for (auto& port_pair : node->ports()) {
-      if (edges_to_remove.count(port_pair.second.external_edge_id) != 0) {
-        node_ports_to_remove.push_back(port_pair.first);
-      }
-    }
-    for (auto port_id : node_ports_to_remove) {
-      node->ports().erase(port_id);
-    }
-  }
-  // Delete the edges that are being removed.
-  for (auto old_edge_id : edges_to_remove) {
-    assert(edge_set->count(old_edge_id) == 1);
-    auto it = edge_set->find(old_edge_id);
-    assert(it != edge_set->end());
-    delete it->second;
-    edge_set->erase(old_edge_id);
-  }
 }
 
 void PartitionEngineKlfm::PopulateEdgePartitionConnections(

@@ -32,6 +32,7 @@ void LpSolveInterface::LoadFromNtl(const string& filename) {
   NtlParser netlist_parser;
   Node graph(-1, "top-level");
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
+  graph.StripPorts();
   GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
   state_.reset(new LpSolveState(gpstate.ConstructModel()));
 }

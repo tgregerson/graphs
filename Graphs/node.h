@@ -69,7 +69,7 @@ class Node {
     assert(internal_edges_.count(id) == 0);
     internal_edges_.insert(std::make_pair(id, edge));
   }
-  void AddPort(int id, Port& port) {
+  void AddPort(int id, const Port& port) {
     assert(ports_.find(id) == ports_.end());
     ports_.insert(std::make_pair(id, port));
   }

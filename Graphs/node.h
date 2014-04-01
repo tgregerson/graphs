@@ -70,7 +70,7 @@ class Node {
     internal_edges_.insert(std::make_pair(id, edge));
   }
   void AddPort(int id, Port& port) {
-    assert(ports_.count(id) == 0);
+    assert(ports_.find(id) == ports_.end());
     ports_.insert(std::make_pair(id, port));
   }
   // Returns NULL if node with 'id' is not an internal edge.
@@ -168,6 +168,13 @@ class Node {
   // Debug method that checks whether the selected supernode weight vector
   // matches the sum of the selected weight vectors for the internal nodes;
   void CheckSupernodeWeightVectorOrDie();
+
+  // Debug method that checks the structure of the internal graph and exits if
+  // it is not a valid structure.
+  void CheckInternalGraphOrDie();
+
+  // Remove all ports from the internal graph.
+  void StripPorts();
 
   PortMap& ports() { return ports_; }
   const PortMap& ports() const { return ports_; }

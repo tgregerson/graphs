@@ -204,6 +204,49 @@ vector<int> Node::TotalInternalSelectedWeight(
   return total_weights;
 }
 
+void Node::StripPorts() {
+  unordered_set<int> edges_to_remove;
+  for (auto edge_pair : internal_edges_) {
+    unordered_set<int> ports_to_remove;
+    for (auto cnx_id : edge_pair.second->connection_ids()) {
+      if (ports_.find(cnx_id) != ports_.end()) {
+        ports_to_remove.insert(cnx_id);
+      }
+    }
+    for (auto port_id : ports_to_remove) {
+      edge_pair.second->RemoveConnection(port_id);
+    }
+    if (edge_pair.second->connection_ids().size() < 2) {
+      // Identify edges that are now invalid due to having their port
+      // connections removed.
+      edges_to_remove.insert(edge_pair.first);
+    }
+  }
+  // Remove references to the outdated edges and their connected node ports
+  // from the node set.
+  for (auto node_pair : internal_nodes_) {
+    Node *node = node_pair.second;
+    vector<int> node_ports_to_remove;
+    for (auto& port_pair : node->ports()) {
+      if (edges_to_remove.find(port_pair.second.external_edge_id) !=
+          edges_to_remove.end()) {
+        node_ports_to_remove.push_back(port_pair.first);
+      }
+    }
+    for (auto port_id : node_ports_to_remove) {
+      node->ports().erase(port_id);
+    }
+  }
+  // Delete the edges that are being removed.
+  for (auto old_edge_id : edges_to_remove) {
+    auto it = internal_edges_.find(old_edge_id);
+    assert(it != internal_edges_.end());
+    delete it->second;
+    internal_edges_.erase(old_edge_id);
+  }
+  ports_.clear();
+}
+
 void Node::TransferEdgeConnectionsExcluding(
     Edge* from_edge, Edge* to_edge, int exclude_id) {
   for (auto entity_id : from_edge->connection_ids()) {
@@ -449,6 +492,17 @@ void Node::CheckSupernodeWeightVectorOrDie() {
         }
       }
       cout << endl;
+    }
+  }
+}
+
+void Node::CheckInternalGraphOrDie() {
+  for (const pair<int, Edge*>& p : internal_edges_) {
+    CHECK_NOTNULL(p.second);
+    // Check that all edges have at least 2 nodes.
+    assert_b(p.second->connection_ids().size() >= 2) {
+      cout << "Found internal edge with inconsistent number of nodes." << endl;
+      p.second->Print();
     }
   }
 }

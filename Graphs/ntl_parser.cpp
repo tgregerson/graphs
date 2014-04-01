@@ -199,6 +199,13 @@ void NtlParser::PopulateGraph(
          edge_name_to_connection_ids.at(edge_name_id_pair.first)) {
       new_edge->AddConnection(node_id);
     }
+    // If the edge only has one connection in the graph, add a port connection.
+    if (new_edge->connection_ids().size() < 2) {
+      Port port(IdManager::AcquireNodeId(), new_edge_id,
+                IdManager::kReservedTerminalId, Port::kDontCareType);
+      new_edge->AddConnection(port.id);
+      graph->AddPort(port.id, port);
+    }
     graph->AddInternalEdge(new_edge_id, new_edge);
     if (edge_id_to_name != nullptr) {
       edge_id_to_name->insert(

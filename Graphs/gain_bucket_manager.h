@@ -54,7 +54,7 @@ class GainBucketManager {
   virtual std::vector<int> GetMaxImbalance(
       const std::vector<double> frac, const std::vector<int> total_weight) {
     std::vector<int> imb;
-    for (int i = 0; i < frac.size(); i++) {
+    for (size_t i = 0; i < frac.size(); i++) {
       int res_imb = frac[i] * total_weight[i];
       imb.push_back(res_imb > 0 ? res_imb : 1);
     }

@@ -161,12 +161,12 @@ class PartitionEngineKlfm : public PartitionEngine {
     // Setting true ends a run early if it has taken more than max_passes to
     // hit a point of no improvement.
     bool cap_passes;
-    int max_passes;
+    size_t max_passes;
 
     // Algorithm will run 'num_runs' times and return the best results.
     // If the algorithm does not contain a random element, there is no reason
     // to set above 1.
-    int num_runs;
+    size_t num_runs;
 
     // Indicates whether gain buckets can select between multiple
     // node implementations. Note that if this option is set to false,
@@ -184,7 +184,7 @@ class PartitionEngineKlfm : public PartitionEngine {
 
     // Sets a limit on the number of weight vectors generated for a supernode.
     // This cap is only honored if it is greater 1 + the number of resources.
-    int supernode_implementations_cap;
+    size_t supernode_implementations_cap;
 
     // If set to true and 'num_runs > 1', subsequent runs after the initial one
     // will use the node weight vectors that were set at the end of the previous
@@ -199,7 +199,7 @@ class PartitionEngineKlfm : public PartitionEngine {
     // Represents the percentage chance that a node with multiple
     // implementations will be mutated during mutation phase. Should be between
     // 0 and 100.
-    int mutation_rate;
+    unsigned int mutation_rate;
 
     // If set to true, node implementations will be modified at the start of
     // each pass to improve balance and/or ratio.
@@ -215,14 +215,14 @@ class PartitionEngineKlfm : public PartitionEngine {
 
     // Limits the number of on-demand rebalances that are allowed per run.
     // Setting to zero removes the limit.
-    int rebalance_on_demand_cap_per_run;
+    size_t rebalance_on_demand_cap_per_run;
 
     // Limits the number of on-demand rebalances that are allowed per pass.
     // Setting to zero removes the limit. Note: Allowing unlimited rebalances
     // in a pass increases the algorithm complexity to O(N^2).
-    int rebalance_on_demand_cap_per_pass;
+    size_t rebalance_on_demand_cap_per_pass;
 
-    int num_resources_per_node;
+    size_t num_resources_per_node;
     std::vector<int> device_resource_capacities;
 
     // Controls whether the algorithm prints its output.
@@ -537,7 +537,7 @@ class PartitionEngineKlfm : public PartitionEngine {
   std::vector<int> max_weight_imbalance_;
   std::vector<double> max_imbalance_fraction_;
   std::vector<int> total_capacity_;
-  int num_resources_per_node_;
+  size_t num_resources_per_node_;
   // This flag is used to indicate if a partition rebalance occurred, failed,
   // and no better partition was found later in the pass. When this situation
   // occurs, it is necessary to recompute the partition balance after
@@ -546,11 +546,11 @@ class PartitionEngineKlfm : public PartitionEngine {
   bool recompute_best_balance_flag_;
 
   // Variables used for tracking algorithm performance states.
-  int node_count_;
-  int max_at_node_count_;
+  size_t node_count_;
+  size_t max_at_node_count_;
   bool balance_exceeded_;
-  int rebalances_this_run_;
-  int rebalances_this_pass_;
+  unsigned int rebalances_this_run_;
+  unsigned int rebalances_this_pass_;
 
   // Used for profiling run-time of methods in this class.
   //uint64_t start_time_;

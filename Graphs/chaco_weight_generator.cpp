@@ -154,7 +154,7 @@ bool ChacoWeightGenerator::ResourceOptions::Validate() {
                  "the std dev squared (%f) cannot exceed the mean (%f).\n",
                  std_dev_node_weight, variance, mean_node_weight);
         }
-        int truncated_mean = (int)mean_node_weight;
+        size_t truncated_mean = (size_t)mean_node_weight;
         if (truncated_mean > max_node_weight ||
             truncated_mean < min_node_weight) {
           printf("Invalid mean node weight: %f. Must be between min (%lu) and "
@@ -168,7 +168,7 @@ bool ChacoWeightGenerator::ResourceOptions::Validate() {
                  resource_name.c_str(), min_node_weight);
         }
         double bin_probability = 1.0 - (variance / mean_node_weight);
-        int bin_max = (int)(mean_node_weight / bin_probability);
+        size_t bin_max = (size_t)(mean_node_weight / bin_probability);
         if (bin_max > max_node_weight) {
           printf("Warning: Max Node Weight for resource %s is %lu, which is "
                  "less than the ideal max for the binomial distribution "
@@ -251,7 +251,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
     ResourceOptions& res_options = it.second;
     assert(resource_name_to_id_.count(res_options.resource_name) == 1);
     int res_id = resource_name_to_id_[res_options.resource_name];
-    assert(res_id < num_resources_);
+    assert(res_id < (int)num_resources_);
     int expected_number_of_nodes =
         (int)ceil(gen_options_.num_nodes *
         res_options.node_contain_probability);
@@ -303,7 +303,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
     }
     shuffle(node_id_assignment_order.begin(), node_id_assignment_order.end(),
             random_engine_);
-    int index = 0;
+    size_t index = 0;
     vector<set<int>> assigned_node_ids_by_res_id;
     assigned_node_ids_by_res_id.resize(num_resources_);
     vector<set<int>> possibly_free_neighbors_by_res_id;
@@ -354,7 +354,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
     node_resource_types.clear();
     for (size_t i = 0; i < node_id_assignment_order.size(); i++) {
       int node_id = node_id_assignment_order[i];
-      for (int res_id = 0; res_id < num_resources_; res_id++) {
+      for (size_t res_id = 0; res_id < num_resources_; res_id++) {
         if (assigned_node_ids_by_res_id[res_id].find(node_id) !=
             assigned_node_ids_by_res_id[res_id].end()) {
           node_resource_types.push_back(res_id);
@@ -374,7 +374,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
   // types by their corresponding type.
   vector<vector<int>> resource_per_node_weights;
   resource_per_node_weights.resize(num_resources_);
-  for (int res_id = 0; res_id < num_resources_; ++res_id) {
+  for (size_t res_id = 0; res_id < num_resources_; ++res_id) {
     assert(resource_id_to_name_.count(res_id) == 1);
     const string& resource_name = resource_id_to_name_[res_id];
     assert(resource_options_map_.count(resource_name) == 1);
@@ -433,7 +433,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
   // resource per implementation.
   vector<map<int,int>> node_weights;
   node_weights.resize(gen_options_.num_nodes);
-  for (int node_num = 0; node_num < gen_options_.num_nodes; ++node_num) {
+  for (size_t node_num = 0; node_num < gen_options_.num_nodes; ++node_num) {
     int res_id = node_resource_types[node_num];
     assert(!resource_per_node_weights[res_id].empty());
     int res_weight = resource_per_node_weights[res_id].back();
@@ -490,7 +490,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
     ostringstream node_ss;
     for (auto impl_it = node_implementations.begin();
          impl_it != node_implementations.end(); impl_it++) {
-      for (int res_id = 0; res_id < num_resources_; res_id++) {
+      for (size_t res_id = 0; res_id < num_resources_; res_id++) {
         if (res_id != 0 || impl_it != node_implementations.begin()) {
           node_ss << " ";
         }

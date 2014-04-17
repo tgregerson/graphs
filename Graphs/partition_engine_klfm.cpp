@@ -126,13 +126,13 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
   bool skip = false;
   for (auto node_pair : internal_node_map_) {
     vector<int> node_weight = node_pair.second->SelectedWeightVector();
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       if (node_weight[i] >= 2 * max_weight_imbalance_[i]) {
         printf("WARNING: Node %s with weight %d exceeded the max weight allowance: %d "
-               "in resource %d.\n",
+               "in resource %lu.\n",
                node_pair.second->name.c_str(), node_weight[i],
                2 * max_weight_imbalance_[i], i);
-        printf("Supressing future warnings of this type for this run.\n");
+        printf("Suppressing future warnings of this type for this run.\n");
         skip = true;
         break;
       }
@@ -179,7 +179,7 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
     StoreInitialImplementations(&initial_implementations);
   }
 
-  for (int cur_run = 0; cur_run < options_.num_runs; cur_run++) {
+  for (size_t cur_run = 0; cur_run < options_.num_runs; cur_run++) {
     vector<PartitionSummary> this_run_summaries;
     if (!options_.reuse_previous_run_implementations && cur_run != 0) {
       ResetImplementations(initial_implementations);
@@ -220,7 +220,7 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
 
 void PartitionEngineKlfm::CheckSizeOfWeightVectors() {
   for (auto node_pair : internal_node_map_) {
-    for (int i = 0; i < node_pair.second->WeightVectors().size(); ++i) {
+    for (size_t i = 0; i < node_pair.second->WeightVectors().size(); ++i) {
       assert_b(num_resources_per_node_ ==
                node_pair.second->WeightVector(i).size()) {
         os_  << "Found invalidly sized weight vector in node '"
@@ -282,7 +282,7 @@ void PartitionEngineKlfm::ExecuteRun(
       &current_partition_balance);
 
   if (options_.use_multilevel_constraint_relaxation) {
-    for (int i = 1; i < num_resources_per_node_; i++) {
+    for (size_t i = 1; i < num_resources_per_node_; i++) {
       options_.constrain_balance_by_resource[i] = false;
     }
     RecomputeTotalWeightAndMaxImbalance();
@@ -355,7 +355,7 @@ void PartitionEngineKlfm::ExecuteRun(
   }
 
   if (options_.use_multilevel_constraint_relaxation) {
-    for (int i = 1; i < num_resources_per_node_; i++) {
+    for (size_t i = 1; i < num_resources_per_node_; i++) {
       options_.constrain_balance_by_resource[i] = true;
     }
     RecomputeTotalWeightAndMaxImbalance();
@@ -394,7 +394,7 @@ void PartitionEngineKlfm::ExecuteRun(
       if (ExceedsMaxWeightImbalance(current_partition_balance)) {
         os_ << "Attempting to rebalance violater partition."
             << endl;
-        for (int i = 0; i < num_resources_per_node_; i++) {
+        for (size_t i = 0; i < num_resources_per_node_; i++) {
           options_.constrain_balance_by_resource[i] = true;
         }
         RecomputeTotalWeightAndMaxImbalance();
@@ -411,7 +411,7 @@ void PartitionEngineKlfm::ExecuteRun(
       // This is a technique to avoid the problem that resources which have
       // been completely eliminated are unable to be used.
       bool need_mutate = false;
-      for (int i = 0; i < num_resources_per_node_; i++) {
+      for (size_t i = 0; i < num_resources_per_node_; i++) {
         if (total_weight_[i] == 0) {
           need_mutate = true;
         }
@@ -436,7 +436,7 @@ void PartitionEngineKlfm::ExecuteRun(
     }
     // TODO This is used more than once. Factor into function.
     vector<double> partition_imbalance;
-    for (int tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
+    for (size_t tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
       if (total_weight_[tw_i] != 0) {
         partition_imbalance.push_back(
             ((double)abs(current_partition_balance[tw_i]) /
@@ -452,14 +452,14 @@ void PartitionEngineKlfm::ExecuteRun(
     int part_a_weight_sum = 0;
     int part_b_weight_sum = 0;
     int total_weight_sum = 0;
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       part_a_weight[i] = (total_weight_[i] + current_partition_balance[i]) / 2;
       part_b_weight[i] = (total_weight_[i] - current_partition_balance[i]) / 2;
       part_a_weight_sum += part_a_weight[i];
       part_b_weight_sum += part_b_weight[i];
       total_weight_sum += total_weight_[i];
     }
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       graph_ratio[i] = (double)total_weight_[i] / (double)total_weight_sum;
       partition_ratios[0].push_back(
           (double)part_a_weight[i] / (double)part_a_weight_sum);
@@ -540,7 +540,7 @@ int PartitionEngineKlfm::RunKlfmAlgorithm(
   vector<vector<int>> best_cost_balance_by_pass;
 
   // Perform specified number of passes.
-  int cur_pass = 0;
+  size_t cur_pass = 0;
   while (cur_pass < options_.max_passes || !options_.cap_passes) {
     bool partition_changed;
 
@@ -565,9 +565,9 @@ int PartitionEngineKlfm::RunKlfmAlgorithm(
 
     RUN_VERBOSE(2) {
       printf("Best cost this pass: %d\n", best_cost_by_pass[cur_pass]);
-      printf("Best result found after %d moves.\n", max_at_node_count_);
+      printf("Best result found after %lu moves.\n", max_at_node_count_);
       printf("Imbalance: ");
-      for (int tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
+      for (size_t tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
         if (total_weight_[tw_i] != 0) {
           printf("%f ",
                 ((double)abs(current_partition_balance.at(tw_i)) /
@@ -633,7 +633,7 @@ void PartitionEngineKlfm::ExecutePass(
           best_cost_balance, best_cost, best_cost_br_power,
           current_partition, nodes_moved_since_best_result);
       if ((VERBOSITY >= 2) && (node_count_ % PROFILE_ITERATIONS == 0)) {
-          printf("Processed %d nodes\n", node_count_);
+          printf("Processed %lu nodes\n", node_count_);
       }
       if (PROFILE_ENABLED && (node_count_ % PROFILE_ITERATIONS == 0)) {
         RefreshProfilingData(true);
@@ -659,10 +659,10 @@ void PartitionEngineKlfm::ExecutePass(
 
 void PartitionEngineKlfm::PrintPassInfo(int cur_pass, int cur_run) {
   if (options_.cap_passes) {
-    printf("\n============Run %d/%d Pass %d/%d============\n\n",
+    printf("\n============Run %d/%lu Pass %d/%lu============\n\n",
         cur_run + 1, options_.num_runs, cur_pass + 1, options_.max_passes);
   } else {
-    printf("\n============Run %d/%d Pass %d============\n\n",
+    printf("\n============Run %d/%lu Pass %d============\n\n",
         cur_run + 1, options_.num_runs, cur_pass + 1);
   }
 }
@@ -859,7 +859,7 @@ void PartitionEngineKlfm::MakeKlfmMove(
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 1) {
     vector<int> rec_balance;
     rec_balance = RecomputeCurrentBalance(current_partition);
-    for (int i = 0; i < current_partition_balance.size(); i++) {
+    for (size_t i = 0; i < current_partition_balance.size(); i++) {
       assert(rec_balance[i] == current_partition_balance.at(i));
     }
   }
@@ -916,9 +916,9 @@ void PartitionEngineKlfm::MakeKlfmMove(
   }
   RUN_DEBUG(DEBUG_OPT_PARTITION_IMBALANCE_EXCEEDED, 0) {
     if (!prev_exceeded && balance_exceeded_) {
-      printf("Balance exceeded starting at move %d\n", node_count_);
+      printf("Balance exceeded starting at move %lu\n", node_count_);
     } else if (prev_exceeded && !balance_exceeded_) {
-      printf("Returned to balance at move %d\n", node_count_);
+      printf("Returned to balance at move %lu\n", node_count_);
     }
   }
   if (PROFILE_ENABLED) {
@@ -973,13 +973,13 @@ void PartitionEngineKlfm::MoveNodeAndUpdateBalance(
   if (from_part_a) {
     current_partition.first.erase(node->id);
     current_partition.second.insert(node->id);
-    for (int wt_it = 0; wt_it < num_resources_per_node_; wt_it++) {
+    for (size_t wt_it = 0; wt_it < num_resources_per_node_; wt_it++) {
       balance[wt_it] -= (weight_vector[wt_it] + prev_weight_vector[wt_it]);
     }
   } else {
     current_partition.second.erase(node->id);
     current_partition.first.insert(node->id);
-    for (int wt_it = 0; wt_it < num_resources_per_node_; wt_it++) {
+    for (size_t wt_it = 0; wt_it < num_resources_per_node_; wt_it++) {
       balance[wt_it] += (weight_vector[wt_it] + prev_weight_vector[wt_it]);
     }
   }
@@ -1191,7 +1191,7 @@ void PartitionEngineKlfm::GenerateInitialPartitionRandom(
     // TODO: Come up with something more robust.
     double max_imbalance_frac = 0.0;
     int choose_resource = 0;
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       if (node_weights[i] != 0) {
         int imbalance = abs(current_balance[i]);
         double imbalance_frac =
@@ -1236,7 +1236,7 @@ void PartitionEngineKlfm::FixInitialWeightImbalance(
 
 bool PartitionEngineKlfm::ExceedsMaxWeightImbalance(
     const vector<int>& current_balance) const {
-  for (int res_id = 0; res_id < num_resources_per_node_; res_id++) {
+  for (size_t res_id = 0; res_id < num_resources_per_node_; res_id++) {
     if (options_.constrain_balance_by_resource[res_id] &&
         abs(current_balance[res_id]) > max_weight_imbalance_[res_id]) {
       return true;
@@ -1249,7 +1249,7 @@ void PartitionEngineKlfm::RecomputeTotalWeightAndMaxImbalance() {
   total_weight_.assign(num_resources_per_node_, 0);
   for (auto node_pair : internal_node_map_) {
     vector<int> node_weight = node_pair.second->SelectedWeightVector();
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       total_weight_[i] += node_weight[i];
     }
   }
@@ -1257,7 +1257,7 @@ void PartitionEngineKlfm::RecomputeTotalWeightAndMaxImbalance() {
   max_weight_imbalance_.resize(num_resources_per_node_);
   assert(max_weight_imbalance_.size() ==
          options_.constrain_balance_by_resource.size());
-  for (int i = 0; i < max_weight_imbalance_.size(); i++) {
+  for (size_t i = 0; i < max_weight_imbalance_.size(); i++) {
     if (options_.constrain_balance_by_resource[i]) {
       max_weight_imbalance_[i] =
           (int)(total_weight_[i] * options_.max_imbalance_fraction[i]);
@@ -1338,13 +1338,13 @@ std::vector<int> PartitionEngineKlfm::RecomputeCurrentBalance(
   balance.assign(num_resources_per_node_, 0);
   for (auto node_id : partition.first) {
     Node* node = internal_node_map_.at(node_id);
-    for (int res = 0; res < num_resources_per_node_; res++) {
+    for (size_t res = 0; res < num_resources_per_node_; res++) {
       balance[res] += node->SelectedWeightVector()[res];
     }
   }
   for (auto node_id : partition.second) {
     Node* node = internal_node_map_.at(node_id);
-    for (int res = 0; res < num_resources_per_node_; res++) {
+    for (size_t res = 0; res < num_resources_per_node_; res++) {
       balance[res] -= node->SelectedWeightVector()[res];
     }
   }
@@ -1409,13 +1409,13 @@ std::vector<int> PartitionEngineKlfm::RecomputeCurrentBalanceAtBaseLevel(
 
   for (auto node_pair : first) {
     Node* node = node_pair.second;
-    for (int res = 0; res < num_resources_per_node_; res++) {
+    for (size_t res = 0; res < num_resources_per_node_; res++) {
       balance[res] += node->SelectedWeightVector()[res];
     }
   }
   for (auto node_pair : second) {
     Node* node = node_pair.second;
-    for (int res = 0; res < num_resources_per_node_; res++) {
+    for (size_t res = 0; res < num_resources_per_node_; res++) {
       balance[res] -= node->SelectedWeightVector()[res];
     }
   }
@@ -1458,7 +1458,7 @@ void PartitionEngineKlfm::RebalanceImplementations(
       if (new_exceeds && !prev_exceeds) {
         node->SetSelectedWeightVector(prev_wv_index);
         UpdateTotalWeightsForImplementationChange(new_wv, prev_wv);
-        for (int i = 0; i < new_wv.size(); i++) {
+        for (size_t i = 0; i < new_wv.size(); i++) {
           if (in_part_a) {
             partition_imbalance[i] += prev_wv[i] - new_wv[i];
           } else {
@@ -1476,7 +1476,7 @@ void PartitionEngineKlfm::RebalanceImplementations(
       RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 2) {
         vector<int> new_balance = partition_imbalance;
         vector<int> rec_balance = RecomputeCurrentBalance(current_partition);
-        for (int i = 0; i < rec_balance.size(); i++) {
+        for (size_t i = 0; i < rec_balance.size(); i++) {
           assert(rec_balance[i] == new_balance[i]);
         }
       }
@@ -1623,11 +1623,11 @@ void PartitionEngineKlfm::Options::PopulateFromPartitionerConfig(
   constrain_balance_by_resource.insert(constrain_balance_by_resource.begin(),
       num_resources_per_node, true);
   if (gain_bucket_type == PartitionerConfig::kGainBucketSingleResource) {
-    for (int i = 1; i < num_resources_per_node; i++) {
+    for (size_t i = 1; i < num_resources_per_node; i++) {
       constrain_balance_by_resource[i] = false;
     }
   } else {
-    for (int i = 0; i < num_resources_per_node; i++) {
+    for (size_t i = 0; i < num_resources_per_node; i++) {
       if (max_imbalance_fraction[i] >= 0.99) {
         constrain_balance_by_resource[i] = false;
       } else {
@@ -1782,12 +1782,12 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
         if (vn_it != available_node_ids.end()) {
           available_node_ids.erase(vn_it);
           neighbor_node_ids.insert(neighbor_node_id);
-          if (neighbor_limit && neighbor_node_ids.size() >= neighbor_limit) {
+          if (neighbor_limit && (int)neighbor_node_ids.size() >= neighbor_limit) {
             break;
           }
         }
       }
-      if (neighbor_limit && neighbor_node_ids.size() >= neighbor_limit) {
+      if (neighbor_limit && (int)neighbor_node_ids.size() >= neighbor_limit) {
         break;
       }
     }
@@ -1841,12 +1841,12 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
           if (vn_it != available_node_ids.end()) {
             available_node_ids.erase(vn_it);
             neighbor_node_ids.insert(neighbor_node_id);
-            if (neighbor_limit && neighbor_node_ids.size() >= neighbor_limit) {
+            if (neighbor_limit && (int)neighbor_node_ids.size() >= neighbor_limit) {
               break;
             }
           }
         }
-        if (neighbor_limit && neighbor_node_ids.size() >= neighbor_limit) {
+        if (neighbor_limit && (int)neighbor_node_ids.size() >= neighbor_limit) {
           break;
         }
       }
@@ -1881,7 +1881,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
     insert_index++;
   }
   supernode_indices_is_finalized.assign(supernode_id_sets.size(), false);
-  for (int i = 0; i < supernode_id_sets.size(); i++) {
+  for (size_t i = 0; i < supernode_id_sets.size(); i++) {
     non_finalized_supernode_indices.insert(i);
   }
 
@@ -1906,7 +1906,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
               if (potential_size <= max_nodes_per_supernode) {
                 viable_neighbor_indices.insert(neighbor_sn_index);
                 if (neighbor_limit != 0 &&
-                    viable_neighbor_indices.size() >= neighbor_limit) {
+                    (int)viable_neighbor_indices.size() >= neighbor_limit) {
                   break;
                 }
               }
@@ -1914,7 +1914,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
           }
         }
         if (neighbor_limit != 0 &&
-            viable_neighbor_indices.size() >= neighbor_limit) {
+            (int)viable_neighbor_indices.size() >= neighbor_limit) {
           break;
         }
       }
@@ -2003,7 +2003,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
 void PartitionEngineKlfm::PrintWeightImbalanceFraction(
     const vector<int>& balance, const vector<int>& max_imbalance) {
   assert(balance.size() == max_weight_imbalance_.size());
-  for (int i = 0; i < balance.size(); i++) {
+  for (size_t i = 0; i < balance.size(); i++) {
     if (i != 0) {
       os_ << " ";
     }
@@ -2152,7 +2152,7 @@ void PartitionEngineKlfm::UpdateTotalWeightsForImplementationChange(
     const std::vector<int>& old_weight_vector,
     const std::vector<int>& new_weight_vector) {
   assert(old_weight_vector.size() == new_weight_vector.size());
-  for (int i = 0; i < old_weight_vector.size(); i++) {
+  for (size_t i = 0; i < old_weight_vector.size(); i++) {
     total_weight_[i] += (new_weight_vector[i] - old_weight_vector[i]);
     assert(total_weight_[i] >= 0);
     if (options_.constrain_balance_by_resource[i]) {

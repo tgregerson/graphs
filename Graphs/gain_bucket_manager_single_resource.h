@@ -55,7 +55,7 @@ class GainBucketManagerSingleResource : public GainBucketManager {
  private:
   virtual void AddEntry(const GainBucketEntry& entry, bool in_part_a);
 
-  int resource_index_;
+  size_t resource_index_;
   double max_imbalance_fraction_;
   GainBucketInterface* gain_bucket_a_;
   GainBucketInterface* gain_bucket_b_;

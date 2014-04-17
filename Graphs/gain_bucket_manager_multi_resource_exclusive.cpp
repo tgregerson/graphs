@@ -98,7 +98,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryR
   vector<int> max_constrained_node_weights;
   vector<int> max_weight_imbalance =
       GetMaxImbalance(max_imbalance_fraction_, total_weight);
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     // For this function, only consider resources that are not exhausted.
     // Note that individual buckets may still be empty, but not both for a
     // given resource.
@@ -132,13 +132,13 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryR
       unconstrained_buckets[bucket_index];
   int resource_index = -1;
   if (!unconstrained_bucket->Empty()) {
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       if (unconstrained_bucket->Top().current_weight_vector()[i] != 0) {
         resource_index = i;
       }
     }
   } else {
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       if (constrained_bucket->Top().current_weight_vector()[i] != 0) {
         resource_index = i;
       }
@@ -176,7 +176,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryL
   vector<int> max_constrained_node_weights;
   vector<int> max_weight_imbalance =
       GetMaxImbalance(max_imbalance_fraction_, total_weight);
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     int mcnw = (max_weight_imbalance[i] - abs(current_balance[i])) / 2;
     if (mcnw < 0) {
       mcnw = 0;
@@ -194,7 +194,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryL
 
   double largest_frac = 0.0;
   int resource_index = 0;
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (!(constrained_buckets[i]->Empty() &&
           unconstrained_buckets[i]->Empty())) {
       double weight_frac =
@@ -219,7 +219,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryL
 GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryLargestUnconstrainedGain(
     const vector<int>& current_balance, const vector<int>& total_weight) {
   vector<GainBucketInterface*> unconstrained_buckets;
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (current_balance[i] < 0) {
       if (!gain_buckets_b_[i]->Empty()) {
         unconstrained_buckets.push_back(gain_buckets_b_[i]);
@@ -239,7 +239,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryL
 
   int max_unconstrained_gain = unconstrained_buckets[0]->Top().gain;
   int index = 0;
-  for (int i = 1; i < unconstrained_buckets.size(); i++) {
+  for (size_t i = 1; i < unconstrained_buckets.size(); i++) {
     int my_gain = unconstrained_buckets[i]->Top().gain;
     if (my_gain > max_unconstrained_gain) {
       max_unconstrained_gain = my_gain;
@@ -264,7 +264,7 @@ GainBucketEntry
   vector<int> max_weight_imbalance =
       GetMaxImbalance(max_imbalance_fraction_, total_weight);
   vector<int> max_constrained_node_weights;
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     int mcnw = (max_weight_imbalance[i] - abs(current_balance[i])) / 2;
     if (mcnw < 0) {
       mcnw = 0;
@@ -273,7 +273,7 @@ GainBucketEntry
   }
 
   vector<pair<bool, pair<int, GainBucketInterface*>>> buckets;
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     bool part_a_constrained = current_balance[i] < 0;
     if (!gain_buckets_a_[i]->Empty()) {
       pair<int, GainBucketInterface*> res_bucket_pair =
@@ -288,7 +288,7 @@ GainBucketEntry
   }
 
   vector<pair<int, GainBucketEntry>> top_entries;
-  for (int bucket_num = 0; bucket_num < buckets.size(); bucket_num++) {
+  for (size_t bucket_num = 0; bucket_num < buckets.size(); bucket_num++) {
     vector<GainBucketEntry> passed_entries;
     GainBucketEntry entry;
     bool found_good_entry = false;
@@ -297,7 +297,7 @@ GainBucketEntry
     bool bucket_is_constrained = buckets[bucket_num].first;
     // This is likely to be a critical loop in the algorithm, so the value
     // of MAX_CONSTRAINED_ENTRY_CHECKS may have a large impact on performance.
-    for (int entry_num = 0; entry_num < MAX_CONSTRAINED_ENTRY_CHECKS &&
+    for (size_t entry_num = 0; entry_num < MAX_CONSTRAINED_ENTRY_CHECKS &&
          !bucket->Empty(); entry_num++) {
       entry = bucket->Top();
       bucket->Pop();
@@ -343,7 +343,7 @@ GainBucketEntry
   // Find max-gain entry. Put any non-max entries back in their buckets.
   int max_gain = top_entries[0].second.gain;
   int max_index = 0;
-  for (int i = 1; i < top_entries.size(); i++) {
+  for (size_t i = 1; i < top_entries.size(); i++) {
     if (top_entries[i].second.gain > max_gain) {
       // Put the previous max back in its bucket.
       buckets[top_entries[max_index].first].second.second->Add(
@@ -461,9 +461,9 @@ void GainBucketManagerMultiResourceExclusive::AddNode(int gain, Node* node,
     // Can only add one entry per resource type.
     vector<pair<int,int>> res_min_index;
     res_min_index.assign(num_resources_per_node_, make_pair(-1,0));
-    for (int i = 0; i < node->WeightVectors().size(); i++) {
+    for (size_t i = 0; i < node->WeightVectors().size(); i++) {
       const vector<int>& wv = node->WeightVector(i);
-      for (int res = 0; res < wv.size(); res++) {
+      for (size_t res = 0; res < wv.size(); res++) {
         if (wv[res] != 0) {
           if (res_min_index[res].first == -1 ||
               res_min_index[res].second < wv[res]) {
@@ -490,7 +490,7 @@ void GainBucketManagerMultiResourceExclusive::AddEntry(
     const GainBucketEntry& entry, bool in_part_a) {
   assert(entry.current_weight_vector().size() == num_resources_per_node_);
   int pos = -1;
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (entry.current_weight_vector()[i] != 0) {
       assert_b(pos == -1) {
         printf("Using a Resource-Exclusive gain bucket, but detected a weight "
@@ -532,7 +532,7 @@ void GainBucketManagerMultiResourceExclusive::UpdateGains(
       dec[it->second].push_back(id);
     }
   }
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (!inc[i].empty()) {
       if (moved_from_part_a) {
         gain_buckets_a_[i]->UpdateGains(gain_modifier, inc[i]);
@@ -584,12 +584,12 @@ bool GainBucketManagerMultiResourceExclusive::InPartA(int node_id) {
 }
 
 void GainBucketManagerMultiResourceExclusive::Print(bool condensed) const {
-  for (int i = 0; i < gain_buckets_a_.size(); i++) {
+  for (size_t i = 0; i < gain_buckets_a_.size(); i++) {
     printf("\nGain Bucket A - Resource %d:\n", i);
     gain_buckets_a_[i]->Print(condensed);
     printf("\n");
   }
-  for (int i = 0; i < gain_buckets_b_.size(); i++) {
+  for (size_t i = 0; i < gain_buckets_b_.size(); i++) {
     printf("\nGain Bucket B - Resource %d:\n", i);
     gain_buckets_b_[i]->Print(condensed);
     printf("\n");

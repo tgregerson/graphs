@@ -226,7 +226,7 @@ bool ChacoParser::ParseWeightHeaderLine() {
 
   // Make sure number of nodes specified in weight file matches number specified
   // in graph description.
-  assert(setup_vals[0] == num_nodes_);
+  assert(((size_t)(setup_vals[0])) == num_nodes_);
 
   num_entries_per_weight_vector_ = setup_vals[1];
   assert(num_entries_per_weight_vector_ > 0);
@@ -262,7 +262,7 @@ bool ChacoParser::ParseExternalWeightFile() {
   }
   assert(!weight_file_.eof());
 
-  int node_num = 1;
+  size_t node_num = 1;
   getline(weight_file_, cur_line);
   while (!weight_file_.eof()) {
     if ((node_num % 50000) == 0) {
@@ -275,10 +275,10 @@ bool ChacoParser::ParseExternalWeightFile() {
     vector<int> weight_vectors = ExtractIntsFromLine(cur_line);
     cur_line.clear();
     assert(weight_vectors.size() % num_entries_per_weight_vector_ == 0);
-    for (int start_offset = 0; start_offset < weight_vectors.size();
+    for (size_t start_offset = 0; start_offset < weight_vectors.size();
          start_offset += num_entries_per_weight_vector_) {
       vector<int> weight_vector;
-      for (int entry_offset = 0; entry_offset < num_entries_per_weight_vector_;
+      for (size_t entry_offset = 0; entry_offset < num_entries_per_weight_vector_;
            entry_offset++) {
         weight_vector.push_back(weight_vectors[start_offset + entry_offset]);
       }

@@ -28,7 +28,7 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
     // TODO - Make this a parameter of the constructor and incorporate into
     // the partitioner configuration.
     max_bucket_search_depth_ = 3;
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       gain_buckets_a_.push_back(new GainBucketStandard());
       gain_buckets_b_.push_back(new GainBucketStandard());
     }
@@ -37,7 +37,7 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
   }
 
   virtual ~GainBucketManagerMultiResourceMixed() {
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       delete gain_buckets_a_[i];
       delete gain_buckets_b_[i];
     }
@@ -127,8 +127,8 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
   // Lower is better.
   double ComputeGainImbalanceFn(int gain, double imbalance_power);
 
-  int num_resources_per_node_;
-  int max_bucket_search_depth_;
+  size_t num_resources_per_node_;
+  size_t max_bucket_search_depth_;
   // This vector has the same number of entries as there are resources types.
   // Each bucket represents a resource type and may include entries that are
   // weighted toward that resource.

@@ -22,14 +22,14 @@ class GainBucketManagerMultiResourceExclusive : public GainBucketManager {
       num_nodes_(0) {
     random_engine_.seed(time(NULL));
     num_resources_per_node_ = max_imbalance_fraction_.size();   
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       gain_buckets_a_.push_back(new GainBucketStandard());
       gain_buckets_b_.push_back(new GainBucketStandard());
     }
   }
 
   virtual ~GainBucketManagerMultiResourceExclusive() {
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       delete gain_buckets_a_[i];
       delete gain_buckets_b_[i];
     }
@@ -87,14 +87,14 @@ class GainBucketManagerMultiResourceExclusive : public GainBucketManager {
       GainBucketInterface* unconstrained_bucket,
       int resource_index,
       int max_constrained_node_weight);
-  int num_resources_per_node_;
+  size_t num_resources_per_node_;
   std::vector<GainBucketInterface*> gain_buckets_a_;
   std::vector<GainBucketInterface*> gain_buckets_b_;
   std::vector<double> max_imbalance_fraction_;
   PartitionerConfig::GainBucketSelectionPolicy selection_policy_;
   std::unordered_multimap<int, int> node_id_to_resource_index_;
   bool use_adaptive_;
-  int num_nodes_;
+  size_t num_nodes_;
   std::default_random_engine random_engine_;
 };
 

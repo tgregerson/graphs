@@ -100,7 +100,7 @@ void GainBucketManagerMultiResourceMixed::RemoveNode(int node_id) {
 GainBucketEntry GainBucketManagerMultiResourceMixed::GetNextGainBucketEntryRandomResource(
     const vector<int>& current_balance, const vector<int>& total_weight) {
   vector<int> non_empty_indices;
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (!(gain_buckets_a_[i]->Empty() && gain_buckets_b_[i]->Empty())) {
       non_empty_indices.push_back(i);
     }
@@ -124,7 +124,7 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::GetNextGainBucketEntryMostU
   int resource_index = 0;
   vector<int> max_weight_imbalance =
       GetMaxImbalance(max_imbalance_fraction_, total_weight);
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (!(gain_buckets_a_[i]->Empty() &&
           gain_buckets_b_[i]->Empty())) {
       double weight_frac =
@@ -221,9 +221,9 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::GetNextGainBucketEntryBestG
     GainBucketEntry entry;
   };
   vector<CandidateEntry> candidate_entries;
-  for (int res_index = 0; res_index < gain_buckets_a_.size(); res_index++) {
+  for (size_t res_index = 0; res_index < gain_buckets_a_.size(); res_index++) {
     // Part A buckets.
-    for (int depth = 0; depth < max_bucket_search_depth_; depth++) {
+    for (size_t depth = 0; depth < max_bucket_search_depth_; depth++) {
       if (gain_buckets_a_[res_index]->Empty()) {
         break;
       }
@@ -245,7 +245,7 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::GetNextGainBucketEntryBestG
       candidate_entries.push_back(candidate);
     }
     // Part B buckets.
-    for (int depth = 0; depth < max_bucket_search_depth_; depth++) {
+    for (size_t depth = 0; depth < max_bucket_search_depth_; depth++) {
       if (gain_buckets_b_[res_index]->Empty()) {
         break;
       }
@@ -268,9 +268,9 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::GetNextGainBucketEntryBestG
   }
 
   // Get best candidate by score (lower is better).
-  int best_score_index = 0;
+  size_t best_score_index = 0;
   double best_score = candidate_entries[0].score;
-  for (int i = 1; i < candidate_entries.size(); i++) {
+  for (size_t i = 1; i < candidate_entries.size(); i++) {
     double cur_score = candidate_entries[i].score;
     if ((cur_score < best_score) || ((cur_score == best_score) &&
        // Although the gain is already incorporated in the score, we also want
@@ -288,7 +288,7 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::GetNextGainBucketEntryBestG
       candidate_entries[best_score_index].resource_index << endl;
 
   // Return unchosen candidates to their buckets.
-  for (int i = 0; i < candidate_entries.size(); i++) {
+  for (size_t i = 0; i < candidate_entries.size(); i++) {
     if (i != best_score_index) {
       auto& candidate = candidate_entries[i];
       if (candidate.from_part_a) {
@@ -363,8 +363,8 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::SelectBetweenBucketsByImbal
     }
   }
 
-  int bucket_a_best_index = 0;
-  for (int i = 1; i < bucket_a_entries.size(); i++) {
+  size_t bucket_a_best_index = 0;
+  for (size_t i = 1; i < bucket_a_entries.size(); i++) {
     // Important to use strictly greater-than here, as it will make sure that
     // we keep the highest gain entry when ties occur, since all of the entries
     // are sorted in descending gain order.
@@ -373,8 +373,8 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::SelectBetweenBucketsByImbal
       bucket_a_best_index = i;
     }
   }
-  int bucket_b_best_index = 0;
-  for (int i = 1; i < bucket_b_entries.size(); i++) {
+  size_t bucket_b_best_index = 0;
+  for (size_t i = 1; i < bucket_b_entries.size(); i++) {
     if (bucket_b_entries[i].first >
         bucket_b_entries[bucket_b_best_index].first) {
       bucket_b_best_index = i;
@@ -404,7 +404,7 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::SelectBetweenBucketsByImbal
   }
 
   GainBucketEntry selected_entry;
-  for (int i = 0; i < bucket_a_entries.size(); i++) {
+  for (size_t i = 0; i < bucket_a_entries.size(); i++) {
     if (use_bucket_a_candidate && (i == bucket_a_best_index)) {
       selected_entry = bucket_a_entries[i].second;
     } else {
@@ -412,7 +412,7 @@ GainBucketEntry GainBucketManagerMultiResourceMixed::SelectBetweenBucketsByImbal
       bucket_a->Add(bucket_a_entries[i].second);
     }
   }
-  for (int i = 0; i < bucket_b_entries.size(); i++) {
+  for (size_t i = 0; i < bucket_b_entries.size(); i++) {
     if (!use_bucket_a_candidate && (i == bucket_b_best_index)) {
       selected_entry = bucket_b_entries[i].second;
     } else {
@@ -446,7 +446,7 @@ void GainBucketManagerMultiResourceMixed::AddNode(int gain, Node* node,
     // that resource.
     vector<int> res_to_wv_index;
     res_to_wv_index.assign(num_resources_per_node_, -1);
-    for (int i = 0; i < node->WeightVectors().size(); i++) {
+    for (size_t i = 0; i < node->WeightVectors().size(); i++) {
       auto& weight_vector = node->WeightVectors()[i];
       int resource_affinity =
           DetermineResourceAffinity(weight_vector, total_weight);
@@ -460,7 +460,7 @@ void GainBucketManagerMultiResourceMixed::AddNode(int gain, Node* node,
         res_to_wv_index[resource_affinity] = i;
       }
     }
-    for (int i = 0; i < num_resources_per_node_; i++) {
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
       if (res_to_wv_index[i] >= 0) {
         entry.current_weight_vector_index = res_to_wv_index[i];
         AddEntry(entry, i, in_part_a);
@@ -490,7 +490,7 @@ int GainBucketManagerMultiResourceMixed::DetermineResourceAffinity(
   double max_res_frac = 0.0;
   std::vector<int> max_weight_imbalance =
       GetMaxImbalance(max_imbalance_fraction_, total_weight);
-  for (int res = 0; res < weight_vector.size(); res++) {
+  for (size_t res = 0; res < weight_vector.size(); res++) {
     double res_frac =
       (double)weight_vector[res] / (double)max_weight_imbalance[res];
     if (res_frac > max_res_frac) {
@@ -522,7 +522,7 @@ void GainBucketManagerMultiResourceMixed::UpdateGains(
       dec[it->second].push_back(id);
     }
   }
-  for (int i = 0; i < num_resources_per_node_; i++) {
+  for (size_t i = 0; i < num_resources_per_node_; i++) {
     if (!inc[i].empty()) {
       if (moved_from_part_a) {
         gain_buckets_a_[i]->UpdateGains(gain_modifier, inc[i]);
@@ -569,15 +569,15 @@ void GainBucketManagerMultiResourceMixed::UpdateNodeImplementation(Node* node) {
 void GainBucketManagerMultiResourceMixed::Print(bool condensed) const {
   printf("\nGain Bucket A Master\n");
   gain_bucket_a_master_->Print(condensed);
-  for (int i = 0; i < gain_buckets_a_.size(); i++) {
-    printf("\nGain Bucket A - Resource Affinity %d:\n", i);
+  for (size_t i = 0; i < gain_buckets_a_.size(); i++) {
+    printf("\nGain Bucket A - Resource Affinity %lu:\n", i);
     gain_buckets_a_[i]->Print(condensed);
     printf("\n");
   }
   printf("\nGain Bucket B Master\n");
   gain_bucket_b_master_->Print(condensed);
-  for (int i = 0; i < gain_buckets_b_.size(); i++) {
-    printf("\nGain Bucket B - Resource Affinity %d:\n", i);
+  for (size_t i = 0; i < gain_buckets_b_.size(); i++) {
+    printf("\nGain Bucket B - Resource Affinity %lu:\n", i);
     gain_buckets_b_[i]->Print(condensed);
     printf("\n");
   }
@@ -589,7 +589,7 @@ double GainBucketManagerMultiResourceMixed::ImbalancePowerIfMoved(
   assert(node_weight.size() == balance.size());
   vector<int> adjusted_weight;
   vector<int> adjusted_total_weight;
-  for (int i = 0; i < node_weight.size(); i++) {
+  for (size_t i = 0; i < node_weight.size(); i++) {
     int change = 2 * node_weight[i];
     if (from_part_a) {
       adjusted_weight.push_back(balance[i] - change);
@@ -631,7 +631,7 @@ double GainBucketManagerMultiResourceMixed::ViolatorImbalancePower(
   vector<int> max_weight_imbalance =
       GetMaxImbalance(max_imbalance_fraction_, total_weight);
   bool violated = false;
-  for (int i = 0; i < balance.size(); i++) {
+  for (size_t i = 0; i < balance.size(); i++) {
     if (balance[i] > max_weight_imbalance[i]) {
       violated = true;
     }
@@ -645,7 +645,7 @@ double GainBucketManagerMultiResourceMixed::SetBestWeightVectorByImbalancePower(
   int best_wv_index = -1;
   const vector<int>& current_wv = entry->current_weight_vector();
   double best_imbalance_power = numeric_limits<double>::max();
-  for (int i = 0; i < entry->all_weight_vectors.size(); i++) {
+  for (size_t i = 0; i < entry->all_weight_vectors.size(); i++) {
     auto& wv = entry->all_weight_vectors[i];
     double imbalance_power = ImbalancePowerIfMoved(
         wv, balance, total_weight, from_part_a, use_violator);

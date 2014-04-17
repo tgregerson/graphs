@@ -127,12 +127,12 @@ bool ChacoWeightGenerator::ResourceOptions::Validate() {
   }
 
   if (max_node_weight < 1) {
-    printf("Invalid max node weight: %d\n", max_node_weight);
+    printf("Invalid max node weight: %lu\n", max_node_weight);
     return false;
   }
 
   if (min_node_weight < 1) {
-    printf("Invalid min node weight: %d\n", min_node_weight);
+    printf("Invalid min node weight: %lu\n", min_node_weight);
     return false;
   } else if (min_node_weight > max_node_weight) {
     printf("Min node weight cannot exceed max node weight.\n");
@@ -157,12 +157,12 @@ bool ChacoWeightGenerator::ResourceOptions::Validate() {
         int truncated_mean = (int)mean_node_weight;
         if (truncated_mean > max_node_weight ||
             truncated_mean < min_node_weight) {
-          printf("Invalid mean node weight: %f. Must be between min (%d) and "
-                 "max (%d).\n", mean_node_weight, min_node_weight,
+          printf("Invalid mean node weight: %f. Must be between min (%lu) and "
+                 "max (%lu).\n", mean_node_weight, min_node_weight,
                  max_node_weight);
         }
         if (min_node_weight != 0) {
-          printf("Warning: Min Node Weight for resource %s is non-zero (%d) "
+          printf("Warning: Min Node Weight for resource %s is non-zero (%lu) "
                  "and binomial distribution is selected. A non-zero minimum "
                  "weight may skew the mean and standard deviation.\n",
                  resource_name.c_str(), min_node_weight);
@@ -170,13 +170,13 @@ bool ChacoWeightGenerator::ResourceOptions::Validate() {
         double bin_probability = 1.0 - (variance / mean_node_weight);
         int bin_max = (int)(mean_node_weight / bin_probability);
         if (bin_max > max_node_weight) {
-          printf("Warning: Max Node Weight for resource %s is %d, which is "
+          printf("Warning: Max Node Weight for resource %s is %lu, which is "
                  "less than the ideal max for the binomial distribution "
                  "with the specified mean and std deviation (%d). Enforcing "
                  "this max weight will skew the distribution.\n",
                  resource_name.c_str(), max_node_weight, bin_max);
         } else if (bin_max < max_node_weight) {
-          printf("Info: Max Node Weight for resource %s is %d, which is "
+          printf("Info: Max Node Weight for resource %s is %lu, which is "
                  "to meet the specified mean and standard deviation for a "
                  "binomial distribution, the actual max weight will be capped "
                  "at %d.\n", resource_name.c_str(), max_node_weight, bin_max);

@@ -26,10 +26,10 @@ class ChacoWeightGenerator {
     bool Validate();
 
     std::string resource_name;
-    int max_node_weight;
+    size_t max_node_weight;
     // NOTE: The min_node_weight is the lowest weight of this resource a node
     // may have IFF it has the resource, so it must be greater than zero.
-    int min_node_weight;
+    size_t min_node_weight;
     // Required for Binomial. Ignored for Uniform.
     double mean_node_weight;
     // Required for Binomial. Ignored for Uniform.
@@ -48,8 +48,8 @@ class ChacoWeightGenerator {
   class GeneratorOptions {
    public:
     bool resource_exclusive_nodes;
-    int num_nodes;
-    int num_resources;
+    size_t num_nodes;
+    size_t num_resources;
     std::vector<ResourceOptions> resource_options;
   };
 
@@ -61,7 +61,7 @@ class ChacoWeightGenerator {
   // file.
   std::vector<std::string> GenerateNodeStringsExclusive();
 
-  int num_resources_;
+  size_t num_resources_;
   GeneratorOptions gen_options_;
   std::default_random_engine random_engine_;
   std::map<std::string, ResourceOptions> resource_options_map_;

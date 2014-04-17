@@ -63,7 +63,7 @@ bool ChacoParser::Parse(Node* top_level_graph, const char* filename) {
     Node* new_node = new Node(node_num);
     parsed_nodes_.insert(make_pair(node_num, new_node));
 
-    int pos = 0;
+    size_t pos = 0;
     if (node_weight_mode_ == USER_SPECIFIED_WEIGHT_MODE) {
       int weight = line_ints[pos++];
       vector<int> weight_vec = {weight};
@@ -113,12 +113,12 @@ bool ChacoParser::Parse(Node* top_level_graph, const char* filename) {
   // Check that the number of nodes and edges processed matches what was in the
   // header line.
   if (num_nodes_ != parsed_nodes_.size()) {
-    printf("Error: Graph file header line specified %d nodes, but found %ld",
+    printf("Error: Graph file header line specified %lu nodes, but found %lu",
            num_nodes_, parsed_nodes_.size());
     return Finish(false);
   }
   if (num_edges_ != parsed_edges_.size()) {
-    printf("Error: Graph file header line specified %d edges, but found %ld",
+    printf("Error: Graph file header line specified %lu edges, but found %lu",
            num_edges_, parsed_edges_.size());
     return Finish(false);
   }

@@ -231,7 +231,7 @@ void LpSolveInterface::GraphParsingState::SetObjectiveFunction(lprec* model) {
 }
 
 void LpSolveInterface::GraphParsingState::SetNodeVariableIndex(
-    int node_id, int partition_num, int personality_num, int index) {
+    size_t node_id, size_t partition_num, size_t personality_num, size_t index) {
   assert(partition_num < num_partitions_);
   vector<vector<int>>& entry = node_to_variable_indices_[node_id];
   if (entry.size() <= partition_num) {
@@ -249,9 +249,9 @@ void LpSolveInterface::GraphParsingState::SetEdgeCrossingVariableIndex(
 }
 
 void LpSolveInterface::GraphParsingState::SetEdgePartitionConnectivityVariableIndex(
-    int edge_id, int partition_num, int index) {
+    size_t edge_id, size_t partition_num, size_t index) {
   vector<int>& entry =
-      edge_to_partition_connectivity_variable_indices_[edge_id];
+      edge_to_partition_connectivity_variable_indices_.at(edge_id);
   if (entry.size() <= partition_num) {
     entry.resize(partition_num + 1, kIndexGuard);
   }
@@ -447,8 +447,8 @@ void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
   int indices[num_nonzero];
   REAL coeffs[num_nonzero];
   int i = 0;
-  for (int part = 0; part < num_partitions_; ++part) {
-    for (int per = 0; per < node.WeightVectors().size(); ++per) {
+  for (size_t part = 0; part < num_partitions_; ++part) {
+    for (size_t per = 0; per < node.WeightVectors().size(); ++per) {
       indices[i] = GetNodeVariableIndex(node.id, part, per);
       coeffs[i++] = 1.0;
     }
@@ -718,8 +718,8 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
   for (const auto& p_i_vv : node_to_variable_indices_) {
     int node_id = p_i_vv.first;
     const vector<vector<int>>& part_per_v = p_i_vv.second;
-    for (int part = 0; part < part_per_v.size(); ++part) {
-      for (int per = 0; per < part_per_v[part].size(); ++per) {
+    for (size_t part = 0; part < part_per_v.size(); ++part) {
+      for (size_t per = 0; per < part_per_v[part].size(); ++per) {
         assert(part < 2);  // currently only support bipartition.
         int variable_index = part_per_v[part][per];
         stringstream name;
@@ -750,7 +750,7 @@ void LpSolveInterface::GraphParsingState::SetAllVariableNames(
   // (Connectivity of edge 92 to partition A)
   for (const pair<int, vector<int>>& p :
        edge_to_partition_connectivity_variable_indices_) {
-    for (int part = 0; part < p.second.size(); ++part) {
+    for (size_t part = 0; part < p.second.size(); ++part) {
       stringstream name;
       name << "C" << mps_name_hash::Hash(p.first);
       if (part == 0) {
@@ -828,7 +828,7 @@ void LpSolveInterface::GraphParsingState::AddDeferredColumnsEx(lprec* model) {
     const vector<pair<int, REAL>>& column_ex = column_ex_pair.second;
     unique_ptr<int[]> indices(new int[column_ex.size()]);
     unique_ptr<REAL[]> coeffs(new REAL[column_ex.size()]);
-    for (int i = 0; i < column_ex.size(); ++i) {
+    for (size_t i = 0; i < column_ex.size(); ++i) {
       indices[i] = column_ex[i].first;
       coeffs[i] = column_ex[i].second;
     }

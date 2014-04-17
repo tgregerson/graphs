@@ -59,6 +59,7 @@ class LpSolveInterface {
   class LpSolveException : public std::exception {
    public:
     LpSolveException(const std::string& msg) : msg_(msg) {}
+    virtual ~LpSolveException() throw() {}
     const char* what() const noexcept { return (msg_ + "\n").c_str(); }
 
    private:
@@ -90,11 +91,11 @@ class LpSolveInterface {
 
     // Convenience methods for accessing the variable index data structure.
     inline int GetNodeVariableIndex(
-        int node_id, int partition_num, int personality_num) {
+        size_t node_id, size_t partition_num, size_t personality_num) {
       return node_to_variable_indices_[node_id][partition_num][personality_num];
     }
     void SetNodeVariableIndex(
-        int node_id, int partition_num, int personality_num, int index);
+        size_t node_id, size_t partition_num, size_t personality_num, size_t index);
 
     inline int GetEdgeCrossingVariableIndex(int edge_id) {
       return edge_to_crossing_variable_indices_[edge_id];
@@ -102,11 +103,11 @@ class LpSolveInterface {
     void SetEdgeCrossingVariableIndex(int edge_id, int index);
 
     inline int GetEdgePartitionConnectivityVariableIndex(
-        int edge_id, int partition_num) {
+        size_t edge_id, size_t partition_num) {
       return edge_to_partition_connectivity_variable_indices_[edge_id][partition_num];
     }
     void SetEdgePartitionConnectivityVariableIndex(
-        int edge_id, int partition_num, int index);
+        size_t edge_id, size_t partition_num, size_t index);
 
     void AssignAllVariableIndices();
     void AssignAllNodeVariableIndices();

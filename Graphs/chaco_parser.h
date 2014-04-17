@@ -45,9 +45,9 @@ class ChacoParser : ParserInterface {
   std::ifstream input_file_;
   std::ifstream weight_file_;
 
-  int num_nodes_;
-  int num_edges_;
-  int num_entries_per_weight_vector_;
+  size_t num_nodes_;
+  size_t num_edges_;
+  size_t num_entries_per_weight_vector_;
   ChacoWeightMode node_weight_mode_;
   ChacoWeightMode edge_weight_mode_;
 

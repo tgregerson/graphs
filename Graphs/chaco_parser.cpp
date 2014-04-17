@@ -266,7 +266,7 @@ bool ChacoParser::ParseExternalWeightFile() {
   getline(weight_file_, cur_line);
   while (!weight_file_.eof()) {
     if ((node_num % 50000) == 0) {
-      printf("Processed %d weights\n", node_num);
+      printf("Processed %lu weights\n", node_num);
     }
     if (weight_file_.bad()) {
       printf("Error while reading %s\n", weight_filename.c_str());

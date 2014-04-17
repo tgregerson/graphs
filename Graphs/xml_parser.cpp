@@ -142,7 +142,6 @@ bool XmlParser::PopulateEntities(xmlNodePtr nodePtr) {
        curNodePtr = curNodePtr->next) {
     if (curNodePtr->type == XML_ELEMENT_NODE) {
       if (!strcmp((char*)(curNodePtr->name), "node")) {
-        int node_id = IdManager::AcquireNodeId();
         Node* newNode = new Node(IdManager::AcquireNodeId());
         PopulateNodeFromXml(newNode, curNodePtr);
         parsed_nodes.insert(make_pair(newNode->id, newNode));

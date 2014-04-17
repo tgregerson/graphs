@@ -85,8 +85,10 @@ void XmlConfigReader::PopulateGeneralConfiguration(
     if (!strcmp((char*)(myNodePtr->name),"use_ratio_as_quality_metric")) {
       partitioner_config->use_ratio_in_partition_quality = true;
     } else if (!strcmp((char*)(myNodePtr->name),"device_resource")) {
-      int res_id, res_capacity, res_ratio_weight;
-      double res_imbalance;
+      int res_id = -1;
+      int res_capacity = -1;
+      int res_ratio_weight = -1;
+      double res_imbalance = 0.0;
       xmlNodePtr childNodePtr = ChildNonComment(myNodePtr);
       assert(childNodePtr != NULL);
       for (; childNodePtr != NULL;
@@ -94,15 +96,15 @@ void XmlConfigReader::PopulateGeneralConfiguration(
         if (!strcmp((char*)childNodePtr->name, "resource_id")) {
           assert(childNodePtr->children != NULL);
           res_id = atoi((char*)(childNodePtr->children->content));
-          if (res_id >= partitioner_config->device_resource_capacities.size()) {
+          if (res_id >= (int)partitioner_config->device_resource_capacities.size()) {
             partitioner_config->device_resource_capacities.resize(res_id + 1);
           }
           if (res_id >=
-              partitioner_config->device_resource_max_imbalances.size()) {
+              (int)partitioner_config->device_resource_max_imbalances.size()) {
             partitioner_config->device_resource_max_imbalances.resize(res_id+1);
           }
           if (res_id >=
-              partitioner_config->device_resource_ratio_weights.size()) {
+              (int)partitioner_config->device_resource_ratio_weights.size()) {
             partitioner_config->device_resource_ratio_weights.resize(res_id+1);
           }
         } else if (!strcmp((char*)childNodePtr->name, "resource_capacity")) {
@@ -122,6 +124,7 @@ void XmlConfigReader::PopulateGeneralConfiguration(
           }
         }
       }
+      assert(res_id >= 0 && res_capacity >= 0 && res_ratio_weight >= 0);
       partitioner_config->device_resource_capacities[res_id] = res_capacity;
       partitioner_config->device_resource_max_imbalances[res_id] =
           res_imbalance;

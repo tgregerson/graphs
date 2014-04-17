@@ -3,11 +3,12 @@ BINDIR = binaries
 CXX_GCC = g++
 CXX_CLANG = clang++
 CXX = $(CXX_CLANG)
-XML2_FLAGS = `xml2-config --cflags`
-CXXFLAGS_OPT = -std=c++11 $(XML2_FLAGS) -O3 -flto -Wall -Werror
-CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_FLAGS) -Wall -Werror
+XML2_CXX_FLAGS = `xml2-config --cflags`
+XML2_LD_FLAGS = `xml2-config --libs`
+CXXFLAGS_OPT = -std=c++11 $(XML2_CXX_FLAGS) -O3 -flto -Wall -Werror
+CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_CXX_FLAGS) -Wall -Werror
 CXXFLAGS = $(CXXFLAGS_DEBUG)
-LDFLAGS = -lrt -v `xml2-config --libs` -flto
+LDFLAGS = -lrt -v $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
 CHACO_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o)

@@ -48,7 +48,7 @@ struct PartitionerConfig {
 
   // The ID corresponds to its position in the resource weight vector and its
   // order in the graph weight file. Starts at 0 for the first entry.
-  int universal_resource_id;
+  size_t universal_resource_id;
 
   ResourceCapacityType preprocessor_capacity_type;
 

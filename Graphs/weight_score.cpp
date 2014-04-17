@@ -5,7 +5,7 @@
 double ImbalancePower(const std::vector<int>& balance,
                       const std::vector<int>& max_weight_imbalance) {
   double imbalance_power = 0.0;
-  for (int i = 0; i < balance.size(); i++) {
+  for (size_t i = 0; i < balance.size(); i++) {
     int imb = max_weight_imbalance[i];
     if (imb == 0) {
       imb = 1;
@@ -22,7 +22,7 @@ double ImbalancePower(const std::vector<int>& balance,
 double NearViolaterImbalancePower(const std::vector<int>& balance,
     const std::vector<int>& max_weight_imbalance) {
   double imbalance_power = 0.0;
-  for (int i = 0; i < balance.size(); i++) {
+  for (size_t i = 0; i < balance.size(); i++) {
     int imb = max_weight_imbalance[i];
     if (imb == 0) {
       imb = 1;

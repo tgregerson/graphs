@@ -172,14 +172,14 @@ bool ChacoWeightGenerator::ResourceOptions::Validate() {
         if (bin_max > max_node_weight) {
           printf("Warning: Max Node Weight for resource %s is %lu, which is "
                  "less than the ideal max for the binomial distribution "
-                 "with the specified mean and std deviation (%d). Enforcing "
+                 "with the specified mean and std deviation (%lu). Enforcing "
                  "this max weight will skew the distribution.\n",
                  resource_name.c_str(), max_node_weight, bin_max);
         } else if (bin_max < max_node_weight) {
           printf("Info: Max Node Weight for resource %s is %lu, which is "
                  "to meet the specified mean and standard deviation for a "
                  "binomial distribution, the actual max weight will be capped "
-                 "at %d.\n", resource_name.c_str(), max_node_weight, bin_max);
+                 "at %lu.\n", resource_name.c_str(), max_node_weight, bin_max);
         }
       }
     break;
@@ -401,8 +401,8 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
           for (int i = 0; i < resource_node_counts[res_id]; ++i) {
             int retries = 0;
             int node_weight = dist(random_engine_);
-            while (node_weight < res_options.min_node_weight ||
-                   node_weight > res_options.max_node_weight) {
+            while (node_weight < (int)res_options.min_node_weight ||
+                   node_weight > (int)res_options.max_node_weight) {
               node_weight = dist(random_engine_);
               retries++;
               assert_b(retries < 1000) {
@@ -490,7 +490,7 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
     ostringstream node_ss;
     for (auto impl_it = node_implementations.begin();
          impl_it != node_implementations.end(); impl_it++) {
-      for (size_t res_id = 0; res_id < num_resources_; res_id++) {
+      for (int res_id = 0; res_id < num_resources_; res_id++) {
         if (res_id != 0 || impl_it != node_implementations.begin()) {
           node_ss << " ";
         }

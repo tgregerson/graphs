@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
   }
   ls << endl;
   ls << "Percent capacity: ";
-  for (int i = 0; i < total_weights.size(); i++) {
+  for (size_t i = 0; i < total_weights.size(); i++) {
     ls << int(100 * (double(total_weights[i]) /
                      double(run_config.partitioner_config.device_resource_capacities[i]))) << "% ";
   }
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
   if (k_way) {
     vector<vector<int>> costs_by_run;
     vector<vector<double>> rms_devs_by_run;
-    for (int result_num = 0; result_num < summaries.size(); result_num++) {
+    for (size_t result_num = 0; result_num < summaries.size(); result_num++) {
       vector<int> results_this_run;
       vector<double> rms_devs_this_run;
       rs << endl << "Executing K-Way Partitioning for Result " << result_num
@@ -188,19 +188,19 @@ int main(int argc, char *argv[]) {
       costs_by_run.push_back(results_this_run);
       rms_devs_by_run.push_back(rms_devs_this_run);
     }
-    for (int i = 0; i < summaries.size(); i++) {
+    for (size_t i = 0; i < summaries.size(); i++) {
       costs_by_run[i].insert(costs_by_run[i].begin(), summaries[i].total_cost);
-      for (int j = 1; j < costs_by_run[i].size(); j++) {
+      for (size_t j = 1; j < costs_by_run[i].size(); j++) {
         costs_by_run[i][j] += costs_by_run[i][j-1]; 
       }
       rms_devs_by_run[i].insert(rms_devs_by_run[i].begin(),
           summaries[i].rms_resource_deviation);
     }
     rs << "Mincosts:" << endl;
-    for (int i = 0; i < costs_by_run[0].size(); i++) {
+    for (size_t i = 0; i < costs_by_run[0].size(); i++) {
       int min_val = costs_by_run[0][i];
       double min_val_rms_dev = rms_devs_by_run[0][i];
-      for (int j = 0; j < costs_by_run.size(); j++) {
+      for (size_t j = 0; j < costs_by_run.size(); j++) {
         if (costs_by_run[j][i] < min_val) {
           min_val = costs_by_run[j][i];
           min_val_rms_dev = rms_devs_by_run[j][i];
@@ -252,7 +252,7 @@ void RepartitionKway(int num_ways, int cur_lev, Node* graph,
     assert(edge_pair.second->connection_ids().size() == 2);
     int home_part = -1;
     int first_node = *(edge_pair.second->connection_ids().begin());
-    for (int part_num = 0; part_num < starting_partitions.size(); part_num++) {
+    for (size_t part_num = 0; part_num < starting_partitions.size(); part_num++) {
       if (starting_partitions[part_num].find(first_node) !=
           starting_partitions[part_num].end()) {
         home_part = part_num;
@@ -284,7 +284,7 @@ void RepartitionKway(int num_ways, int cur_lev, Node* graph,
 
   // Bipartiion all starting partitions.
   vector<PartitionSummary> all_summaries;
-  for (int part_num = 0; part_num < starting_partitions.size(); part_num++) {
+  for (size_t part_num = 0; part_num < starting_partitions.size(); part_num++) {
     Node* starting_graph = new Node(-1, "");
     auto& partition_node_id_set = starting_partitions[part_num];
     for (auto node_id : partition_node_id_set) {

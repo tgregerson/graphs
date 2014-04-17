@@ -246,7 +246,7 @@ void PartitionerConfig::ValidateOrDiePreprocessorOptions() {
         assert_b(universal_resource_id < device_resource_capacities.size() ||
                  universal_resource_id < 0) {
           printf("Configuration Error: The specified Universal Resource ID "
-                 "(%d) is outside the valid range based on the number of "
+                 "(%lu) is outside the valid range based on the number of "
                  "specifed device resources (0~%lu).\n",
                  universal_resource_id, (device_resource_capacities.size()-1));
         }

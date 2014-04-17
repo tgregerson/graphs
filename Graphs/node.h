@@ -154,7 +154,7 @@ class Node {
   // the implementations.
   void PopulateSupernodeWeightVectors(
       const std::vector<int>& ratio, bool restrict_to_default_implementation,
-      int max_implementations_per_supernode);
+      size_t max_implementations_per_supernode);
 
   // Sets the weight vectors of the internal nodes of a supernode to match
   // the selected supernode weight vector. In many cases it is OK for the

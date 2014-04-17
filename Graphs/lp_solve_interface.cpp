@@ -232,7 +232,7 @@ void LpSolveInterface::GraphParsingState::SetObjectiveFunction(lprec* model) {
 
 void LpSolveInterface::GraphParsingState::SetNodeVariableIndex(
     size_t node_id, size_t partition_num, size_t personality_num, size_t index) {
-  assert(partition_num < num_partitions_);
+  assert((int)partition_num < num_partitions_);
   vector<vector<int>>& entry = node_to_variable_indices_[node_id];
   if (entry.size() <= partition_num) {
     entry.resize(partition_num + 1);
@@ -447,7 +447,7 @@ void LpSolveInterface::GraphParsingState::AddNodeConstraintsToModel(
   int indices[num_nonzero];
   REAL coeffs[num_nonzero];
   int i = 0;
-  for (size_t part = 0; part < num_partitions_; ++part) {
+  for (int part = 0; part < num_partitions_; ++part) {
     for (size_t per = 0; per < node.WeightVectors().size(); ++per) {
       indices[i] = GetNodeVariableIndex(node.id, part, per);
       coeffs[i++] = 1.0;

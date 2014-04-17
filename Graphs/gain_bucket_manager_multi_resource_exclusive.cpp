@@ -585,12 +585,12 @@ bool GainBucketManagerMultiResourceExclusive::InPartA(int node_id) {
 
 void GainBucketManagerMultiResourceExclusive::Print(bool condensed) const {
   for (size_t i = 0; i < gain_buckets_a_.size(); i++) {
-    printf("\nGain Bucket A - Resource %d:\n", i);
+    printf("\nGain Bucket A - Resource %lu:\n", i);
     gain_buckets_a_[i]->Print(condensed);
     printf("\n");
   }
   for (size_t i = 0; i < gain_buckets_b_.size(); i++) {
-    printf("\nGain Bucket B - Resource %d:\n", i);
+    printf("\nGain Bucket B - Resource %lu:\n", i);
     gain_buckets_b_[i]->Print(condensed);
     printf("\n");
   }

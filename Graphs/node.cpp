@@ -268,12 +268,12 @@ void Node::TransferEdgeConnectionsExcluding(
 
 void Node::PopulateSupernodeWeightVectors(
     const vector<int>& /* ratio */, bool restrict_to_default_implementation,
-    int max_implementations_per_supernode) {
+    size_t max_implementations_per_supernode) {
   assert(!internal_nodes_.empty());
   weight_vectors_.clear();
   internal_node_weight_vector_indices_.clear();
-  int max_possible_vectors = 1;
-  int num_resources_per_vector =
+  size_t max_possible_vectors = 1;
+  size_t num_resources_per_vector =
       internal_nodes_.begin()->second->SelectedWeightVector().size();
   for (auto node_pair : internal_nodes_) {
     max_possible_vectors *= node_pair.second->WeightVectors().size();
@@ -329,14 +329,14 @@ void Node::PopulateSupernodeWeightVectors(
     vector<vector<pair<int,int>>> implementations_indices;
 
     // Try adding one implementation maximally-weighted toward each reseource.
-    for (int res = 0; res < num_resources_per_vector; res++) {
+    for (size_t res = 0; res < num_resources_per_vector; res++) {
       vector<int> implementation;
       vector<pair<int,int>> implementation_indices;
       implementation.assign(num_resources_per_vector, 0);
       for (auto node_pair : internal_nodes_) {
-        int max_index = 0;
+        size_t max_index = 0;
         int max_weight = 0;
-        for(int wv_index = 0;
+        for(size_t wv_index = 0;
             wv_index < node_pair.second->WeightVectors().size(); wv_index++) {
             auto& wv = node_pair.second->WeightVector(wv_index);
           if (wv[res] > max_weight) {
@@ -344,7 +344,7 @@ void Node::PopulateSupernodeWeightVectors(
             max_index = wv_index;
           }
         }
-        for (int i = 0; i < implementation.size(); i++) {
+        for (size_t i = 0; i < implementation.size(); i++) {
           implementation[i] += node_pair.second->WeightVector(max_index)[i];
         }
         implementation_indices.push_back(make_pair(node_pair.first, max_index));
@@ -361,15 +361,15 @@ void Node::PopulateSupernodeWeightVectors(
          node_it != internal_nodes_.end(); node_it++) {
       int best_index = -1;
       double max_diff = std::numeric_limits<double>::max();
-      for (int wv_index = 0; wv_index < node_it->second->WeightVectors().size();
+      for (size_t wv_index = 0; wv_index < node_it->second->WeightVectors().size();
            wv_index++) {
         auto& wv = node_it->second->WeightVector(wv_index);
         vector<int> temp = implementation;
-        for (int i = 0; i < temp.size(); i++) {
+        for (size_t i = 0; i < temp.size(); i++) {
           temp[i] += wv[i];
         }
         double total_diff = 0.0;
-        for (int res = 0; res < num_resources_per_vector; res++) {
+        for (size_t res = 0; res < num_resources_per_vector; res++) {
           total_diff += abs(temp[res]);
         }
         if (total_diff < max_diff) {
@@ -402,7 +402,7 @@ void Node::PopulateSupernodeWeightVectors(
           temp[i] += wv[i];
         }
         double total_diff = 0.0;
-        for (int res = 0; res < num_resources_per_vector; res++) {
+        for (size_t res = 0; res < num_resources_per_vector; res++) {
           total_diff += abs(temp[res]);
         }
         if (total_diff < max_diff) {
@@ -427,7 +427,7 @@ void Node::PopulateSupernodeWeightVectors(
       for (auto node_pair : internal_nodes_) {
         int selected_node_impl =
             random_engine() % node_pair.second->WeightVectors().size();
-        for (int i = 0; i < num_resources_per_vector; i++) {
+        for (size_t i = 0; i < num_resources_per_vector; i++) {
           implementation[i] +=
               node_pair.second->WeightVector(selected_node_impl).at(i);
         }
@@ -438,7 +438,7 @@ void Node::PopulateSupernodeWeightVectors(
       implementations_indices.push_back(implementation_indices);
     }
     assert(implementations.size() == implementations_indices.size());
-    for (int imp_idx = 0; imp_idx < implementations.size(); imp_idx++) {
+    for (size_t imp_idx = 0; imp_idx < implementations.size(); imp_idx++) {
       AddSupernodeWeightVector(
           implementations[imp_idx], implementations_indices[imp_idx]);
     }
@@ -472,7 +472,7 @@ void Node::CheckSupernodeWeightVectorOrDie() {
   for (size_t i = 0; i < supernode_weight_vector.size(); i++) {
     assert_b(supernode_weight_vector[i] == computed_weight_vector[i]) {
       cout << "Supernode " << id << " weight vector: ";
-      for (int res = 0; res < supernode_weight_vector.size(); res++) {
+      for (size_t res = 0; res < supernode_weight_vector.size(); res++) {
         cout << supernode_weight_vector[res] << " ";
       }
       cout << "[WV Index: " << selected_weight_vector_index_ << "]" << endl;
@@ -480,7 +480,7 @@ void Node::CheckSupernodeWeightVectorOrDie() {
       for (auto it : internal_nodes_) {
         vector<int> node_weight_vector = it.second->SelectedWeightVector();
         cout << "Internal Node " << it.first << ": ";
-        for (int res = 0; res < node_weight_vector.size(); res++) {
+        for (size_t res = 0; res < node_weight_vector.size(); res++) {
           cout << node_weight_vector[res] << " ";
         }
         cout << "[WV Index: " << it.second->selected_weight_vector_index()
@@ -508,7 +508,7 @@ void Node::CheckInternalGraphOrDie() {
 }
 
 void Node::SetSelectedWeightVector(int index) {
-  assert(index < weight_vectors_.size());
+  assert(index < (int)weight_vectors_.size());
   selected_weight_vector_index_ = index;
 }
 
@@ -544,10 +544,10 @@ void Node::SetWeightVectorToMinimizeImbalance(
   int best_index = -1;
   double best_imbalance = numeric_limits<double>::max();
   std::vector<int> best_balance;
-  for (int i = 0; i < weight_vectors_.size(); i++) {
+  for (size_t i = 0; i < weight_vectors_.size(); i++) {
     const auto& weight_vector = weight_vectors_[i];
     std::vector<int> modified_balance = balance;
-    for (int j = 0; j < weight_vector.size(); j++) {
+    for (size_t j = 0; j < weight_vector.size(); j++) {
       if (is_positive) {
         modified_balance[j] += (weight_vector[j] - selected_weight_vector[j]);
       } else {

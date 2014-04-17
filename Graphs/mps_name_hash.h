@@ -1,7 +1,7 @@
 #ifndef MPS_NAME_HASH_H_
 #define MPS_NAME_HASH_H_
 
-#import <string>
+#include <string>
 
 namespace mps_name_hash {
   inline char CharFrom5Bits(int bits) {

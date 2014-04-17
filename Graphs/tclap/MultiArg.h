@@ -43,6 +43,8 @@ public:
 	typedef typename container_type::iterator iterator;
 	typedef typename container_type::const_iterator const_iterator;
 
+	virtual ~MultiArg() {}
+
 protected:
 
 	/**

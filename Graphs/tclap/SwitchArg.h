@@ -92,6 +92,7 @@ class SwitchArg : public Arg
 			      bool def = false,
 				  Visitor* v = NULL);
 				  
+		virtual ~SwitchArg() {}
 				  
         /**
 		 * Handles the processing of the argument.

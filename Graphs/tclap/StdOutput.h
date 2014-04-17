@@ -44,6 +44,7 @@ class StdOutput : public CmdLineOutput
 {
 
 	public:
+    virtual ~StdOutput() {}
 
 		/**
 		 * Prints the usage to stdout.  Can be overridden to 

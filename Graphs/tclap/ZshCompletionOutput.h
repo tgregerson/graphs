@@ -46,6 +46,7 @@ class ZshCompletionOutput : public CmdLineOutput
 	public:
 
 		ZshCompletionOutput();
+		virtual ~ZshCompletionOutput() {}
 
 		/**
 		 * Prints the usage to stdout.  Can be overridden to 

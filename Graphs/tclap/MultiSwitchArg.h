@@ -94,6 +94,7 @@ class MultiSwitchArg : public SwitchArg
 				int init = 0,
 				Visitor* v = NULL);
 
+		virtual ~MultiSwitchArg() {}
 
 		/**
 		 * Handles the processing of the argument.

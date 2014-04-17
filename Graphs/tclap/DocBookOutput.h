@@ -67,6 +67,7 @@ class DocBookOutput : public CmdLineOutput
 		 */
 		virtual void failure(CmdLineInterface& c, 
 						     ArgException& e );
+		virtual ~DocBookOutput() {}
 
 	protected:
 

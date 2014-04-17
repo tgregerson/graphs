@@ -112,8 +112,7 @@ class Node {
     if (weight_vectors_.empty() && is_supernode()) {
       return TotalInternalSelectedWeight(NULL);
     } else {
-      assert(selected_weight_vector_index_ < weight_vectors_.size());
-      return weight_vectors_[selected_weight_vector_index_];
+      return weight_vectors_.at(selected_weight_vector_index_);
     }
   }
 
@@ -122,8 +121,7 @@ class Node {
   }
 
   const std::vector<int>& WeightVector(int index) const {
-    assert(index < weight_vectors_.size());
-    return weight_vectors_[index];
+    return weight_vectors_.at(index);
   }
 
   const std::vector<std::vector<int>>& WeightVectors() const {

@@ -490,11 +490,11 @@ vector<string> ChacoWeightGenerator::GenerateNodeStringsExclusive() {
     ostringstream node_ss;
     for (auto impl_it = node_implementations.begin();
          impl_it != node_implementations.end(); impl_it++) {
-      for (int res_id = 0; res_id < num_resources_; res_id++) {
+      for (size_t res_id = 0; res_id < num_resources_; res_id++) {
         if (res_id != 0 || impl_it != node_implementations.begin()) {
           node_ss << " ";
         }
-        if (impl_it->first == res_id) {
+        if (impl_it->first == (int)res_id) {
           node_ss << impl_it->second;
         } else {
           node_ss << 0;

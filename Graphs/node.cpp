@@ -22,14 +22,14 @@ Node::Node(int node_id, const string& node_name)
     registered_(false), latency_(0.0) {
 }
 
-void Node::AddConnection(int connected_id) {
+void Node::AddConnection(int connected_id, Port::PortType type) {
   for (auto& port_pair : ports_) {
     if (port_pair.second.external_edge_id == connected_id) {
       return;
     }
   }
   int port_id = IdManager::AcquireNodeId();
-  ports_.insert(make_pair(port_id, Port(port_id, IdManager::kReservedTerminalId,
+  ports_.insert(make_pair(port_id, Port(port_id, type,
                                         connected_id, Port::kDontCareType)));
 }
 

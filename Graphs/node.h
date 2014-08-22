@@ -35,7 +35,7 @@ class Node {
   }
 
   // Adds a port with its external connection id set to 'connected_id'.
-  void AddConnection(int connected_id);
+  void AddConnection(int connected_id, Port::PortType type = Port::kDontCareType);
 
   // Removes the port(s) connected with external connection id set to
   // 'connected_id'. Returns the number of ports removed.
@@ -55,7 +55,7 @@ class Node {
   // Print debug information about the node. If 'recursive' is true and the
   // node is a supernode, also print each of the internal ports, edges, and
   // nodes.
-  void Print(bool recursive = false) const;
+  virtual void Print(bool recursive = false) const;
   void PrintPorts() const;
   void PrintInternalNodes(bool recursive) const;
   void PrintInternalEdges() const;

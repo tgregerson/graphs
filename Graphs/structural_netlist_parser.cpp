@@ -34,6 +34,7 @@ list<string> StructuralNetlistParser::RawLinesToSemicolonTerminated(
       line = line.substr(0, line.find("//"));
     }
     // TODO /* */ format comments
+    assert(line.find("/*") == string::npos);
     
     // Strip Xilinx annotations in the (* annotation *) format.
     while (line.find("(*") != string::npos) {
@@ -81,7 +82,7 @@ list<string> StructuralNetlistParser::RawLinesToSemicolonTerminated(
   return parsed;
 }
 
-string StructuralNetlistParser::StripParameterList(
+string StructuralNetlistParser::StripModuleParameters(
     const std::string& my_str) {
   size_t start_location = my_str.find("#");
   if (start_location == string::npos) {
@@ -89,7 +90,7 @@ string StructuralNetlistParser::StripParameterList(
   }
 
   string pre = my_str.substr(0, start_location);
-  string post = ConsumeParameterList(
+  string post = ConsumeModuleParameters(
       my_str.substr(start_location, string::npos), nullptr);
   return pre + " " + post;
 }
@@ -147,8 +148,17 @@ VlogModule StructuralNetlistParser::VlogModuleFromLine(const string& str) {
   string module_type_name;
   remaining = ConsumeIdentifier(remaining, &module_type_name);
 
+  ModuleType type = StringToModuleType(module_type_name);
+  assert_b(type != ModuleType::UNSUPPORTED) {
+    cout << "Unsupported module type: " << module_type_name << endl;
+  }
+
+  vector<pair<string,string>> module_parameters;
   try {
-    remaining = ConsumeParameterList(remaining, nullptr);
+    string module_parameters_str;
+    remaining = ConsumeModuleParameters(remaining, &module_parameters_str);
+    module_parameters =
+        ExtractParameterConnectionsFromModuleParameters(module_parameters_str);
   } catch (ParsingException& e) {
     // Parameter list is optional, so do nothing if not parsable.
   }
@@ -168,15 +178,26 @@ VlogModule StructuralNetlistParser::VlogModuleFromLine(const string& str) {
     throw ParsingException(error_msg);
   }
 
-  vector<string> connections =
-    ExtractConnectedElementsFromConnectionList(connection_list);
+  vector<pair<string,string>> connections =
+    ExtractConnectionsFromConnectionList(connection_list);
 
   VlogModule module(module_type_name, module_instance_name);
-  for (const string& connected_net : connections) {
+  for (const pair<string,string>& connection : connections) {
     // The connected element could be a constant value. Don't include those.
-    if (!connected_net.empty() && !isdigit(connected_net[0])) {
-      module.connected_net_names.insert(connected_net);
+    if (!connection.second.empty() && !isdigit(connection.second[0])) {
+      module.connected_net_names.insert(connection.second);
     }
+    if (!connection.first.empty()) {
+      module.named_connections.insert(connection);
+    }
+    module.ordered_connections.push_back(connection.second);
+  }
+
+  for (const auto& parameter : module_parameters) {
+    if (!parameter.first.empty()) {
+      module.named_parameters.insert(parameter);
+    }
+    module.ordered_parameters.push_back(parameter.second);
   }
   return module;
 }
@@ -247,7 +268,9 @@ void StructuralNetlistParser::PopulateModules(
       VlogModule module = VlogModuleFromLine(line);
       modules->insert(make_pair(module.instance_name, module));
     }
-    cout << "Processed " << lines_processed << " module lines." << endl;
+    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+      cout << "Processed " << lines_processed << " module lines." << endl;
+    }
     lines_processed++;
   }
 }
@@ -267,7 +290,9 @@ void StructuralNetlistParser::PopulateNets(
         nets->insert(make_pair(net.name, net));
       }
     }
-    cout << "Processed " << lines_processed << " net lines." << endl;
+    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+      cout << "Processed " << lines_processed << " net lines." << endl;
+    }
     lines_processed++;
   }
 }
@@ -284,12 +309,19 @@ void StructuralNetlistParser::PrintModule(const VlogModule& module) {
 }
 
 void StructuralNetlistParser::PrintModuleNtlFormat(
-    const VlogModule& module, ostream& output_stream) {
+    const VlogModule& module,
+    const map<string, VlogNet>& nets,
+    ostream& output_stream) {
   output_stream << "module_begin" << "\n";
   output_stream << module.type_name << "\n";
   output_stream << module.instance_name << "\n";
   for (const string& cn : module.connected_net_names) {
-    output_stream << cn << "\n";
+    if (nets.find(cn) == nets.end()) {
+      cout << "WARNING: Couldn't find connection '" << cn << "' in list of nets.\n";
+    } else {
+      auto net_it = nets.find(cn);
+      output_stream << cn << " (" << net_it->second.width << ")\n";
+    }
   }
   output_stream << "module_end" << "\n";
 }
@@ -442,7 +474,7 @@ set<string> StructuralNetlistParser::SplitConnectionByRange(
   return split_connections;
 }
 
-std::string CleanIdentifier(const std::string& str) {
+std::string StructuralNetlistParser::CleanIdentifier(const std::string& str) {
   size_t start_char_pos = 0;
   while (start_char_pos < str.length() && isspace(str[start_char_pos])) {}
   if (start_char_pos >= str.length()) {
@@ -665,7 +697,7 @@ string StructuralNetlistParser::ConsumeConnection(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
-// ConnectedElement = (Identifier[BitRange]) || {ConnectionList} || Immediate
+// ConnectedElement = (Identifier[BitRange]) || {ConnectedElementList} || Immediate
 string StructuralNetlistParser::ConsumeConnectedElement(
     const string& input, string* token) {
   const string error_msg =
@@ -681,7 +713,7 @@ string StructuralNetlistParser::ConsumeConnectedElement(
         // {ConnectionList}
         string wrapped_connection_list;
         remaining = ConsumeWrappedElement(
-            remaining, &wrapped_connection_list, &ConsumeConnectionList,
+            remaining, &wrapped_connection_list, &ConsumeConnectedElementList,
             '{', '}');
         incremental_token.assign(wrapped_connection_list);
       } else if (isdigit(c) || c == '"') {
@@ -708,8 +740,134 @@ string StructuralNetlistParser::ConsumeConnectedElement(
   return remaining;
 }
 
-// ParameterList = #(ConnectionList)
+// ConnectedElementList = ConnectedElement[, ConnectedElement]*
+string StructuralNetlistParser::ConsumeConnectedElementList(
+    const string& input, string* token) {
+  const string error_msg =
+    "Failed to consume ConnectedElementList from: " + input + "\n";
+  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+  string incremental_token;
+  if (remaining.empty()) {
+    throw ParsingException(error_msg);
+  } else {
+    try {
+      remaining = ConsumeConnectedElement(remaining, &incremental_token);
+      while (!remaining.empty() && remaining[0] == ',') {
+        string identifier;
+        remaining = ConsumeChar(remaining, nullptr, ',');
+        remaining = ConsumeConnectedElement(remaining, &identifier);
+        incremental_token += ", ";
+        incremental_token += identifier;
+      }
+    } catch (ParsingException& e) {
+      throw ParsingException(e.what() + error_msg);
+    }
+  }
+  if (token != nullptr) {
+    token->assign(incremental_token);
+  }
+  return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+// ParameterConnectedElement = Identifier || Immediate
+string StructuralNetlistParser::ConsumeParameterConnectedElement(
+    const string& input, string* token) {
+  const string error_msg =
+    "Failed to consume ParameterConnectedElement from: " + input + "\n";
+  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+  string incremental_token;
+  if (remaining.empty()) {
+    throw ParsingException(error_msg);
+  } else {
+    try {
+      char c = remaining[0];
+      if (isdigit(c) || c == '"') {
+        // Immediate value.
+        remaining = ConsumeImmediate(remaining, &incremental_token);
+      } else {
+        // Identifier
+        remaining = ConsumeIdentifier(remaining, &incremental_token);
+      }
+    } catch (ParsingException& e) {
+      throw ParsingException(e.what() + error_msg);
+    }
+  }
+  if (token != nullptr) {
+    token->assign(incremental_token);
+  }
+  return remaining;
+}
+
+// ParameterConnection = ParameterConnectedElement ||
+//                       .Identifier(ParameterConnectedElement)
+string StructuralNetlistParser::ConsumeParameterConnection(
+    const string& input, string* token) {
+  const string error_msg =
+    "Failed to consume ParameterConnection from: " + input + "\n";
+  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+  string incremental_token;
+  if (remaining.empty()) {
+    throw ParsingException(error_msg);
+  } else {
+    try {
+      char c = remaining[0];
+      if (c == '.') {
+        // Connection by name.
+        string identifier;
+        remaining = ConsumeChar(remaining, nullptr, '.');
+        remaining = ConsumeIdentifier(remaining, &identifier);
+        string wrapped_connected_element;
+        remaining = ConsumeWrappedElement(
+            remaining, &wrapped_connected_element,
+            &ConsumeParameterConnectedElement,
+            '(', ')');
+        incremental_token = "." + identifier + wrapped_connected_element;
+      } else {
+        // Connection by position.
+        remaining = ConsumeParameterConnectedElement(
+            remaining, &incremental_token);
+      }
+    } catch (ParsingException& e) {
+      throw ParsingException(e.what() + error_msg);
+    }
+  }
+  if (token != nullptr) {
+    token->assign(incremental_token);
+  }
+  return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+// ParameterList = ParameterConnection[, ParameterConnection]*
 string StructuralNetlistParser::ConsumeParameterList(
+    const string& input, string* token) {
+  const string error_msg =
+    "Failed to consume ParameterList from: " + input + "\n";
+  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+  string incremental_token;
+  if (remaining.empty()) {
+    throw ParsingException(error_msg);
+  } else {
+    try {
+      remaining = ConsumeParameterConnection(remaining, &incremental_token);
+      while (!remaining.empty() && remaining[0] == ',') {
+        string identifier;
+        remaining = ConsumeChar(remaining, nullptr, ',');
+        remaining = ConsumeParameterConnection(remaining, &identifier);
+        incremental_token += ", ";
+        incremental_token += identifier;
+      }
+    } catch (ParsingException& e) {
+      throw ParsingException(e.what() + error_msg);
+    }
+  }
+  if (token != nullptr) {
+    token->assign(incremental_token);
+  }
+  return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+// ModuleParameters = #(ParameterList)
+string StructuralNetlistParser::ConsumeModuleParameters(
     const string& input, string* token) {
   const string error_msg =
     "Failed to consume ParameterList from: " + input + "\n";
@@ -720,11 +878,11 @@ string StructuralNetlistParser::ConsumeParameterList(
   } else {
     try {
       remaining = ConsumeChar(remaining, &incremental_token, '#');
-      string wrapped_connection_list;
+      string wrapped_parameter_list;
       remaining = ConsumeWrappedElement(
-          remaining, &wrapped_connection_list, &ConsumeConnectionList, '(',
+          remaining, &wrapped_parameter_list, &ConsumeParameterList, '(',
           ')');
-      incremental_token.append(wrapped_connection_list);
+      incremental_token.append(wrapped_parameter_list);
     } catch (ParsingException& e) {
       throw ParsingException(e.what() + error_msg);
     }
@@ -1119,27 +1277,50 @@ string StructuralNetlistParser::ConsumeWrappedElement(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
-string StructuralNetlistParser::ExtractConnectedElementFromConnection(
+pair<string, string> StructuralNetlistParser::ExtractConnectionFromConnection(
     const string& connection) {
+  pair<string,string> parsed_connection;
   // Check that 'connection' is actually a valid Connection token.
   string clean_connected_element;
-  string remaining = ConsumeConnection(connection, &clean_connected_element);
-  assert(remaining.empty());
+  assert(ConsumeConnection(connection, &clean_connected_element).empty());
 
-  remaining = clean_connected_element;
-  if (remaining[0] == '.') {
+  if (clean_connected_element[0] == '.') {
     // Named connection.
-    remaining = ConsumeChar(remaining, nullptr, '.');
-    remaining = ConsumeIdentifier(remaining, nullptr);
+    clean_connected_element = ConsumeChar(
+        clean_connected_element, nullptr, '.');
+    clean_connected_element = ConsumeIdentifier(
+        clean_connected_element, &(parsed_connection.first));
     string wrapped_connected_element;
     ConsumeWrappedElement(
-        remaining, &wrapped_connected_element, &ConsumeConnectedElement,
+        clean_connected_element, &wrapped_connected_element, &ConsumeConnectedElement,
         '(', ')');
-    return ExtractInner(wrapped_connected_element);
-  } else {
-    // Positional connection(s). Just return the connection.
-    return remaining;
+   clean_connected_element = ExtractInner(wrapped_connected_element);
   }
+  parsed_connection.second = clean_connected_element;
+  return parsed_connection;
+}
+
+pair<string, string> StructuralNetlistParser::ExtractParameterConnectionFromParameterConnection(
+    const string& connection) {
+  pair<string,string> parsed_connection;
+  // Check that 'connection' is actually a valid Connection token.
+  string clean_connected_element;
+  assert(ConsumeParameterConnection(connection, &clean_connected_element).empty());
+
+  if (clean_connected_element[0] == '.') {
+    // Named connection.
+    clean_connected_element = ConsumeChar(
+        clean_connected_element, nullptr, '.');
+    clean_connected_element = ConsumeIdentifier(
+        clean_connected_element, &(parsed_connection.first));
+    string wrapped_connected_element;
+    ConsumeWrappedElement(
+        clean_connected_element, &wrapped_connected_element, &ConsumeParameterConnectedElement,
+        '(', ')');
+    clean_connected_element = ExtractInner(wrapped_connected_element);
+  }
+  parsed_connection.second = clean_connected_element;
+  return parsed_connection;
 }
 
 vector<string> StructuralNetlistParser::ExtractIdentifiersFromIdentifierList(
@@ -1163,9 +1344,9 @@ vector<string> StructuralNetlistParser::ExtractIdentifiersFromIdentifierList(
   return identifiers;
 }
 
-vector<string> StructuralNetlistParser::ExtractConnectedElementsFromConnectionList(
+vector<pair<string,string>> StructuralNetlistParser::ExtractConnectionsFromConnectionList(
     const string& connection_list) {
-  vector<string> connected_elements;
+  vector<pair<string,string>> parsed_connections;
 
   // Check that 'connection_list' is actually a valid ConnectionList token.
   string clean_connection_list;
@@ -1175,25 +1356,62 @@ vector<string> StructuralNetlistParser::ExtractConnectedElementsFromConnectionLi
 
   string connection;
   remaining = ConsumeConnection(clean_connection_list, &connection);
-  string connected_element =
-    ExtractConnectedElementFromConnection(connection);
+  pair<string,string> parsed_connection =
+    ExtractConnectionFromConnection(connection);
   vector<string> sub_connected_elements =
-    ExtractConnectedElementsFromConnectedElement(connected_element);
+    ExtractConnectedElementsFromConnectedElement(parsed_connection.second);
   for (const string& sub_element : sub_connected_elements) {
-    connected_elements.push_back(sub_element);
+    parsed_connections.push_back(
+        make_pair(parsed_connection.first, sub_element));
   }
   while (!remaining.empty()) {
     remaining = ConsumeChar(remaining, nullptr, ',');
     remaining = ConsumeConnection(remaining, &connection);
-    connected_element =
-        ExtractConnectedElementFromConnection(connection);
+    parsed_connection =
+        ExtractConnectionFromConnection(connection);
     sub_connected_elements =
-      ExtractConnectedElementsFromConnectedElement(connected_element);
+      ExtractConnectedElementsFromConnectedElement(parsed_connection.second);
     for (const string& sub_element : sub_connected_elements) {
-      connected_elements.push_back(sub_element);
+      parsed_connections.push_back(
+          make_pair(parsed_connection.first, sub_element));
     }
   }
-  return connected_elements;
+  return parsed_connections;
+}
+
+vector<pair<string,string>> StructuralNetlistParser::ExtractParameterConnectionsFromParameterList(
+    const string& plist) {
+  vector<pair<string,string>> parsed_connections;
+
+  // Check that 'connection_list' is actually a valid ConnectionList token.
+  string clean_parameter_list;
+  string remaining = ConsumeParameterList(plist, &clean_parameter_list);
+  assert(remaining.empty());
+
+  string parameter_connection;
+  remaining = ConsumeParameterConnection(
+      clean_parameter_list, &parameter_connection);
+  pair<string,string> parsed_connection =
+    ExtractParameterConnectionFromParameterConnection(parameter_connection);
+  while (!remaining.empty()) {
+    remaining = ConsumeChar(remaining, nullptr, ',');
+    remaining = ConsumeParameterConnection(
+        remaining, &parameter_connection);
+    pair<string,string> parsed_connection =
+        ExtractParameterConnectionFromParameterConnection(parameter_connection);
+  }
+  return parsed_connections;
+}
+
+vector<pair<string,string>> StructuralNetlistParser::ExtractParameterConnectionsFromModuleParameters(
+    const string& module_parameters) {
+  // Check that 'module_parameters' is actually a valid token.
+  string clean_module_parameters;
+  string remaining = ConsumeModuleParameters(module_parameters, &clean_module_parameters);
+  assert(remaining.empty());
+
+  string plist = ExtractInner(ConsumeChar(clean_module_parameters, nullptr, '#'));
+  return ExtractParameterConnectionsFromParameterList(plist);
 }
 
 vector<string> StructuralNetlistParser::ExtractConnectedElementsFromConnectedElement(
@@ -1209,18 +1427,48 @@ vector<string> StructuralNetlistParser::ExtractConnectedElementsFromConnectedEle
   if (!clean_connected_element.empty()) {
     if (clean_connected_element[0] == '{') {
       // The element is a concatenation of elements.
-      string wrapped_connection_list;
+      string wrapped_connected_element_list;
       ConsumeWrappedElement(
-          clean_connected_element, &wrapped_connection_list,
-          &ConsumeConnectionList, '{', '}');
-      string connection_list = ExtractInner(wrapped_connection_list);
-      connected_elements =
-          ExtractConnectedElementsFromConnectionList(connection_list);
+          clean_connected_element, &wrapped_connected_element_list,
+          &ConsumeConnectedElementList, '{', '}');
+      string connected_element_list = ExtractInner(
+          wrapped_connected_element_list);
+      connected_elements = ExtractConnectedElementsFromConnectedElementList(
+              connected_element_list);
     } else {
       connected_elements.push_back(clean_connected_element);
     }
   }
+  return connected_elements;
+}
 
+vector<string> StructuralNetlistParser::ExtractConnectedElementsFromConnectedElementList(
+    const string& connected_element_list) {
+  vector<string> connected_elements;
+
+  // Check that 'connection_list' is actually a valid ConnectionList token.
+  string clean_connected_element_list;
+  string remaining = ConsumeConnectedElementList(
+      connected_element_list, &clean_connected_element_list);
+  assert(remaining.empty());
+
+  string connected_element;
+  remaining = ConsumeConnectedElement(
+      clean_connected_element_list, &connected_element);
+  vector<string> sub_connected_elements =
+    ExtractConnectedElementsFromConnectedElement(connected_element);
+  for (const string& sub_element : sub_connected_elements) {
+    connected_elements.push_back(sub_element);
+  }
+  while (!remaining.empty()) {
+    remaining = ConsumeChar(remaining, nullptr, ',');
+    remaining = ConsumeConnectedElement(remaining, &connected_element);
+    vector<string> sub_connected_elements =
+      ExtractConnectedElementsFromConnectedElement(connected_element);
+    for (const string& sub_element : sub_connected_elements) {
+      connected_elements.push_back(sub_element);
+    }
+  }
   return connected_elements;
 }
 

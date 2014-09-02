@@ -10,6 +10,87 @@
 #include <string>
 #include <vector>
 
+// TODO: Move this to its own header.
+enum class ModuleType {
+  BUFG,
+  CARRY4,
+  DSP48E1,
+  FDCE,
+  FDPE,
+  FDRE,
+  FDSE,
+  GND,
+  IBUF,
+  LUT1,
+  LUT2,
+  LUT3,
+  LUT4,
+  LUT5,
+  LUT6,
+  OBUF,
+  MUXF7,
+  MUXF8,
+  RAMB18E1,
+  RAMB36E1,
+  RAM64M,
+  SRL16E,
+  VCC,
+  UNSUPPORTED
+};
+
+inline ModuleType StringToModuleType(const std::string& str) {
+  if (str == "BUFG") {
+    return ModuleType::BUFG;
+  } else if (str == "CARRY4") {
+    return ModuleType::CARRY4;
+  } else if (str == "DSP48E1") {
+    return ModuleType::DSP48E1;
+  } else if (str == "FDCE") {
+    return ModuleType::FDCE;
+  } else if (str == "FDPE") {
+    return ModuleType::FDRE;
+  } else if (str == "FDRE") {
+    return ModuleType::FDRE;
+  } else if (str == "FDSE") {
+    return ModuleType::FDSE;
+  } else if (str == "GND") {
+    return ModuleType::GND;
+  } else if (str == "IBUF") {
+    return ModuleType::IBUF;
+  } else if (str == "LUT1") {
+    return ModuleType::LUT1;
+  } else if (str == "LUT2") {
+    return ModuleType::LUT2;
+  } else if (str == "LUT3") {
+    return ModuleType::LUT3;
+  } else if (str == "LUT4") {
+    return ModuleType::LUT4;
+  } else if (str == "LUT5") {
+    return ModuleType::LUT5;
+  } else if (str == "LUT6") {
+    return ModuleType::LUT6;
+  } else if (str == "OBUF") {
+    return ModuleType::OBUF;
+  } else if (str == "MUXF7") {
+    return ModuleType::MUXF7;
+  } else if (str == "MUXF8") {
+    return ModuleType::MUXF8;
+  } else if (str == "RAMB18E1") {
+    return ModuleType::RAMB18E1;
+  } else if (str == "RAMB36E1") {
+    return ModuleType::RAMB36E1;
+  } else if (str == "RAM64M") {
+    return ModuleType::RAM64M;
+  } else if (str == "SRL16E") {
+    return ModuleType::SRL16E;
+  } else if (str == "VCC") {
+    return ModuleType::VCC;
+  } else {
+    return ModuleType::UNSUPPORTED;
+  }
+}
+
+
 struct VlogNet {
   VlogNet(const std::string& name, int w = 1, int hi = 0, int lo = 0)
     : name(name), width(w), bit_hi(hi), bit_lo(lo) {}
@@ -31,6 +112,15 @@ struct VlogModule {
   std::string src_line;
   std::string src_line_post_strip;
   std::string src_connection_list;
+
+  // Extended fields
+  ModuleType type{ModuleType::UNSUPPORTED};
+  std::map<std::string, std::string> named_parameters;
+  std::vector<std::string> ordered_parameters;
+  // TODO: Map may be the wrong data structure; may need a multimap after
+  // expanding buses.
+  std::map<std::string, std::string> named_connections;
+  std::vector<std::string> ordered_connections;
 };
 
 class StructuralNetlistParser {
@@ -63,6 +153,7 @@ class StructuralNetlistParser {
 
   // Prints a module in the .NTL format used by Processed Netlist Parser.
   void PrintModuleNtlFormat(const VlogModule& module,
+                            const std::map<std::string, VlogNet>& nets,
                             std::ostream& output_stream);
 
   // Prints a net in the .NTL format used by Processed Netlist Parser.
@@ -83,7 +174,7 @@ class StructuralNetlistParser {
 
   // Looks for a parameter list, in the format of #(a, b, ... c) in the input
   // string and strips it out if found.
-  std::string StripParameterList(const std::string& my_str);
+  std::string StripModuleParameters(const std::string& my_str);
 
   // Remove connections from a given net name from modules. Useful for removing
   // known global nets.
@@ -109,6 +200,8 @@ class StructuralNetlistParser {
    private:
     const std::string msg_;
   };
+
+
 
   // Identifiers may consist of either simple or escaped identifiers. In the
   // case of simple identifiers, we want to remove all surrounding whitespace.
@@ -218,21 +311,41 @@ class StructuralNetlistParser {
                                               std::string* token);
 
   // Connection = ConnectedElement || .Identifier(ConnectedElement)
-  static std::string ConsumeConnection(const std::string& input,
-                                       std::string* token);
+  static std::string ConsumeConnection(
+      const std::string& input,
+      std::string* token);
 
   // ConnectionList = Connection[, Connection]*
-  static std::string ConsumeConnectionList(const std::string& input,
-                                           std::string* token);
+  static std::string ConsumeConnectionList(
+      const std::string& input,
+      std::string* token);
 
   // ConnectedElement = Immediate || (Identifier[BitRange] ||
-  //                    {ConnectionList}
+  //                    {ConnectedElementList}
   static std::string ConsumeConnectedElement(const std::string& input,
                                              std::string* token);
 
-  // ParameterList = #(ConnectionList)
+  // ConnectedElementList = ConnectedElement[, ConnectedElement]*
+  static std::string ConsumeConnectedElementList(
+      const std::string& input,
+      std::string* token);
+
+  // ParameterConnectedElement = Immediate || Identifier
+  static std::string ConsumeParameterConnectedElement(const std::string& input,
+                                                      std::string* token);
+
+  // ParameterConnection = ParameterConnectedElement ||
+  //                       .Identifier(ParameterConnectedElement)
+  static std::string ConsumeParameterConnection(const std::string& input,
+                                                std::string* token);
+
+  // ParameterList = ParameterConnection[, ParameterConnection]*
   static std::string ConsumeParameterList(const std::string& input,
                                           std::string* token);
+
+  // ModuleParameters = #(ParameterList)
+  static std::string ConsumeModuleParameters(const std::string& input,
+                                             std::string* token);
 
   // Immediate = BinaryImmediate || DecimalImmediate || HexImmediate ||
   //             OctalImmediate || StringLiteral
@@ -281,17 +394,32 @@ class StructuralNetlistParser {
       std::string (*consumer)(const std::string&, std::string*),
       char open, char close);
 
-  static std::string ExtractConnectedElementFromConnection(
-      const std::string& connection_list);
+  // Connection is extracted as a pair of strings, where the first element is
+  // the connection name (if present) and the second element is the connected
+  // element.
+  static std::pair<std::string,std::string> ExtractConnectionFromConnection(
+      const std::string& connection);
+
+  static std::pair<std::string,std::string> ExtractParameterConnectionFromParameterConnection(
+      const std::string& connection);
 
   static std::vector<std::string> ExtractIdentifiersFromIdentifierList(
       const std::string& identifier_list);
 
-  static std::vector<std::string> ExtractConnectedElementsFromConnectionList(
+  static std::vector<std::pair<std::string,std::string>> ExtractConnectionsFromConnectionList(
       const std::string& connection_list);
+
+  static std::vector<std::string> ExtractConnectedElementsFromConnectedElementList(
+      const std::string& connected_element_list);
 
   static std::vector<std::string> ExtractConnectedElementsFromConnectedElement(
       const std::string& connected_element);
+
+  static std::vector<std::pair<std::string,std::string>> ExtractParameterConnectionsFromParameterList(
+      const std::string& plist);
+
+  static std::vector<std::pair<std::string,std::string>> ExtractParameterConnectionsFromModuleParameters(
+      const std::string& module_parameters);
 
   static std::pair<int, int> ExtractBitRange(const std::string& bit_range);
 

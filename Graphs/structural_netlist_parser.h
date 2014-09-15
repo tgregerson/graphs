@@ -11,7 +11,8 @@
 #include <string>
 #include <vector>
 
-#include "functional_node.h"
+class FunctionalEdge;
+class FunctionalNode;
 
 class VlogNet {
  public:
@@ -65,11 +66,21 @@ class StructuralNetlistParser {
       const std::map<std::string, VlogNet>& nets,
       std::map<std::string, VlogModule>* module_container);
   void ExpandFunctionalNodeBusConnections(
-      const std::map<std::string, VlogNet>& nets,
-      std::map<std::string, FunctionalNode*>* module_container);
+      const std::map<std::string, FunctionalEdge*>& edges,
+      std::map<std::string, FunctionalNode*>* nodes);
   void ExpandBusConnections(
       const std::map<std::string, VlogNet>& nets,
       NamedConnectionMultiMap* connections);
+  void ExpandBusConnections(
+      const std::map<std::string, FunctionalEdge*>& edges,
+      NamedConnectionMultiMap* connections);
+  std::map<std::string, FunctionalEdge*> ConvertEdgesToSingleBit(
+      const std::map<std::string, FunctionalEdge*>& edges);
+  // Adds indexing to single-bit nets if necessary to match the names to the
+  // node connections.
+  void MatchSingleBitIndexing(
+      std::map<std::string, FunctionalEdge*>* edges,
+      std::map<std::string, FunctionalNode*>* nodes);
 
   // Populates a map, module name -> VlogModule, from a list of lines. Determines
   // if the line contains a module instantiation if it doesn't start with a set
@@ -85,6 +96,13 @@ class StructuralNetlistParser {
   // keyword. This assumes that a net declaration is not split between lines.
   void PopulateNets(std::map<std::string, VlogNet>* nets,
                     const std::list<std::string>& lines);
+  void PopulateFunctionalEdges(std::map<std::string, FunctionalEdge*>* edges,
+                    const std::list<std::string>& lines);
+
+  // Adds ports to 'edges' based on the connections in 'nodes'.
+  void PopulateFunctionalEdgePorts(
+      const std::map<std::string, FunctionalNode*>& nodes,
+      std::map<std::string, FunctionalEdge*>* edges);
 
   // Prints debug information about a VlogModule.
   void PrintModule(const VlogModule& module);
@@ -95,12 +113,9 @@ class StructuralNetlistParser {
                             std::ostream& output_stream);
 
   // Prints a module in the Extended NTL format.
-  void PrintModuleXNtlFormat(const VlogModule& module,
-                            const std::map<std::string, VlogNet>& nets,
-                            std::ostream& output_stream);
-  // Prints a module in the Extended NTL format.
-  void PrintFunctionalNodeXNtlFormat(const FunctionalNode* module,
-                                     const std::map<std::string, VlogNet>& nets,
+  void PrintFunctionalNodeXNtlFormat(FunctionalNode* node,
+                                     std::map<std::string, FunctionalEdge*>* edges,
+                                     std::map<std::string, FunctionalNode*>* nodes,
                                      std::ostream& output_stream);
 
   // Prints a net in the .NTL format used by Processed Netlist Parser.
@@ -206,14 +221,19 @@ class StructuralNetlistParser {
   // Parses a string 'str' containing one or more net declarations, and returns
   // them as a vector of VlogNets.
   std::vector<VlogNet> VlogNetsFromLine(const std::string& str);
+  // Caller takes ownership of pointers.
+  std::vector<FunctionalEdge*> FunctionalEdgesFromLine(const std::string& str);
 
   // Scans through the map of nets and returns the names of those that have
   // a width > 1.
   std::set<std::string> GetBusNames(
       const std::map<std::string, VlogNet>& net_container);
+  std::set<std::string> GetBusNames(
+      const std::map<std::string, FunctionalEdge*>& edges);
 
   // Appends an explicit range to the name of 'net' based on its bitwidth.
   std::string AddBusRange(const VlogNet& net);
+  std::string AddBusRange(const FunctionalEdge* edge);
 
 };
 

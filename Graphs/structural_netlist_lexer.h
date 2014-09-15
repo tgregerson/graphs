@@ -173,6 +173,16 @@ class StructuralNetlistLexer {
   // First value is number of bits, second is the immedate value, aligned to
   // the least significant digit.
   static std::pair<int,uint64_t> VlogImmediateToUint64 (const std::string& str);
+
+  struct NetDescriptor {
+    std::string raw_name;
+    std::string base_name;
+    bool uses_index{false};
+    int bit_high{0};
+    int bit_low{0};
+  };
+
+  static NetDescriptor ExtractDescriptorFromIdentifier(const std::string& str);
 };
 
 

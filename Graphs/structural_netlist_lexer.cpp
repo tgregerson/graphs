@@ -1045,3 +1045,11 @@ pair<int,uint64_t> StructuralNetlistLexer::VlogImmediateToUint64 (
   throw LexingException(error_msg);
 }
 
+StructuralNetlistLexer::NetDescriptor
+StructuralNetlistLexer::ExtractDescriptorFromIdentifier(const std::string& str) {
+  NetDescriptor desc;
+  string clean_identifier;
+  ConsumeIdentifier(str, &clean_identifier);
+  desc.raw_name = str;
+  // TODO Complete
+}

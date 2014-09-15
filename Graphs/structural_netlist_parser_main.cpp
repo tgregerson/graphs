@@ -59,8 +59,7 @@ int main(int argc, char *argv[]) {
     }
     parsed_lines.push_back(line);
   }
-  parsed_lines =
-      parser.RawLinesToSemicolonTerminated(parsed_lines);
+  parsed_lines = parser.RawLinesToSemicolonTerminated(parsed_lines);
 
   parser.PopulateModules(&modules, parsed_lines);
   parser.PopulateNets(&nets, parsed_lines);
@@ -93,20 +92,6 @@ int main(int argc, char *argv[]) {
   for (const auto& module_pair : modules) {
     parser.PrintModuleNtlFormat(module_pair.second, nets, output_stream);
     output_stream << endl;
-  }
-
-  map<string, int> edge_connection_counts;
-  for (const auto& module_pair : modules) {
-    for (const string& edge_name : module_pair.second.connected_net_names) {
-      if (edge_connection_counts.find(edge_name) == edge_connection_counts.end()) {
-        edge_connection_counts.insert(make_pair(edge_name, 1));
-      } else {
-        edge_connection_counts[edge_name]++;
-      }
-    }
-  }
-  for (const auto& ecc_pair : edge_connection_counts) {
-    output_stream << ecc_pair.first << " " << ecc_pair.second << "\n";
   }
 
   if (out_file.is_open()) {

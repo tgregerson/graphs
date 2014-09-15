@@ -12,6 +12,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 
+#include "functional_edge.h"
+#include "functional_node.h"
 #include "functional_node_factory.h"
 #include "structural_netlist_lexer.h"
 #include "universal_macros.h"
@@ -323,6 +325,62 @@ vector<VlogNet> StructuralNetlistParser::VlogNetsFromLine(const string& str) {
   return nets;
 }
 
+vector<FunctionalEdge*> StructuralNetlistParser::FunctionalEdgesFromLine(
+    const string& str) {
+  string remaining = str;
+
+  string net_type_name;
+  remaining = StructuralNetlistLexer::ConsumeSimpleIdentifier(
+      remaining, &net_type_name);
+  assert (net_type_name == "input" || net_type_name == "output" ||
+          net_type_name == "wire"  || net_type_name == "reg");
+  if (net_type_name == "input" || net_type_name == "output") {
+    // Check for compound types "input wire", "output reg".
+    try {
+      string next_token;
+      string token_removed = StructuralNetlistLexer::ConsumeSimpleIdentifier(
+          remaining, &next_token);
+      if (next_token == "wire" || next_token == "reg") {
+        net_type_name.append(" " + next_token);
+        remaining = token_removed;
+      }
+    } catch (StructuralNetlistLexer::LexingException& e) {
+      // Compound type is optional, so OK to ignore parsing failure.
+    }
+  }
+
+  pair <int, int> range_ints = {0, 0};
+  try {
+    string range;
+    remaining = StructuralNetlistLexer::ConsumeBitRange(remaining, &range);
+    range_ints = StructuralNetlistLexer::ExtractBitRange(range);
+  } catch (StructuralNetlistLexer::LexingException& e) {
+    // Bit range is optional, so OK to ignore parsing failure.
+  }
+
+  string identifier_list;
+  remaining = StructuralNetlistLexer::ConsumeIdentifierList(
+      remaining, &identifier_list);
+  vector<string> identifiers =
+      StructuralNetlistLexer::ExtractIdentifiersFromIdentifierList(
+          identifier_list);
+
+  remaining = StructuralNetlistLexer::ConsumeChar(remaining, nullptr, ';');
+  if (!remaining.empty()) {
+    const string error_msg = "Failed to parse nets from line: " + str + "\n";
+    throw StructuralNetlistLexer::LexingException(error_msg);
+  }
+
+  vector<FunctionalEdge*> edges;
+  for (const string& net_identifier : identifiers) {
+    FunctionalEdge* edge = new FunctionalEdge(
+        net_identifier, range_ints.first - range_ints.second + 1,
+        range_ints.first, range_ints.second);
+    edges.push_back(edge);
+  }
+  return edges;
+}
+
 void StructuralNetlistParser::PopulateModules(
     map<string, VlogModule>* modules, const list<string>& lines) {
   const vector<string> non_module_keywords {
@@ -391,6 +449,53 @@ void StructuralNetlistParser::PopulateNets(
   }
 }
 
+void StructuralNetlistParser::PopulateFunctionalEdges(
+    map<string, FunctionalEdge*>* edges, const list<string>& lines) {
+  const vector<string> net_keywords {
+    "input",
+    "output",
+    "wire",
+    "reg",
+  };
+  int lines_processed = 0;
+  for (const string& line : lines) {
+    if (StartsWith(line, net_keywords)) {
+      for (FunctionalEdge* edge : FunctionalEdgesFromLine(line)) {
+        edges->insert(make_pair(edge->name, edge));
+      }
+    }
+    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+      cout << "Processed " << lines_processed << " net lines." << endl;
+    }
+    lines_processed++;
+  }
+}
+
+void StructuralNetlistParser::PopulateFunctionalEdgePorts(
+      const map<string, FunctionalNode*>& nodes,
+      map<string, FunctionalEdge*>* edges) {
+  for (auto node_pair : nodes) {
+    FunctionalNode* node = node_pair.second;
+    for (const auto& connection : node->named_input_connections) {
+      FunctionalEdge* connected_edge = edges->at(connection.second);
+      connected_edge->AddSinkPort(
+          FunctionalEdge::NodePortDescriptor(
+              node_pair.first, connection.first, connected_edge->bit_high,
+              connected_edge->bit_low));
+    }
+    for (const auto& connection : node->named_output_connections) {
+      FunctionalEdge* connected_edge = edges->at(connection.second);
+      connected_edge->AddSourcePort(
+          FunctionalEdge::NodePortDescriptor(
+              node_pair.first, connection.first, connected_edge->bit_high,
+              connected_edge->bit_low));
+    }
+    if (!node->named_unknown_connections.empty()) {
+      throw std::exception();
+    }
+  }
+}
+
 void StructuralNetlistParser::PrintModule(const VlogModule& module) {
   cout << "Module\n";
   cout << "Type: " << module.type_name << "\n";
@@ -421,42 +526,10 @@ void StructuralNetlistParser::PrintModuleNtlFormat(
   output_stream << "module_end" << "\n";
 }
 
-void StructuralNetlistParser::PrintModuleXNtlFormat(
-    const VlogModule& module,
-    const map<string, VlogNet>& nets,
-    ostream& output_stream) {
-  output_stream << "module_begin" << "\n";
-  output_stream << "TYPE " << module.type_name << "\n";
-  output_stream << "NAME " << module.instance_name << "\n";
-  if (module.named_parameters.size() > 0) {
-    output_stream << "PARAMETERS:\n";
-    for (const auto& param : module.named_parameters) {
-      output_stream << param.first << ": " << param.second << "\n";
-    }
-    output_stream << "------------\n";
-  }
-  if (module.named_connections.size() > 0) {
-    output_stream << "CONNECTIONS:\n";
-    for (const auto& con : module.named_connections) {
-      output_stream << con.first << ": " << con.second << "\n";
-    }
-    output_stream << "------------\n";
-  }
-  for (const string& cn : module.connected_net_names) {
-    if (nets.find(cn) == nets.end()) {
-      cout << "WARNING: Couldn't find connection '" << cn
-           << "' in list of nets.\n";
-    } else {
-      auto net_it = nets.find(cn);
-      output_stream << cn << " (" << net_it->second.width << ")\n";
-    }
-  }
-  output_stream << "module_end" << "\n";
-}
-
 void StructuralNetlistParser::PrintFunctionalNodeXNtlFormat(
-    const FunctionalNode* node,
-    const map<string, VlogNet>& nets,
+    FunctionalNode* node,
+    map<string, FunctionalEdge*>* edges,
+    map<string, FunctionalNode*>* nodes,
     ostream& output_stream) {
   output_stream << "module_begin" << "\n";
   output_stream << "TYPE " << node->type_name << "\n";
@@ -470,8 +543,9 @@ void StructuralNetlistParser::PrintFunctionalNodeXNtlFormat(
   }
   output_stream << "OUTPUT CONNECTIONS\n";
   for (const NamedConnection& connection : node->named_output_connections) {
-    output_stream << connection.first << ": " << connection.second
-                  << " (" << node->ComputeEntropy(connection.first) << ")\n";
+    output_stream << connection.first << ": " << connection.second << " ("
+                  << node->ComputeEntropy(connection.first, edges, nodes)
+                  << ")\n";
   }
   output_stream << "--------------\n";
   output_stream << "INPUT CONNECTIONS\n";
@@ -500,6 +574,17 @@ set<string> StructuralNetlistParser::GetBusNames(
   for (const auto& net_pair : net_container) {
     if (net_pair.second.width > 1) {
       names.insert(net_pair.second.name);
+    }
+  }
+  return names;
+}
+
+set<string> StructuralNetlistParser::GetBusNames(
+    const map<string, FunctionalEdge*>& edges) {
+  set<string> names;
+  for (const auto& edge_pair : edges) {
+    if (edge_pair.second->width > 1) {
+      names.insert(edge_pair.second->name);
     }
   }
   return names;
@@ -547,19 +632,19 @@ void StructuralNetlistParser::ExpandModuleBusConnections(
 }
 
 void StructuralNetlistParser::ExpandFunctionalNodeBusConnections(
-    const map<string, VlogNet>& nets,
-    map<string, FunctionalNode*>* module_container) {
+    const map<string, FunctionalEdge*>& edges,
+    map<string, FunctionalNode*>* nodes) {
 
   // Find implicitly ranged connections (connections that use a full bus
   // with just the name rather than a range) and attach the bit range to them.
-  set<string> bus_names = GetBusNames(nets);
-  for (auto& node_pair : *module_container) {
+  set<string> bus_names = GetBusNames(edges);
+  for (auto& node_pair : *nodes) {
     // To avoid issues with invalidating iterators in the connection list, just
     // make a copy of the updated version.
     FunctionalNode* node = node_pair.second;
-    ExpandBusConnections(nets, &(node->named_input_connections));
-    ExpandBusConnections(nets, &(node->named_output_connections));
-    ExpandBusConnections(nets, &(node->named_unknown_connections));
+    ExpandBusConnections(edges, &(node->named_input_connections));
+    ExpandBusConnections(edges, &(node->named_output_connections));
+    ExpandBusConnections(edges, &(node->named_unknown_connections));
   }
 }
 
@@ -591,13 +676,90 @@ void StructuralNetlistParser::ExpandBusConnections(
   std::swap(*connections, new_connections);
 }
 
+void StructuralNetlistParser::ExpandBusConnections(
+    const map<string, FunctionalEdge*>& edges,
+    NamedConnectionMultiMap* connections) {
+  // Find implicitly ranged connections (connections that use a full bus
+  // with just the name rather than a range) and attach the bit range to them.
+  set<string> bus_names = GetBusNames(edges);
+
+  NamedConnectionMultiMap new_connections;
+  for (const NamedConnection& connection : *connections) {
+    if (bus_names.find(connection.second) != bus_names.end()) {
+      string ranged_bus = AddBusRange(edges.at(connection.second));
+      new_connections.insert(make_pair(connection.first, ranged_bus));
+    } else {
+      new_connections.insert(connection);
+    }
+  }
+  std::swap(*connections, new_connections);
+  new_connections.clear();
+
+  // Process connections that include ranges, and split them into single-bit
+  // connection names.
+  for (const NamedConnection& connection : *connections) {
+    set<string> split_connections = SplitConnectionByRange(connection.second);
+    for (const string& split_cl : split_connections) {
+      new_connections.insert(make_pair(connection.first, split_cl));
+    }
+  }
+  std::swap(*connections, new_connections);
+}
+
+map<string, FunctionalEdge*> StructuralNetlistParser::ConvertEdgesToSingleBit(
+    const map<string, FunctionalEdge*>& edges) {
+  map<string, FunctionalEdge*> single_bit_edges;
+  for (auto edge_pair : edges) {
+    FunctionalEdge* edge = edge_pair.second;
+
+    // Why check bit_high here? Because sometimes the
+    // synthesis tool creates a single-bit net with a non-zero index for some
+    // reason, then uses that index when connected to a module port.
+    // To correctly match nets to port connection names, we need to add that
+    // index.
+    if (edge->width == 1 && edge->bit_high == 0) {
+      FunctionalEdge* copy = new FunctionalEdge(*edge);
+      single_bit_edges.insert(make_pair(edge_pair.first, copy));
+    } else {
+      string ranged_bus = AddBusRange(edge);
+      set<string> split_connections = SplitConnectionByRange(ranged_bus);
+      for (const string& split_connection : split_connections) {
+        // TODO Should we be supplying bit_high and bit_low here?
+        FunctionalEdge* new_edge = new FunctionalEdge(split_connection, 1);
+        single_bit_edges.insert(make_pair(split_connection, new_edge));
+      }
+    }
+  }
+  return single_bit_edges;
+}
+
+void StructuralNetlistParser::MatchSingleBitIndexing(
+    map<string, FunctionalEdge*>* edges, map<string, FunctionalNode*>* nodes) {
+  for (auto node_pair : nodes) {
+    if (edges->find(node_pair.first) == edges->end()) {
+      // Missing edge. Can we find it by stripping an index?
+
+    }
+  }
+}
+
 std::string StructuralNetlistParser::AddBusRange(const VlogNet& net) {
-  assert_b(net.width > 1) {
+  assert_b(net.width > 1 || net.bit_hi > 0) {
     cout << "Tried to add bus range for connection: "
          << net.name << ", but width is: " << net.width;
   }
   ostringstream ranged;
   ranged << net.name << "[" << net.bit_hi << ":" << net.bit_lo << "]";
+  return ranged.str();
+}
+
+std::string StructuralNetlistParser::AddBusRange(const FunctionalEdge* edge) {
+  assert_b(edge->width > 1 || edge->bit_high > 0) {
+    cout << "Tried to add bus range for connection: "
+         << edge->name << ", but width is: " << edge->width;
+  }
+  ostringstream ranged;
+  ranged << edge->name << "[" << edge->bit_high << ":" << edge->bit_low << "]";
   return ranged.str();
 }
 

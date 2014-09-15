@@ -21,7 +21,7 @@ LPSI_BASE_O = $(addprefix $(OBJDIR)/,lp_solve_interface.o) \
               $(NTL_BASE_O)
 NTL_BASE_O = $(addprefix $(OBJDIR)/,ntl_parser.o) \
              $(GRAPH_BASE_O)
-SNP_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_parser.o)
+SNP_BASE_O = $(addprefix $(OBJDIR)/,functional_edge.o structural_netlist_lexer.o structural_netlist_parser.o xilinx_functional_nodes.o)
 VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_parser.o)
 LPSI_BIN_O = $(OBJDIR)/lp_solve_interface_main.o \
              $(LPSI_BASE_O)
@@ -31,6 +31,8 @@ PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_confi
             $(KLFM_BASE_O) \
             $(NTL_BASE_O)
 
+FNP_BIN_O = $(OBJDIR)/functional_netlist_parser_main.o \
+            $(SNP_BASE_O)
 NFC_BIN_O = $(OBJDIR)/ntl_format_converter.o
 PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
 SNP_BIN_O = $(OBJDIR)/structural_netlist_parser_main.o \
@@ -41,7 +43,7 @@ WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \
            $(GRAPH_BASE_O)
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main lp_solve_interface ntl_format_converter structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
+BINARIES = $(addprefix $(BINDIR)/,partition_main functional_netlist_parser lp_solve_interface ntl_format_converter structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -55,6 +57,9 @@ $(BINDIR):
 	mkdir $(BINDIR)
 
 $(BINDIR)/partition_main: $(PM_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/functional_netlist_parser: $(FNP_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/lp_solve_interface: $(LPSI_BIN_O)
@@ -83,12 +88,14 @@ clean:
 
 chaco_weight_generator_H = chaco_weight_generator.h
 edge_H = edge.h
+functional_edge_H = functional_edge.h
+functional_node_H = functional_node.h
 id_manager_H = id_manager.h
 parser_interface_H = parser_interface.h
 port_H = port.h
 mps_name_hash_H = mps_name_hash.h
 ntl_parser_H = ntl_parser.h
-structural_netlist_parser_H = structural_netlist_parser.h
+structural_netlist_lexer_H = structural_netlist_lexer.h
 testbench_generator_H = testbench_generator.h
 universal_macros_H = universal_macros.h
 vcd_parser_H = vcd_parser.h
@@ -97,8 +104,10 @@ weight_score_H = weight_score.h
 edge_klfm_H = $(edge_H) edge_klfm.h
 lp_solve_interface_H = $(univeral_macros_H) lp_solve_interface.h
 node_H = $(edge_H) $(port_H) node.h
+xilinx_functional_nodes_H = $(functional_node_H) $(structural_netlist_lexer_H) xilinx_functional_nodes.h
 
 chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
+functional_node_factory_H = $(functional_node_H) $(xilinx_functional_nodes_H)
 gain_bucket_entry_H = $(node_H) $(universal_macros_H) gain_bucket_entry.h
 partitioner_config_H = $(node_H) partitioner_config.h
 partition_engine_H = $(edge_klfm_H) partition_engine.h
@@ -106,6 +115,7 @@ partition_engine_H = $(edge_klfm_H) partition_engine.h
 gain_bucket_interface_H = $(edge_klfm_H) $(gain_bucket_entry_H) gain_bucket_interface.h
 preprocessor_H = $(node_H) $(partitioner_config_H) preprocessor.h
 xml_config_reader_H = $(partitioner_config_H) xml_config_reader.h
+structural_netlist_parser_H = $(functional_node_factory_H) $(structural_netlist_lexer_H) structural_netlist_parser.h
 
 gain_bucket_manager_H = $(node_H) $(gain_bucket_interface_H) $(gain_bucket_entry_H) $(partitioner_config_H) gain_bucket_manager.h
 gain_bucket_standard_H = $(gain_bucket_entry_H) $(gain_bucket_interface_H) gain_bucket_standard.h
@@ -132,6 +142,12 @@ $(OBJDIR)/edge.o: $(edge_H) edge.cpp
 
 $(OBJDIR)/edge_klfm.o: $(edge_klfm_H) edge_klfm.cpp
 	$(CXX) -c edge_klfm.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/functional_edge.o: $(functional_node_H) $(functional_edge_H) functional_edge.cpp
+	$(CXX) -c functional_edge.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/functional_netlist_parser_main.o: $(functional_edge_H) $(functional_node_H) $(structural_netlist_parser_H) functional_netlist_parser_main.cpp
+	$(CXX) -c $(CXXFLAGS) functional_netlist_parser_main.cpp -o $(OBJDIR)/functional_netlist_parser_main.o
 
 $(OBJDIR)/gain_bucket_manager_single_resource.o: $(gain_bucket_manager_single_resource_H) gain_bucket_manager_single_resource.cpp
 	$(CXX) -c gain_bucket_manager_single_resource.cpp $(CXXFLAGS) -o $@
@@ -175,10 +191,13 @@ $(OBJDIR)/preprocessor.o: $(universal_macros_H) $(preprocessor_H) preprocessor.c
 $(OBJDIR)/ntl_parser.o: $(edge_H) $(id_manager_H) $(node_H) $(universal_macros_H) $(ntl_parser_H) ntl_parser.cpp
 	$(CXX) -c ntl_parser.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/structural_netlist_parser.o: $(universal_macros_H) $(structural_netlist_parser_H) structural_netlist_parser.cpp
+$(OBJDIR)/structural_netlist_lexer.o: $(structural_netlist_lexer_H) structural_netlist_lexer.cpp
+	$(CXX) -c structural_netlist_lexer.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/structural_netlist_parser.o: $(functional_edge_H) $(functional_node_H) $(functional_node_factory_H) $(structural_netlist_lexer_H) $(universal_macros_H) $(structural_netlist_parser_H) structural_netlist_parser.cpp
 	$(CXX) -c structural_netlist_parser.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/structural_netlist_parser_main.o: $(structural_netlist_parser_H) structural_netlist_parser_main.cpp
+$(OBJDIR)/structural_netlist_parser_main.o: $(functional_edge_H) $(functional_node_H) $(structural_netlist_parser_H) structural_netlist_parser_main.cpp
 	$(CXX) -c $(CXXFLAGS) structural_netlist_parser_main.cpp -o $(OBJDIR)/structural_netlist_parser_main.o
 
 $(OBJDIR)/testbench_generator.o: $(testbench_generator_H) testbench_generator.cpp
@@ -195,6 +214,9 @@ $(OBJDIR)/vcd_parser_main.o: $(vcd_parser_H) vcd_parser_main.cpp
 
 $(OBJDIR)/weight_score.o: $(weight_score_H) weight_score.cpp
 	$(CXX) -c weight_score.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/xilinx_functional_nodes.o: $(functional_edge_H) $(functional_node_H) xilinx_functional_nodes.cpp
+	$(CXX) -c xilinx_functional_nodes.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/xml_config_reader.o: $(universal_macros_H) $(xml_config_reader_H) xml_config_reader.cpp
 	$(CXX) -c xml_config_reader.cpp $(CXXFLAGS) -o $@

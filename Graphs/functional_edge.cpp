@@ -8,15 +8,17 @@
 #include "functional_edge.h"
 
 #include <exception>
+#include <sstream>
 
 #include "functional_node.h"
 
 using namespace std;
 
 double FunctionalEdge::Entropy(map<string, FunctionalEdge*>* edges,
+                               map<string, FunctionalEdge*>* wires,
                                map<string, FunctionalNode*>* nodes) {
   if (entropy_ < 0) {
-    entropy_ = ComputeEntropy(edges, nodes);
+    entropy_ = ComputeEntropy(edges, wires, nodes);
   }
   return entropy_;
 }
@@ -24,23 +26,22 @@ double FunctionalEdge::Entropy(map<string, FunctionalEdge*>* edges,
 double FunctionalEdge::ProbabilityOne(
     int bit_pos,
     map<string, FunctionalEdge*>* edges,
+    map<string, FunctionalEdge*>* wires,
     map<string, FunctionalNode*>* nodes) {
   if (p_one_ < 0.0) {
-    p_one_ = ComputeProbabilityOne(bit_pos, edges, nodes);
+    p_one_ = ComputeProbabilityOne(bit_pos, edges, wires, nodes);
   }
   return p_one_;
 }
 
 double FunctionalEdge::ComputeEntropy(map<string, FunctionalEdge*>* edges,
+                                      map<string, FunctionalEdge*>* wires,
                                       map<string, FunctionalNode*>* nodes) {
-  if (name == "n_0_zrl_proc_i_1") {
-    cout << "N0 ComputeEntropy" << endl;
-  }
   double ret;
   if (entropy_calculation_in_progress_) {
     // If we have a dependency loop, break it by returning full entropy.
     ret = weight_;
-    cout << "Got Entropy from Loop." << endl;
+    cout << base_name_ << ": Got Entropy from Loop." << endl;
   } else {
     entropy_calculation_in_progress_ = true;
     if (source_ports_.size() < 1) {
@@ -48,10 +49,10 @@ double FunctionalEdge::ComputeEntropy(map<string, FunctionalEdge*>* edges,
       // These are primary inputs (assuming non-error).
       // They need to have entropies set manually.
       ret = weight_;
-      cout << "Got Entropy from Primary Input." << endl;
+      //cout << base_name_ << ": Got Entropy from Primary Input." << endl;
     } else if (source_ports_.size() > 1) {
       // TODO: Better way of handling nets with multiple drivers?
-      cout << "Got Entropy from Multiple Drivers." << endl;
+      cout << base_name_ << ": Got Entropy from Multiple Drivers." << endl;
       ret = weight_;
     } else {
       const NodePortDescriptor& port = source_ports_[0];
@@ -59,9 +60,9 @@ double FunctionalEdge::ComputeEntropy(map<string, FunctionalEdge*>* edges,
       if (source_node_it == nodes->end()) {
         throw exception();
       }
-      cout << "Got Entropy from Driving Node." << endl;
+      //cout << base_name_ << ": Got Entropy from Driving Node." << endl;
       ret = source_node_it->second->ComputeEntropy(
-          port.node_port_name, edges, nodes, port.bit_high, port.bit_low);
+          port.node_port_name, edges, wires, nodes, port.bit_high, port.bit_low);
     }
   }
   entropy_calculation_in_progress_ = false;
@@ -71,6 +72,7 @@ double FunctionalEdge::ComputeEntropy(map<string, FunctionalEdge*>* edges,
 double FunctionalEdge::ComputeProbabilityOne(
     int bit_pos,
     map<string, FunctionalEdge*>* edges,
+    map<string, FunctionalEdge*>* wires,
     map<string, FunctionalNode*>* nodes) {
   double ret;
   if (probability_calculation_in_progress_) {
@@ -93,9 +95,30 @@ double FunctionalEdge::ComputeProbabilityOne(
         throw exception();
       }
       ret = source_node_it->second->ComputeProbabilityOne(
-          port.node_port_name, bit_pos, edges, nodes);
+          port.node_port_name, bit_pos, edges, wires, nodes);
     }
   }
   probability_calculation_in_progress_ = false;
   return ret;
+}
+
+string FunctionalEdge::IndexedName() const {
+  stringstream ss;
+  ss << base_name_ << "[" << bit_high_;
+  if (bit_high_ != bit_low_) {
+    ss << ":" << bit_low_;
+  }
+  ss << "]";
+  return ss.str();
+}
+
+vector<string> FunctionalEdge::GetBitNames() const {
+  vector<string> bit_names;
+  for (int i = bit_low_; i <= bit_high_; ++i) {
+    stringstream ss;
+    ss << base_name_;
+    ss << "[" << i << "]";
+    bit_names.push_back(ss.str());
+  }
+  return bit_names;
 }

@@ -1049,7 +1049,19 @@ StructuralNetlistLexer::NetDescriptor
 StructuralNetlistLexer::ExtractDescriptorFromIdentifier(const std::string& str) {
   NetDescriptor desc;
   string clean_identifier;
-  ConsumeIdentifier(str, &clean_identifier);
+  string remaining = ConsumeIdentifier(str, &clean_identifier);
   desc.raw_name = str;
-  // TODO Complete
+  desc.base_name = clean_identifier;
+  if (remaining.empty()) {
+    desc.uses_index = false;
+    desc.bit_high = 0;
+    desc.bit_low = 0;
+  } else {
+    string bit_range = ConsumeBitRange(remaining, &bit_range);
+    pair<int, int> br = ExtractBitRange(bit_range);
+    desc.uses_index = true;
+    desc.bit_high = br.first;
+    desc.bit_low = br.second;
+  }
+  return desc;
 }

@@ -8,6 +8,7 @@
 #ifndef STRUCTURAL_NETLIST_LEXER_H_
 #define STRUCTURAL_NETLIST_LEXER_H_
 
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -180,6 +181,14 @@ class StructuralNetlistLexer {
     bool uses_index{false};
     int bit_high{0};
     int bit_low{0};
+
+    void Print() {
+      std::cout << "RAW NAME: " << raw_name << "\n";
+      std::cout << "BASE NAME: " << base_name << "\n";
+      std::cout << "BIT HIGH: " << bit_high << "\n";
+      std::cout << "BIT LOW: " << bit_low << "\n";
+      std::cout << "USES INDEX: " << (uses_index ? "TRUE" : "FALSE") << "\n";
+    }
   };
 
   static NetDescriptor ExtractDescriptorFromIdentifier(const std::string& str);

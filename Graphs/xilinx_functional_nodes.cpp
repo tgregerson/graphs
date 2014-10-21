@@ -18,25 +18,26 @@ using namespace std;
 
 namespace vivado {
 
-void XilinxBufgNode::AddConnection(const NamedConnection& connection) {
-  if (connection.first == "O") {
-    named_output_connections.insert(connection);
-  } else if (connection.first == "I") {
-    named_input_connections.insert(connection);
+void XilinxBufgNode::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "O") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "I") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
 double XilinxBufgNode::ComputeEntropy(
-      const std::string& output_name, EdgeMap* edges, NodeMap* nodes) const {
-  return ComputeEntropy(output_name, edges, nodes, 0, 0);
+      const std::string& output_name, EdgeMap* edges, EdgeMap* wires,
+      NodeMap* nodes) const {
+  return ComputeEntropy(output_name, edges, wires, nodes, 0, 0);
 }
 
 double XilinxBufgNode::ComputeEntropy(
-      const std::string& output_name, EdgeMap* edges, NodeMap* nodes,
-      int bit_high, int bit_low) const {
+      const std::string& output_name, EdgeMap* edges, EdgeMap* wires,
+      NodeMap* nodes, int bit_high, int bit_low) const {
   if (bit_high != 0 && bit_low != 0) {
     cout << "Invalid bit range for LUT ComputeEntropy" << endl;
     throw std::exception();
@@ -44,210 +45,217 @@ double XilinxBufgNode::ComputeEntropy(
   return 1.0;
 }
 
-void XilinxCarry4Node::AddConnection(const NamedConnection& connection) {
-  if (connection.first == "CO" ||
-      connection.first == "O") {
-    named_output_connections.insert(connection);
-  } else if (connection.first == "CI" ||
-             connection.first == "CYINIT" ||
-             connection.first == "DI" ||
-             connection.first == "S") {
-    named_input_connections.insert(connection);
+void XilinxCarry4Node::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "CO" ||
+      connection.port_name == "O") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "CI" ||
+             connection.port_name == "CYINIT" ||
+             connection.port_name == "DI" ||
+             connection.port_name == "S") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxDsp48e1Node::AddConnection(const NamedConnection& connection) {
-  if (connection.first == "CARRYCASCOUT" ||
-      connection.first == "MULTSIGNOUT" ||
-      connection.first == "OVERFLOW" ||
-      connection.first == "PATTERNBDETECT" ||
-      connection.first == "PATTERNDETECT" ||
-      connection.first == "UNDERFLOW" ||
-      connection.first == "BCOUT" ||
-      connection.first == "ACOUT" ||
-      connection.first == "CARRYOUT" ||
-      connection.first == "P" ||
-      connection.first == "PCOUT") {
-    named_output_connections.insert(connection);
-  } else if (connection.first == "CARRYCASCIN" ||
-             connection.first == "CARRYIN" ||
-             connection.first == "CEA1" ||
-             connection.first == "CEA2" ||
-             connection.first == "CEAD" ||
-             connection.first == "CEALUMODE" ||
-             connection.first == "CEB1" ||
-             connection.first == "CEB2" ||
-             connection.first == "CEC" ||
-             connection.first == "CECARRYIN" ||
-             connection.first == "CECTRL" ||
-             connection.first == "CED" ||
-             connection.first == "CEINMODE" ||
-             connection.first == "CEM" ||
-             connection.first == "CEP" ||
-             connection.first == "CLK" ||
-             connection.first == "MULTSIGNIN" ||
-             connection.first == "RSTA" ||
-             connection.first == "RSTALLCARRYIN" ||
-             connection.first == "RSTALUMODE" ||
-             connection.first == "RSTB" ||
-             connection.first == "RSTC" ||
-             connection.first == "RSTCTRL" ||
-             connection.first == "RSTD" ||
-             connection.first == "RSTINMODE" ||
-             connection.first == "RSTM" ||
-             connection.first == "RSTP" ||
-             connection.first == "B" ||
-             connection.first == "BCIN" ||
-             connection.first == "D" ||
-             connection.first == "A" ||
-             connection.first == "ACIN" ||
-             connection.first == "CARRYINSEL" ||
-             connection.first == "ALUMODE" ||
-             connection.first == "C" ||
-             connection.first == "PCIN" ||
-             connection.first == "INMODE" ||
-             connection.first == "OPMODE") {
-    named_input_connections.insert(connection);
+void XilinxDsp48e1Node::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "CARRYCASCOUT" ||
+      connection.port_name == "MULTSIGNOUT" ||
+      connection.port_name == "OVERFLOW" ||
+      connection.port_name == "PATTERNBDETECT" ||
+      connection.port_name == "PATTERNDETECT" ||
+      connection.port_name == "UNDERFLOW" ||
+      connection.port_name == "BCOUT" ||
+      connection.port_name == "ACOUT" ||
+      connection.port_name == "CARRYOUT" ||
+      connection.port_name == "P" ||
+      connection.port_name == "PCOUT") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "CARRYCASCIN" ||
+             connection.port_name == "CARRYIN" ||
+             connection.port_name == "CEA1" ||
+             connection.port_name == "CEA2" ||
+             connection.port_name == "CEAD" ||
+             connection.port_name == "CEALUMODE" ||
+             connection.port_name == "CEB1" ||
+             connection.port_name == "CEB2" ||
+             connection.port_name == "CEC" ||
+             connection.port_name == "CECARRYIN" ||
+             connection.port_name == "CECTRL" ||
+             connection.port_name == "CED" ||
+             connection.port_name == "CEINMODE" ||
+             connection.port_name == "CEM" ||
+             connection.port_name == "CEP" ||
+             connection.port_name == "CLK" ||
+             connection.port_name == "MULTSIGNIN" ||
+             connection.port_name == "RSTA" ||
+             connection.port_name == "RSTALLCARRYIN" ||
+             connection.port_name == "RSTALUMODE" ||
+             connection.port_name == "RSTB" ||
+             connection.port_name == "RSTC" ||
+             connection.port_name == "RSTCTRL" ||
+             connection.port_name == "RSTD" ||
+             connection.port_name == "RSTINMODE" ||
+             connection.port_name == "RSTM" ||
+             connection.port_name == "RSTP" ||
+             connection.port_name == "B" ||
+             connection.port_name == "BCIN" ||
+             connection.port_name == "D" ||
+             connection.port_name == "A" ||
+             connection.port_name == "ACIN" ||
+             connection.port_name == "CARRYINSEL" ||
+             connection.port_name == "ALUMODE" ||
+             connection.port_name == "C" ||
+             connection.port_name == "PCIN" ||
+             connection.port_name == "INMODE" ||
+             connection.port_name == "OPMODE") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxFdceNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+double XilinxFdNode::ComputeEntropy(
+      const string& output_name, EdgeMap* edges, EdgeMap* wires,
+      NodeMap* nodes) const {
+  return ComputeEntropy(output_name, edges, wires, nodes, 0, 0);
+}
+
+double XilinxFdNode::ComputeEntropy(
+      const string& output_name, EdgeMap* edges, EdgeMap* wires,
+      NodeMap* nodes, int bit_high, int bit_low) const {
+  if (bit_high != bit_low) {
+    throw std::exception();
+  }
+  return ComputeShannonEntropy(output_name, bit_high, edges, wires, nodes);
+}
+
+double XilinxFdNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* edges, EdgeMap* wires,
+    NodeMap* nodes) const {
+  if (output_name != "Q" && output_name != "") {
+    std::cout << "Unexpected output name: " << output_name << "\n";
+    throw std::exception();
+  } else if (bit_pos != 0) {
+    std::cout << "Unexpected output bit position: " << bit_pos << "\n";
+    throw std::exception();
+  } else {
+     string input_edge_name =
+         named_input_connections.at("D").connection_bit_names.front();
+     FunctionalEdge* input_edge = wires->at(input_edge_name);
+     return input_edge->ProbabilityOne(bit_pos, edges, wires, nodes);
+  }
+}
+
+void XilinxFdceNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "Q") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "C" || port_name == "CE" || port_name == "CLR" ||
              port_name == "D") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxFdpeNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxFdpeNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "Q") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "C" || port_name == "CE" || port_name == "PRE" ||
              port_name == "D") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxFdreNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxFdreNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "Q") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "C" || port_name == "CE" || port_name == "R" ||
              port_name == "D") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxFdseNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxFdseNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "Q") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "C" || port_name == "CE" || port_name == "S" ||
              port_name == "D") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxGndNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxGndNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "G") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxIbufNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxIbufNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "O") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "I") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxLutNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxLutNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name.empty()) {
     throw std::exception();
   }
   if (port_name[0] == 'O') {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name[0] == 'I') {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    named_unknown_connections.insert(connection);
+    named_unknown_connections.insert(make_pair(connection.port_name, connection));
   }
 }
 
 double XilinxLutNode::ComputeEntropy(
-      const std::string& output_name, EdgeMap* edges, NodeMap* nodes) const {
-  return ComputeEntropy(output_name, edges, nodes, 0, 0);
+      const std::string& output_name, EdgeMap* edges, EdgeMap* wires,
+      NodeMap* nodes) const {
+  return ComputeEntropy(output_name, edges, wires, nodes, 0, 0);
 }
 
 double XilinxLutNode::ComputeEntropy(
-      const std::string& output_name, EdgeMap* edges, NodeMap* nodes,
-      int bit_high, int bit_low) const {
-  if (bit_high != 0 && bit_low != 0) {
-    cout << "Invalid bit range for LUT ComputeEntropy" << endl;
+      const std::string& output_name, EdgeMap* edges, EdgeMap* wires,
+      NodeMap* nodes, int bit_high, int bit_low) const {
+  if (bit_high != bit_low) {
     throw std::exception();
   }
-  if (output_name != "O" && output_name != "") {
-    std::cout << "Unexpected output name: " << output_name << "\n";
-    throw std::exception();
-  }
-  auto param_it = named_parameters.find("INIT");
-  if (param_it == named_parameters.end()) {
-    std::cout << "Couldn't find INIT parameter.\n";
-    throw std::exception();
-  }
-  std::string init_str = param_it->second;
-  StructuralNetlistLexer::ConsumeHexImmediate(init_str, nullptr);
-  std::pair<int, uint64_t> init_val =
-      StructuralNetlistLexer::VlogImmediateToUint64(init_str);
-  int zeroes = 0;
-  int ones = 0;
-  for (int i = 0; i < init_val.first; ++i) {
-    uint64_t bit_mask = 1 << i;
-    if (bit_mask & init_val.second) {
-      ++ones;
-    } else {
-      ++zeroes;
-    }
-  }
-  double p_zero = zeroes / (double)(zeroes + ones);
-  double p_one = 1.0 - p_zero;
-  return -p_zero*log2(p_zero) + -p_one*log2(p_one);
+  return ComputeShannonEntropy(output_name, bit_high, edges, wires, nodes);
 }
 
 double XilinxLutNode::ComputeProbabilityOne(
       const std::string& output_name, int bit_pos, EdgeMap* edges,
-      NodeMap* nodes) const {
+      EdgeMap* wires, NodeMap* nodes) const {
   if (bit_pos != 0) {
     cout << "Invalid bit range for LUT ComputeProbabilityOne" << endl;
     throw std::exception();
@@ -266,16 +274,14 @@ double XilinxLutNode::ComputeProbabilityOne(
   std::pair<int, uint64_t> init_val =
       StructuralNetlistLexer::VlogImmediateToUint64(init_str);
   vector<double> input_probability_ones;
-  for (pair<string,string> input_connection : named_input_connections) {
-    auto edge_it = edges->find(input_connection.second);
-    if (edge_it == edges->end()) {
-      throw exception();
+  for (const auto& input_connection : named_input_connections) {
+    const vector<string>& bit_names =
+        input_connection.second.connection_bit_names;
+    for (const string& bit_name : bit_names) {
+      FunctionalEdge* wire = wires->at(bit_name);
+      double d = wire->ProbabilityOne(bit_pos, edges, wires, nodes);
+      input_probability_ones.push_back(d);
     }
-    // TODO: This is fragile. It relies on the map being sorted in ascending
-    // order of inputs.
-    FunctionalEdge* edge = edge_it->second;
-    double d = edge->ProbabilityOne(bit_pos,edges,nodes);
-    input_probability_ones.push_back(d);
   }
   vector<double> address_probabilities;
   for (int i = 0; i < init_val.first; ++i) {
@@ -301,49 +307,49 @@ double XilinxLutNode::ComputeProbabilityOne(
   return p_one;
 }
 
-void XilinxObufNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxObufNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "O") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "I") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxMuxf7Node::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxMuxf7Node::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "O") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "I0" || port_name == "I1" || port_name == "S") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxMuxf8Node::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxMuxf8Node::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "O") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "I0" || port_name == "I1" || port_name == "S") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxRamb18e1Node::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxRamb18e1Node::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "DOADO" ||
       port_name == "DOBDO" ||
       port_name == "DOPADOP" ||
       port_name == "DOPBDOP") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "CLKARDCLK" ||
              port_name == "CLKBWRCLK" ||
              port_name == "ENARDEN" ||
@@ -362,15 +368,15 @@ void XilinxRamb18e1Node::AddConnection(const NamedConnection& connection) {
              port_name == "DIPBDIP" ||
              port_name == "WEA" ||
              port_name == "WEBWE") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxRamb36e1Node::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxRamb36e1Node::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "CASCADEOUTA" ||
       port_name == "CASCADEOUTB" ||
       port_name == "SBITERR" ||
@@ -381,7 +387,7 @@ void XilinxRamb36e1Node::AddConnection(const NamedConnection& connection) {
       port_name == "DOPBDOP" ||
       port_name == "ECCPARITY" ||
       port_name == "RDADDRECC") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "CLKARDCLK" ||
              port_name == "CLKBWRCLK" ||
              port_name == "ENARDEN" ||
@@ -404,20 +410,20 @@ void XilinxRamb36e1Node::AddConnection(const NamedConnection& connection) {
              port_name == "DIPBDIP" ||
              port_name == "WEA" ||
              port_name == "WEBWE") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxRam64mNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxRam64mNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "DOA" ||
       port_name == "DOB" ||
       port_name == "DOC" ||
       port_name == "DOD") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "DIA" ||
              port_name == "DIB" ||
              port_name == "DIC" ||
@@ -428,33 +434,33 @@ void XilinxRam64mNode::AddConnection(const NamedConnection& connection) {
              port_name == "ADDRB" ||
              port_name == "ADDRC" ||
              port_name == "ADDRD") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxSrl16eNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxSrl16eNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "Q") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else if (port_name == "A0" || port_name == "A1" || port_name == "A2" ||
              port_name == "A3" || port_name == "CE" || port_name == "CLK" ||
              port_name == "D") {
-    named_input_connections.insert(connection);
+    named_input_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }
 
-void XilinxVccNode::AddConnection(const NamedConnection& connection) {
-  const string& port_name = connection.first;
+void XilinxVccNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
   if (port_name == "P") {
-    named_output_connections.insert(connection);
+    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else {
-    cout << "Unexpected port name: " << connection.first << endl;
+    cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
   }
 }

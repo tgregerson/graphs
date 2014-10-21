@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
   }
 
   map<string, FunctionalEdge*> functional_edges;
+  map<string, FunctionalEdge*> functional_wires;
   map<string, FunctionalNode*> functional_nodes;
 
   // If no output file, redirect to cout.
@@ -71,15 +72,29 @@ int main(int argc, char *argv[]) {
   parsed_lines =
       parser.RawLinesToSemicolonTerminated(parsed_lines);
 
-  parser.PopulateFunctionalNodes(&functional_nodes, parsed_lines);
   parser.PopulateFunctionalEdges(&functional_edges, parsed_lines);
+  for (auto f_edge_pair : functional_edges) {
+    FunctionalEdge* edge = f_edge_pair.second;
+    for (int bit = edge->BitLow(); bit <= edge->BitHigh(); ++bit) {
+      FunctionalEdge* wire = new FunctionalEdge(edge->BaseName(), bit, bit);
+      functional_wires.insert(make_pair(wire->IndexedName(), wire));
+    }
+  }
+  parser.PopulateFunctionalNodes(
+      functional_edges, functional_wires, &functional_nodes, parsed_lines);
 
   FunctionalEdge* const0 = functional_edges.at("\\<const0> ");
   const0->SetEntropy(0.0);
   const0->SetProbabilityOne(0.0);
+  FunctionalEdge* const0w = functional_wires.at("\\<const0> [0]");
+  const0w->SetEntropy(0.0);
+  const0w->SetProbabilityOne(0.0);
   FunctionalEdge* const1 = functional_edges.at("\\<const1> ");
   const1->SetEntropy(0.0);
   const1->SetProbabilityOne(1.0);
+  FunctionalEdge* const1w = functional_wires.at("\\<const1> [0]");
+  const1w->SetEntropy(0.0);
+  const1w->SetProbabilityOne(1.0);
 
   // Remove synthesis-tool-specific nets that should not be included in graph.
   /*
@@ -107,60 +122,52 @@ int main(int argc, char *argv[]) {
   */
 
   for (auto it : functional_edges) {
-    cout << it.first << " " << it.second->width << endl;
+    // TODO Remove
+    if (it.first.find("main_state_reg") != string::npos &&
+        it.first.find("U_CtrlSM") != string::npos &&
+        it.first.find("onehot") == string::npos) {
+      cout << it.first << " " << it.second->Width() << endl;
+    }
   }
-
-  // Add expanding of subranges.
-  //parser.ExpandModuleBusConnections(nets, &modules);
-  parser.ExpandFunctionalNodeBusConnections(
-      functional_edges, &functional_nodes);
-  functional_edges = parser.ConvertEdgesToSingleBit(functional_edges);
 
   for (auto it : functional_edges) {
-    cout << it.first << " " << it.second->width << endl;
+    // TODO Remove
+    if (it.first.find("main_state_reg") != string::npos &&
+        it.first.find("U_CtrlSM") != string::npos &&
+        it.first.find("onehot") == string::npos) {
+      cout << it.first << " " << it.second->Width() << endl;
+    }
   }
 
-  parser.PopulateFunctionalEdgePorts(functional_nodes, &functional_edges);
+  parser.PopulateFunctionalEdgePorts(
+      functional_nodes, &functional_edges, &functional_wires);
 
   // Write output in NTL format.
-  /*
-  for (const auto& module_pair : modules) {
-    parser.PrintModuleXNtlFormat(module_pair.second, nets, output_stream);
-    output_stream << endl;
-  }
-  */
   for (const auto& node_pair : functional_nodes) {
     parser.PrintFunctionalNodeXNtlFormat(
-        node_pair.second, &functional_edges, &functional_nodes, output_stream);
+        node_pair.second, &functional_edges, &functional_wires,
+        &functional_nodes, output_stream);
     output_stream << endl;
   }
 
-  for (const auto& edge_pair : functional_edges) {
-    if (edge_pair.second->Entropy(&functional_edges, &functional_nodes) < 1.0 ||
-        edge_pair.first == "n_0_zrl_proc_i_1") {
-      output_stream << edge_pair.first << ": ("
-                    << edge_pair.second->Entropy(&functional_edges, &functional_nodes)
+  for (const auto& wire_pair : functional_wires) {
+    if (wire_pair.second->Entropy(
+        &functional_edges, &functional_wires, &functional_nodes) < 1.0 ||
+        wire_pair.first == "n_0_zrl_proc_i_1") {
+      output_stream << wire_pair.first << ": ("
+                    << wire_pair.second->Entropy(&functional_edges,
+                                                 &functional_wires,
+                                                 &functional_nodes)
                     << ") ("
-                    << edge_pair.second->ProbabilityOne(0, &functional_edges, &functional_nodes)
+                    << wire_pair.second->ProbabilityOne(0,
+                                                        &functional_edges,
+                                                        &functional_wires,
+                                                        &functional_nodes)
+                    << ") ("
+                    << wire_pair.second->source_ports_.size()
                     << ")\n";
     }
   }
-
-  /*
-  map<string, int> edge_connection_counts;
-  for (const auto& module_pair : modules) {
-    for (const string& edge_name : module_pair.second.connected_net_names) {
-      if (edge_connection_counts.find(edge_name) == edge_connection_counts.end()) {
-        edge_connection_counts.insert(make_pair(edge_name, 1));
-      } else {
-        edge_connection_counts[edge_name]++;
-      }
-    }
-  }
-  for (const auto& ecc_pair : edge_connection_counts) {
-    output_stream << ecc_pair.first << " " << ecc_pair.second << "\n";
-  }
-  */
 
   if (out_file.is_open()) {
     out_file.close();

@@ -26,17 +26,30 @@ class FunctionalEdge {
     int bit_high{0};
     int bit_low{0};
   };
-  FunctionalEdge(const std::string& n, int w)
-    : name(n), width(w), bit_high(w - 1), bit_low(0) {}
-  FunctionalEdge(const std::string& n, int w, int bh, int bl)
-    : name(n), width(w), bit_high(bh), bit_low(bl) {}
 
-  double Entropy(std::map<std::string, FunctionalEdge*>* edges,
-                 std::map<std::string, FunctionalNode*>* nodes);
-  double ProbabilityOne(
+  FunctionalEdge(const std::string& n, int w)
+    : base_name_(n), bit_high_(w - 1), bit_low_(0) {}
+  FunctionalEdge(const std::string& n, int bh, int bl)
+    : base_name_(n), bit_high_(bh), bit_low_(bl) {}
+  virtual ~FunctionalEdge() {}
+
+  // Returns the entropy value assigned to the edge.
+  virtual double Entropy(std::map<std::string, FunctionalEdge*>* edges,
+                         std::map<std::string, FunctionalEdge*>* wires,
+                         std::map<std::string, FunctionalNode*>* nodes);
+
+  // Returns the probability that the component of the edge at 'bit_pos'
+  // is equal to one.
+  virtual double ProbabilityOne(
       int bit_pos,
       std::map<std::string, FunctionalEdge*>* edges,
+      std::map<std::string, FunctionalEdge*>* wires,
       std::map<std::string, FunctionalNode*>* nodes);
+
+  virtual int BitHigh() const { return bit_high_; }
+  virtual int BitLow() const { return bit_low_; }
+  virtual int Width() const { return bit_high_ - bit_low_ + 1; }
+
   // A port is described by a pair of strings, where the first string is the
   // FunctionalNode instance name and the second string is the name of the
   // connection port on that node.
@@ -46,6 +59,23 @@ class FunctionalEdge {
   void AddSinkPort(const NodePortDescriptor& port) {
     sink_ports_.push_back(port);
   }
+
+  // Gets the Base Name. This does not include a bit range.
+  virtual std::string BaseName() const {
+    return base_name_;
+  }
+
+  // Gets the base name + a range (for multi-bit) or index (for single-bit);
+  virtual std::string IndexedName() const;
+
+  // Gets a container with all single-bit indexed names.
+  virtual std::vector<std::string> GetBitNames() const;
+
+  // Check if the edge contains the index.
+  virtual bool IndexValid(int index) {
+    return index <= bit_high_ && index >= bit_low_;
+  }
+
   void SetEntropy(double e) {
     entropy_ = e;
   }
@@ -55,23 +85,25 @@ class FunctionalEdge {
   void SetWeight(double w) {
     weight_ = w;
   }
-
-  std::string name;
-  int width{1};
-  int bit_high{0};
-  int bit_low{0};
-
- private:
-  double ComputeEntropy(std::map<std::string, FunctionalEdge*>* edges,
-                        std::map<std::string, FunctionalNode*>* nodes);
-  double ComputeProbabilityOne(
-      int bit_pos,
-      std::map<std::string, FunctionalEdge*>* edges,
-      std::map<std::string, FunctionalNode*>* nodes);
-
+  //todo make private
   std::vector<NodePortDescriptor> source_ports_;
   std::vector<NodePortDescriptor> sink_ports_;
 
+ private:
+  virtual double ComputeEntropy(
+      std::map<std::string, FunctionalEdge*>* edges,
+      std::map<std::string, FunctionalEdge*>* wires,
+      std::map<std::string, FunctionalNode*>* nodes);
+  virtual double ComputeProbabilityOne(
+      int bit_pos,
+      std::map<std::string, FunctionalEdge*>* edges,
+      std::map<std::string, FunctionalEdge*>* wires,
+      std::map<std::string, FunctionalNode*>* nodes);
+
+
+  std::string base_name_;
+  int bit_high_{0};
+  int bit_low_{0};
   double entropy_{-1.0};
   double p_one_{-1.0};
   double weight_{1.0};

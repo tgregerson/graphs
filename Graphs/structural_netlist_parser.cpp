@@ -12,6 +12,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 
+#include "connection_descriptor.h"
 #include "functional_edge.h"
 #include "functional_node.h"
 #include "functional_node_factory.h"
@@ -272,7 +273,7 @@ FunctionalNode* StructuralNetlistParser::FunctionalNodeFromLine(
   node->instance_name = module_instance_name;
   for (const pair<string, vector<string>>& port_connections : port_connection_map) {
     assert(!port_connections.first.empty());
-    FunctionalNode::ConnectionDescriptor desc(port_connections.first);
+    ConnectionDescriptor desc(port_connections.first);
 
     for (const string& element : port_connections.second) {
       auto edge_it = edges.find(element);
@@ -555,9 +556,6 @@ void StructuralNetlistParser::PopulateFunctionalEdgePorts(
                 node_pair.first, connection.first, bit, bit));
       }
     }
-    if (!node->named_unknown_connections.empty()) {
-      throw std::exception();
-    }
   }
 }
 
@@ -610,36 +608,39 @@ void StructuralNetlistParser::PrintFunctionalNodeXNtlFormat(
   output_stream << "OUTPUT CONNECTIONS\n";
   for (const auto& connection : node->named_output_connections) {
     const vector<string>& bit_names = connection.second.connection_bit_names;
-    output_stream << connection.first << ": ";
-    for (size_t bit = 0; bit < bit_names.size(); ++bit) {
-      output_stream << " " << bit_names[bit];
+    for (int bit = bit_names.size() - 1; bit >= 0; --bit) {
+      output_stream << connection.first;
+      if (bit_names.size() > 1) {
+        output_stream << "[" << bit << "]";
+      }
+      cout << ": ";
+      output_stream << bit_names[bit];
+      output_stream << " ("
+                    << wires->at(bit_names[bit])->Entropy(wires, nodes)
+                    << ") ("
+                    << wires->at(bit_names[bit])->ProbabilityOne(wires, nodes)
+                    << ")\n";
     }
-    output_stream << " ("
-                  << node->ComputeEntropy(connection.first, edges, wires, nodes)
-                  << ")\n";
   }
   output_stream << "--------------\n";
   output_stream << "INPUT CONNECTIONS\n";
   for (const auto& connection : node->named_input_connections) {
     const vector<string>& bit_names = connection.second.connection_bit_names;
-    output_stream << connection.first << ": ";
-    for (size_t bit = 0; bit < bit_names.size(); ++bit) {
-      output_stream << " " << bit_names[bit];
+    for (int bit = bit_names.size() - 1; bit >= 0; --bit) {
+      output_stream << connection.first;
+      if (bit_names.size() > 1) {
+        output_stream << "[" << bit << "]";
+      }
+      cout << ": ";
+      output_stream << bit_names[bit];
+      output_stream << " ("
+                    << wires->at(bit_names[bit])->Entropy(wires, nodes)
+                    << ") ("
+                    << wires->at(bit_names[bit])->ProbabilityOne(wires, nodes)
+                    << ")\n";
     }
-    output_stream << "\n";
   }
   output_stream << "--------------\n";
-  if (!node->named_unknown_connections.empty()) {
-    output_stream << "UNKNOWN CONNECTIONS\n";
-    for (const auto& connection : node->named_unknown_connections) {
-      const vector<string>& bit_names = connection.second.connection_bit_names;
-      output_stream << connection.first << ": ";
-      for (size_t bit = 0; bit < bit_names.size(); ++bit) {
-        output_stream << " " << bit_names[bit];
-      }
-      output_stream << "\n";
-    }
-  }
   output_stream << "module_end" << "\n";
 }
 

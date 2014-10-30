@@ -9,6 +9,7 @@
 
 #include <cassert>
 
+#include <algorithm>
 #include <iostream>
 
 #include <boost/lexical_cast.hpp>
@@ -915,6 +916,9 @@ vector<string> StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElem
           wrapped_connected_element_list);
       connected_elements = ExtractConnectedElementsFromConnectedElementList(
               connected_element_list);
+      // Reverse order of concatenated elements so their position in the vector
+      // corresponds to the high-order to low-order ordering in a Verilog vector.
+      std::reverse(connected_elements.begin(), connected_elements.end());
     } else {
       connected_elements.push_back(clean_connected_element);
     }

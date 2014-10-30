@@ -34,17 +34,18 @@ class FunctionalEdge {
   virtual ~FunctionalEdge() {}
 
   // Returns the entropy value assigned to the edge.
-  virtual double Entropy(std::map<std::string, FunctionalEdge*>* edges,
-                         std::map<std::string, FunctionalEdge*>* wires,
+  virtual double Entropy(std::map<std::string, FunctionalEdge*>* wires,
                          std::map<std::string, FunctionalNode*>* nodes);
 
   // Returns the probability that the component of the edge at 'bit_pos'
   // is equal to one.
   virtual double ProbabilityOne(
-      int bit_pos,
-      std::map<std::string, FunctionalEdge*>* edges,
       std::map<std::string, FunctionalEdge*>* wires,
       std::map<std::string, FunctionalNode*>* nodes);
+
+  virtual void SetProbabilityOne(double p1) {
+    p_one_ = p1;
+  }
 
   virtual int BitHigh() const { return bit_high_; }
   virtual int BitLow() const { return bit_low_; }
@@ -76,39 +77,30 @@ class FunctionalEdge {
     return index <= bit_high_ && index >= bit_low_;
   }
 
-  void SetEntropy(double e) {
-    entropy_ = e;
-  }
-  void SetProbabilityOne(double p) {
-    p_one_ = p;
-  }
   void SetWeight(double w) {
     weight_ = w;
   }
-  //todo make private
-  std::vector<NodePortDescriptor> source_ports_;
-  std::vector<NodePortDescriptor> sink_ports_;
 
  private:
   virtual double ComputeEntropy(
-      std::map<std::string, FunctionalEdge*>* edges,
       std::map<std::string, FunctionalEdge*>* wires,
       std::map<std::string, FunctionalNode*>* nodes);
   virtual double ComputeProbabilityOne(
-      int bit_pos,
-      std::map<std::string, FunctionalEdge*>* edges,
+      std::map<std::string, FunctionalEdge*>* wires,
+      std::map<std::string, FunctionalNode*>* nodes);
+  virtual double ComputeShannonEntropy(
       std::map<std::string, FunctionalEdge*>* wires,
       std::map<std::string, FunctionalNode*>* nodes);
 
 
+  std::vector<NodePortDescriptor> source_ports_;
+  std::vector<NodePortDescriptor> sink_ports_;
   std::string base_name_;
   int bit_high_{0};
   int bit_low_{0};
-  double entropy_{-1.0};
   double p_one_{-1.0};
   double weight_{1.0};
   // Used to detect dependency loops.
-  bool entropy_calculation_in_progress_{false};
   bool probability_calculation_in_progress_{false};
 };
 

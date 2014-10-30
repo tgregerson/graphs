@@ -63,7 +63,7 @@ class FunctionalNodeFactory {
     } else if (str == "VCC") {
       node = new vivado::XilinxVccNode();
     } else {
-      node = new UnknownFunctionalNode();
+      throw std::exception();
     }
     node->type_name = str;
     return node;

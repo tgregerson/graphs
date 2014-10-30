@@ -14,6 +14,7 @@
 
 #include "functional_edge.h"
 #include "functional_node.h"
+#include "xilinx_functional_nodes.h"
 #include "structural_netlist_parser.h"
 
 using namespace std;
@@ -84,16 +85,12 @@ int main(int argc, char *argv[]) {
       functional_edges, functional_wires, &functional_nodes, parsed_lines);
 
   FunctionalEdge* const0 = functional_edges.at("\\<const0> ");
-  const0->SetEntropy(0.0);
   const0->SetProbabilityOne(0.0);
   FunctionalEdge* const0w = functional_wires.at("\\<const0> [0]");
-  const0w->SetEntropy(0.0);
   const0w->SetProbabilityOne(0.0);
   FunctionalEdge* const1 = functional_edges.at("\\<const1> ");
-  const1->SetEntropy(0.0);
   const1->SetProbabilityOne(1.0);
   FunctionalEdge* const1w = functional_wires.at("\\<const1> [0]");
-  const1w->SetEntropy(0.0);
   const1w->SetProbabilityOne(1.0);
 
   // Remove synthesis-tool-specific nets that should not be included in graph.
@@ -121,24 +118,6 @@ int main(int argc, char *argv[]) {
       &modules, blacklisted_net_substrings);
   */
 
-  for (auto it : functional_edges) {
-    // TODO Remove
-    if (it.first.find("main_state_reg") != string::npos &&
-        it.first.find("U_CtrlSM") != string::npos &&
-        it.first.find("onehot") == string::npos) {
-      cout << it.first << " " << it.second->Width() << endl;
-    }
-  }
-
-  for (auto it : functional_edges) {
-    // TODO Remove
-    if (it.first.find("main_state_reg") != string::npos &&
-        it.first.find("U_CtrlSM") != string::npos &&
-        it.first.find("onehot") == string::npos) {
-      cout << it.first << " " << it.second->Width() << endl;
-    }
-  }
-
   parser.PopulateFunctionalEdgePorts(
       functional_nodes, &functional_edges, &functional_wires);
 
@@ -150,24 +129,70 @@ int main(int argc, char *argv[]) {
     output_stream << endl;
   }
 
+  const double BIN1_MIN = 0.999;
+  const double BIN2_MIN = 0.95;
+  const double BIN3_MIN = 0.90;
+  const double BIN4_MIN = 0.80;
+  const double BIN5_MIN = 0.60;
+  const double BIN6_MIN = 0.10;
+  const double BIN7_MIN = 0.01;
+  const double BIN8_MIN = 0.0;
+
+  map<double, int> bin_count;
+
   for (const auto& wire_pair : functional_wires) {
-    if (wire_pair.second->Entropy(
-        &functional_edges, &functional_wires, &functional_nodes) < 1.0 ||
-        wire_pair.first == "n_0_zrl_proc_i_1") {
-      output_stream << wire_pair.first << ": ("
-                    << wire_pair.second->Entropy(&functional_edges,
-                                                 &functional_wires,
-                                                 &functional_nodes)
-                    << ") ("
-                    << wire_pair.second->ProbabilityOne(0,
-                                                        &functional_edges,
-                                                        &functional_wires,
-                                                        &functional_nodes)
-                    << ") ("
-                    << wire_pair.second->source_ports_.size()
-                    << ")\n";
+    FunctionalEdge* wire = wire_pair.second;
+    double reported_entropy = wire->Entropy(&functional_wires,
+                                            &functional_nodes);
+    double reported_p1 = wire->ProbabilityOne(&functional_wires,
+                                              &functional_nodes);
+    output_stream << wire_pair.first << ": ("
+                  << reported_entropy
+                  << ") ("
+                  << reported_p1
+                  << ")\n";
+    if (reported_entropy >= BIN1_MIN) {
+      bin_count[BIN1_MIN]++;
+    } else if (reported_entropy >= BIN2_MIN) {
+      bin_count[BIN2_MIN]++;
+    } else if (reported_entropy >= BIN3_MIN) {
+      bin_count[BIN3_MIN]++;
+    } else if (reported_entropy >= BIN4_MIN) {
+      bin_count[BIN4_MIN]++;
+    } else if (reported_entropy >= BIN5_MIN) {
+      bin_count[BIN5_MIN]++;
+    } else if (reported_entropy >= BIN6_MIN) {
+      bin_count[BIN6_MIN]++;
+    } else if (reported_entropy >= BIN7_MIN) {
+      bin_count[BIN7_MIN]++;
+    } else {
+      bin_count[BIN8_MIN]++;
     }
   }
+  cout << "[1.0:" << BIN1_MIN << "] "
+       << (100.0 * bin_count[BIN1_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN1_MIN] << endl;
+  cout << "[" << BIN1_MIN << ":" << BIN2_MIN << "] "
+       << (100.0 * bin_count[BIN2_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN2_MIN] << endl;
+  cout << "[" << BIN2_MIN << ":" << BIN3_MIN << "] "
+       << (100.0 * bin_count[BIN3_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN3_MIN] << endl;
+  cout << "[" << BIN3_MIN << ":" << BIN4_MIN << "] "
+       << (100.0 * bin_count[BIN4_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN4_MIN] << endl;
+  cout << "[" << BIN4_MIN << ":" << BIN5_MIN << "] "
+       << (100.0 * bin_count[BIN5_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN5_MIN] << endl;
+  cout << "[" << BIN5_MIN << ":" << BIN6_MIN << "] "
+       << (100.0 * bin_count[BIN6_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN6_MIN] << endl;
+  cout << "[" << BIN6_MIN << ":" << BIN7_MIN << "] "
+       << (100.0 * bin_count[BIN7_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN7_MIN] << endl;
+  cout << "[" << BIN7_MIN << ":" << BIN8_MIN << "] "
+       << (100.0 * bin_count[BIN8_MIN] / functional_wires.size())
+       << "% " << bin_count[BIN8_MIN] << endl;
 
   if (out_file.is_open()) {
     out_file.close();

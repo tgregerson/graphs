@@ -13,7 +13,7 @@ class Edge {
   typedef std::set<int> NodeIdSet;
   typedef std::vector<int> NodeIdVector;
 
-  Edge() : id(-1), weight(0.0) {}
+  Edge() {}
   Edge(int edge_id, double weight = 1.0, const std::string& edge_name = "");
   virtual ~Edge() {}
 
@@ -29,6 +29,27 @@ class Edge {
   // Returns the total number of connected nodes/ports for the hyperedge.
   int degree() const;
 
+  double Width() const {
+    return width_;
+  }
+  void SetWidth(double width) {
+    width_ = width;
+  }
+
+  double Entropy() const {
+    return entropy_;
+  }
+  void SetEntropy(double entropy) {
+    entropy_ = entropy;
+  }
+
+  double Weight() const {
+    return Width();
+  }
+  void SetWeight(double weight) {
+    SetWidth(weight);
+  }
+
   const std::string GenerateSplitEdgeName(int new_id) const;
 
   // Print debug information about the edge.
@@ -42,8 +63,9 @@ class Edge {
   }
 
   // connection_ids is kept sorted for fast searching.
-  int id;
-  double weight;
+  int id{-1};
+  double entropy_{0.0};
+  double width_{1.0};
   std::string name;
  protected:
   NodeIdVector connection_ids_;

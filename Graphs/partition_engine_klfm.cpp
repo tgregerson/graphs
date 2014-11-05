@@ -755,7 +755,7 @@ double PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
       // This node is the only one of this side of the partition for the
       // edge, so its gain increases, because moving it would eliminate
       // the cut in this edge.
-      node_gain += connecting_edge->weight;
+      node_gain += connecting_edge->Weight();
     } else if (opposite_partition_unlocked.empty() &&
                opposite_partition_locked.empty()) {
         // This would indicate that there was only one node on an edge, which
@@ -766,7 +766,7 @@ double PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
         assert(nodes_on_this_side != 1);
       // There are no nodes on the opposite partition, so decrease the
       // gain of this node, since moving it will cause the edge to be cut.
-      node_gain -= connecting_edge->weight;
+      node_gain -= connecting_edge->Weight();
     }
   }
   return node_gain;
@@ -1013,7 +1013,7 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     // gains increased are always in the same partition that the node was
     // moved from and the gains to be decreased are in the partition it
     // was moved to.
-    double gain_modifier = connected_edge->weight;
+    double gain_modifier = connected_edge->Weight();
     gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
                                       nodes_to_decrease_gain, from_part_a);
   }
@@ -1284,7 +1284,7 @@ double PartitionEngineKlfm::RecomputeCurrentCost() {
 
 double PartitionEngineKlfm::ComputeEdgeCost(const EdgeKlfm& edge) {
   if (edge.CrossesPartitions()) {
-    return edge.weight;
+    return edge.Weight();
   } else {
     return 0;
   }
@@ -1804,11 +1804,11 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
           for (auto connected_node_id : edge->connection_ids()) {
             auto sn_it = nodes_in_supernode.find(connected_node_id);
             if (sn_it != nodes_in_supernode.end()) {
-              supernode_connectivity_weight += edge->weight;
+              supernode_connectivity_weight += edge->Weight();
             }
             auto nb_it = neighbor_node_ids.find(connected_node_id);
             if (nb_it != neighbor_node_ids.end()) {
-              supernode_neighbors_connectivity_weight += edge->weight;
+              supernode_neighbors_connectivity_weight += edge->Weight();
             }
           }
         }
@@ -1942,11 +1942,11 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
               int connected_index =
                   node_id_to_current_supernode_index.at(connected_node_id);
               if (connected_index == sn_index) {
-                supernode_connectivity_weight += edge->weight;
+                supernode_connectivity_weight += edge->Weight();
               } else {
                 auto nb_it = viable_neighbor_indices.find(connected_index);
                 if (nb_it != viable_neighbor_indices.end()) {
-                  supernode_neighbors_connectivity_weight += edge->weight;
+                  supernode_neighbors_connectivity_weight += edge->Weight();
                 }
               }
             }
@@ -2180,7 +2180,7 @@ void PartitionEngineKlfm::SplitSupernodeBoundaryEdges(
     // Make new edge.
     int new_edge_id = IdManager::AcquireEdgeId();
     EdgeKlfm* new_boundary_edge = new EdgeKlfm(
-        new_edge_id, edge->weight, edge->GenerateSplitEdgeName(new_edge_id));
+        new_edge_id, edge->Weight(), edge->GenerateSplitEdgeName(new_edge_id));
         //new_edge_id, edge->weight, "");
     edge_map->insert(make_pair(new_edge_id, new_boundary_edge));
     new_boundary_edge->AddConnection(supernode_id); 
@@ -2495,7 +2495,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
     if (edge->CrossesPartitions()) {
-      of << "X" << mps_name_hash::Hash(edge->id) << " 1\t (obj:" << edge->weight
+      of << "X" << mps_name_hash::Hash(edge->id) << " 1\t (obj:" << edge->Weight()
          << ")\n";
     }
 
@@ -2562,7 +2562,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     // partitions.
     of << "X" << mps_name_hash::Hash(edge->id);
     if (edge->CrossesPartitions()) {
-      of << " 1\t (obj:" << edge->weight << ")\n";
+      of << " 1\t (obj:" << edge->Weight() << ")\n";
     } else {
       of << " 0\t (obj:0)\n";
     }

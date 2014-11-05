@@ -40,6 +40,7 @@ class KlfmRunConfig {
   enum GraphFileType {
     kChacoGraph,
     kNtlGraph,
+    kXntlGraph,
   };
   PartitionerConfig partitioner_config;
   int num_runs;
@@ -115,10 +116,15 @@ int main(int argc, char *argv[]) {
   const int kAlot = 1000000000;
   graph = new Node(kAlot, "Top-Level Graph");
   {
-    if (run_config.graph_file_type == KlfmRunConfig::kNtlGraph) {
+    if (run_config.graph_file_type == KlfmRunConfig::kNtlGraph ||
+        run_config.graph_file_type == KlfmRunConfig::kXntlGraph) {
       ls << "Invoking Processed Netlist Parser" << endl;
+      double ver = 1.0;
+      if (run_config.graph_file_type == KlfmRunConfig::kXntlGraph) {
+        ver = 2.0;
+      }
       run_config.num_ways = 2;
-      NtlParser parser;
+      NtlParser parser(ver);
       parser.Parse(graph, run_config.graph_filename.c_str(), &edge_id_name_map);
     } else {
       ls << "Invoking Chaco Parser" << endl;

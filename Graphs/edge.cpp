@@ -8,7 +8,8 @@
 using namespace std;
 
 Edge::Edge(int edge_id, double weight, const string& edge_name)
-  : id(edge_id), weight(weight), name(edge_name) {
+  : id(edge_id), name(edge_name) {
+  SetWeight(weight);
   // TODO - Omitting name saves memory.
   if (name.empty()) {
     // Create generic name.
@@ -64,14 +65,14 @@ void Edge::RemoveConnection(int cnx_id) {
 
 void Edge::CopyFrom(Edge* src) {
   id = src->id;
-  weight = src->weight;
+  width_ = src->width_;
   name = src->name;
   connection_ids_ = src->connection_ids();
 }
 
 void Edge::Print() const {
   printf("Edge  ID=%d  Name=%s\n", id, name.c_str()); 
-  printf("Weight: %f\n", weight);
+  printf("Weight: %f\n", this->Weight());
   printf("Degree: %d\n", degree());
   printf("Connected IDs: ");
   for (auto it : connection_ids_) {

@@ -7,7 +7,7 @@
 
 using namespace std;
 
-Edge::Edge(int edge_id, int weight, const string& edge_name)
+Edge::Edge(int edge_id, double weight, const string& edge_name)
   : id(edge_id), weight(weight), name(edge_name) {
   // TODO - Omitting name saves memory.
   if (name.empty()) {
@@ -71,7 +71,7 @@ void Edge::CopyFrom(Edge* src) {
 
 void Edge::Print() const {
   printf("Edge  ID=%d  Name=%s\n", id, name.c_str()); 
-  printf("Weight: %d\n", weight);
+  printf("Weight: %f\n", weight);
   printf("Degree: %d\n", degree());
   printf("Connected IDs: ");
   for (auto it : connection_ids_) {

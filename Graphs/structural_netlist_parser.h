@@ -135,12 +135,23 @@ class StructuralNetlistParser {
   void RemoveNetConnectionFromModules(
       std::map<std::string, VlogModule>* modules,
       const std::set<std::string>& nets_to_remove);
+  void RemoveWires(
+      std::map<std::string, FunctionalNode*>* nodes,
+      std::map<std::string, FunctionalEdge*>* wires,
+      const std::set<std::string>& wires_to_remove);
 
   // Remove connections from a given net name from modules if it contains a
   // substring. Useful for removing 'UNCONNECTED' nets.
   void RemoveNetConnectionFromModulesSubstring(
       std::map<std::string, VlogModule>* modules,
       const std::set<std::string>& nets_to_remove_substring);
+  void RemoveWiresBySubstring(
+      std::map<std::string, FunctionalNode*>* nodes,
+      std::map<std::string, FunctionalEdge*>* wires,
+      const std::set<std::string>& substrings);
+
+  // Removes nodes with no connections.
+  void RemoveUnconnectedNodes(std::map<std::string, FunctionalNode*>* nodes);
 
   // Identifiers may consist of either simple or escaped identifiers. In the
   // case of simple identifiers, we want to remove all surrounding whitespace.

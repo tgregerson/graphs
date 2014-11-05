@@ -8,6 +8,10 @@
 #ifndef CONNECTION_DESCRIPTOR_H_
 #define CONNECTION_DESCRIPTOR_H_
 
+#include <exception>
+#include <string>
+#include <vector>
+
 class ConnectionDescriptor {
  public:
   ConnectionDescriptor(const std::string& pn) : port_name(pn) {}
@@ -31,6 +35,22 @@ class ConnectionDescriptor {
   void AddBitConnection(const std::string& bit_name) {
     connection_bit_names.push_back(bit_name);
     ++port_width;
+  }
+
+  void RemoveBitConnection(unsigned int index, const std::string& bit_name) {
+    if (connection_bit_names.at(index) != bit_name) {
+      throw std::exception();
+    } else {
+      connection_bit_names.at(index) = "";
+    }
+  }
+
+  void RemoveBitConnection(const std::string& bit_name) {
+    for (size_t i = 0; i < connection_bit_names.size(); ++i) {
+      if (connection_bit_names[i] == "bit_name") {
+        connection_bit_names[i].clear();
+      }
+    }
   }
 
   // Useful because Verilog presents bit names in descending order,

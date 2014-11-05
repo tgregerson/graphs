@@ -27,7 +27,7 @@ class GainBucketInterface {
   virtual bool Empty() const = 0;
 
   // Add the gain modifier to each of the nodes in the vector.
-  virtual void UpdateGains(int gain_modifier,
+  virtual void UpdateGains(double gain_modifier,
                            const EdgeKlfm::NodeIdVector& nodes_to_update) = 0;
 
   // Returns true if the node with 'node_id' is in the bucket.

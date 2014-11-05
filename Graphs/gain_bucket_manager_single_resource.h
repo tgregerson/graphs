@@ -33,10 +33,10 @@ class GainBucketManagerSingleResource : public GainBucketManager {
   virtual bool Empty() const;
 
   // Adds a node to the gain bucket(s).
-  virtual void AddNode(int gain, Node* node, bool in_part_a,
+  virtual void AddNode(double gain, Node* node, bool in_part_a,
                        const std::vector<int>& total_weight);
 
-  virtual void UpdateGains(int gain_modifier,
+  virtual void UpdateGains(double gain_modifier,
                            const std::vector<int>& nodes_to_increase_gain, 
                            const std::vector<int>& nodes_to_decrease_gain, 
                            bool moved_from_part_a);

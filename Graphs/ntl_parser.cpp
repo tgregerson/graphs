@@ -59,11 +59,17 @@ void NtlParser::Parse(
             << endl;
       }
     }
-    for(size_t i = 2; i < module_lines.size(); ++i) {
-      module.connected_edge_names.push_back(module_lines[i]);
+    for(size_t i = 2; i < module_lines.size(); ) {
+      string wire_name = module_lines[i++];
+      double entropy = 1.0;
+      if (ver_ >= 2.0) {
+        entropy = std::stod(module_lines[i++]);
+      }
+      module.connected_edge_names_and_entropies.push_back(
+          make_pair(wire_name, entropy));
     }
     // Sanity check on number of connected edges.
-    if (module.connected_edge_names.size() > 200) {
+    if (module.connected_edge_names_and_entropies.size() > 200) {
       cout << "Warning: Over 200 connected edges for node "
             << module.instance_name << ". Normal?" << endl;
     }
@@ -132,7 +138,7 @@ void NtlParser::PopulateGraph(
     Node* graph, map<int, string>* edge_id_to_name) {
   assert(graph != nullptr);
   cout << "Populating Graph" << endl;
-  map<string,int> edge_name_to_id;
+  map<string,pair<int,double>> edge_name_to_id_and_entropy;
   map<string,set<int>> edge_name_to_connection_ids;
 
   // Populate all nodes.
@@ -151,14 +157,19 @@ void NtlParser::PopulateGraph(
     for (auto& impl : new_node_implementations) {
       new_node->AddWeightVector(impl);
     }
-    for (const string& cnx_edge_name : parsed_module.connected_edge_names) {
+    for (const auto& name_entropy_pair :
+         parsed_module.connected_edge_names_and_entropies) {
+      const string& cnx_edge_name = name_entropy_pair.first;
       assert(!cnx_edge_name.empty());
       int new_edge_id;
-      if (edge_name_to_id.find(cnx_edge_name) == edge_name_to_id.end()) {
+      if (edge_name_to_id_and_entropy.find(cnx_edge_name) ==
+          edge_name_to_id_and_entropy.end()) {
         new_edge_id = IdManager::AcquireEdgeId();
-        edge_name_to_id.insert(make_pair(cnx_edge_name, new_edge_id));
+        edge_name_to_id_and_entropy.insert(
+            make_pair(cnx_edge_name, make_pair(
+                new_edge_id, name_entropy_pair.second)));
       } else {
-        new_edge_id = edge_name_to_id.at(cnx_edge_name);
+        new_edge_id = edge_name_to_id_and_entropy.at(cnx_edge_name).first;
       }
       new_node->AddConnection(new_edge_id);
       edge_name_to_connection_ids[cnx_edge_name].insert(new_node_id);
@@ -177,7 +188,7 @@ void NtlParser::PopulateGraph(
       cout << "Removing high fanout edge: " << edge_name
            << " (" << connected_node_ids.size() << ")" << endl;
       edge_names_to_erase.push_back(edge_name);
-      int rmv_edge_id = edge_name_to_id.at(edge_name);
+      int rmv_edge_id = edge_name_to_id_and_entropy.at(edge_name).first;
       for (int node_id : connected_node_ids) {
         Node* node = graph->internal_nodes().at(node_id);
         assert(node->RemoveConnection(rmv_edge_id) > 0);
@@ -185,18 +196,20 @@ void NtlParser::PopulateGraph(
     }
   }
   for (auto& erase_name : edge_names_to_erase) {
-    edge_name_to_id.erase(erase_name);
+    edge_name_to_id_and_entropy.erase(erase_name);
     edge_name_to_connection_ids.erase(erase_name);
   }
 
   // Populate all edges.
   cout << "Populating Edges" << endl;
-  assert(!edge_name_to_id.empty());
-  for (auto& edge_name_id_pair : edge_name_to_id) {
-    int new_edge_id = edge_name_id_pair.second;
-    Edge* new_edge = new Edge(new_edge_id, 1, edge_name_id_pair.first);
+  assert(!edge_name_to_id_and_entropy.empty());
+  for (auto& edge_name_id_entropy_pair : edge_name_to_id_and_entropy) {
+    const string& edge_name = edge_name_id_entropy_pair.first;
+    int new_edge_id = edge_name_id_entropy_pair.second.first;
+    double edge_entropy = edge_name_id_entropy_pair.second.second;
+    Edge* new_edge = new Edge(new_edge_id, edge_entropy, edge_name);
     for (auto node_id :
-         edge_name_to_connection_ids.at(edge_name_id_pair.first)) {
+         edge_name_to_connection_ids.at(edge_name)) {
       new_edge->AddConnection(node_id);
     }
     // If the edge only has one connection in the graph, add a port connection.
@@ -208,8 +221,7 @@ void NtlParser::PopulateGraph(
     }
     graph->AddInternalEdge(new_edge_id, new_edge);
     if (edge_id_to_name != nullptr) {
-      edge_id_to_name->insert(
-          make_pair(new_edge_id, edge_name_id_pair.first));
+      edge_id_to_name->insert(make_pair(new_edge_id, edge_name));
     }
   }
 }

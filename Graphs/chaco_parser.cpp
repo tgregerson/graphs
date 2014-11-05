@@ -90,9 +90,9 @@ bool ChacoParser::Parse(Node* top_level_graph, const char* filename) {
         back_connections[connected_node_id].insert(
             make_pair(node_num, connecting_edge->id));
         if (edge_weight_mode_ == USER_SPECIFIED_WEIGHT_MODE) {
-          connecting_edge->weight = line_ints[pos++];
+          connecting_edge->weight_ = line_ints[pos++];
         } else {
-          connecting_edge->weight = 1;
+          connecting_edge->weight_ = 1.0;
         }
       } else {
         // Add connection to an edge that was created in an earlier iteration.

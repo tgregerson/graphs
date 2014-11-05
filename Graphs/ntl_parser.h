@@ -3,18 +3,22 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct ParsedModule {
   std::string type_name;
   std::string instance_name;
-  std::vector<std::string> connected_edge_names;
+  std::vector<std::pair<std::string, double>> connected_edge_names_and_entropies;
 };
 
 class Node;
 
 class NtlParser {
  public:
+  // 'ver' specifies NTL version number in use.
+  explicit NtlParser(double ver = 1.0) : ver_(ver) {}
+
   // Opens the file 'filename', reads it in NTL format, and populates the
   // internal nodes and edges of 'graph' with the contents.
   //
@@ -35,6 +39,8 @@ class NtlParser {
 
   std::vector<ParsedModule> parsed_modules_;
   std::map<std::string,std::vector<std::vector<int>>> module_type_implementations_map_;
+
+  const double ver_;
 };
 
 

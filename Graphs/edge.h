@@ -13,8 +13,8 @@ class Edge {
   typedef std::set<int> NodeIdSet;
   typedef std::vector<int> NodeIdVector;
 
-  Edge() : id(-1), weight(0) {}
-  Edge(int edge_id, int weight = 1, const std::string& edge_name = "");
+  Edge() : id(-1), weight(0.0) {}
+  Edge(int edge_id, double weight = 1.0, const std::string& edge_name = "");
   virtual ~Edge() {}
 
   // Add/remove a connection to a node or port.
@@ -43,7 +43,7 @@ class Edge {
 
   // connection_ids is kept sorted for fast searching.
   int id;
-  int weight;
+  double weight;
   std::string name;
  protected:
   NodeIdVector connection_ids_;

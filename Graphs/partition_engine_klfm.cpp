@@ -188,7 +188,7 @@ void PartitionEngineKlfm::Execute(vector<PartitionSummary>* summaries) {
 
     if (!options_.initial_sol_base_filename.empty()) {
       NodePartitions pre_run_partitions;
-      int temp_cost;
+      double temp_cost;
       vector<int> temp_balance;
       GenerateInitialPartition(&pre_run_partitions, &temp_cost, &temp_balance);
       if (options_.sol_scip_format) {
@@ -256,7 +256,7 @@ void PartitionEngineKlfm::ExecuteRun(
     int cur_run, vector<PartitionSummary>* summaries) {
   rebalances_this_run_ = 0;
   NodePartitions coarsened_partition;
-  int current_partition_cost;
+  double current_partition_cost;
   // Balance is the difference in weight between the partitions. It is
   // positive if Partition A has a higher weight.
   vector<int> current_partition_balance;
@@ -294,7 +294,7 @@ void PartitionEngineKlfm::ExecuteRun(
     }
   }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
-    assert(current_partition_cost == RecomputeCurrentCost());
+    assert(abs(current_partition_cost - RecomputeCurrentCost()) < 1.0);
   }
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 0) {
     vector<int> rec_balance = RecomputeCurrentBalance(coarsened_partition);
@@ -347,7 +347,7 @@ void PartitionEngineKlfm::ExecuteRun(
   PopulateEdgePartitionConnections(decoarsened_partition);
 
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
-    assert(current_partition_cost == RecomputeCurrentCost());
+    assert(abs(current_partition_cost - RecomputeCurrentCost()) < 1.0);
   }
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 0) {
     vector<int> rec_balance = RecomputeCurrentBalance(decoarsened_partition);
@@ -380,7 +380,7 @@ void PartitionEngineKlfm::ExecuteRun(
     }
   }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 0) {
-    assert(current_partition_cost == RecomputeCurrentCost());
+    assert(abs(current_partition_cost - RecomputeCurrentCost()) < 1.0);
   }
   RUN_DEBUG(DEBUG_OPT_BALANCE_CHECK, 0) {
     assert(current_partition_balance ==
@@ -493,7 +493,7 @@ void PartitionEngineKlfm::ExecuteRun(
     double rms_avg = (rms_a + rms_b) / 2;
     
     RUN_VERBOSE(1) {
-      printf("Best cost this run: %d\n", current_partition_cost);
+      printf("Best cost this run: %f\n", current_partition_cost);
       printf("Imbalance: ");
       for (auto it : partition_imbalance) {
         printf("%f ", it);
@@ -533,10 +533,10 @@ void PartitionEngineKlfm::ExecuteRun(
 
 int PartitionEngineKlfm::RunKlfmAlgorithm(
     int cur_run, NodePartitions& current_partition,
-    int& current_partition_cost, std::vector<int>& current_partition_balance) {
+    double& current_partition_cost, std::vector<int>& current_partition_balance) {
 
   // These vectors are not yet used for anything useful.
-  vector<int> best_cost_by_pass;
+  vector<double> best_cost_by_pass;
   vector<vector<int>> best_cost_balance_by_pass;
 
   // Perform specified number of passes.
@@ -564,7 +564,7 @@ int PartitionEngineKlfm::RunKlfmAlgorithm(
     best_cost_balance_by_pass.push_back(current_partition_balance);
 
     RUN_VERBOSE(2) {
-      printf("Best cost this pass: %d\n", best_cost_by_pass[cur_pass]);
+      printf("Best cost this pass: %f\n", best_cost_by_pass[cur_pass]);
       printf("Best result found after %lu moves.\n", max_at_node_count_);
       printf("Imbalance: ");
       for (size_t tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
@@ -600,11 +600,11 @@ int PartitionEngineKlfm::RunKlfmAlgorithm(
 }
 
 void PartitionEngineKlfm::ExecutePass(
-    NodePartitions& current_partition, int& current_partition_cost,
+    NodePartitions& current_partition, double& current_partition_cost,
     std::vector<int>& current_partition_balance, bool& partition_changed) {
 
-    int best_cost = current_partition_cost;
-    int pre_best_cost = best_cost;
+    double best_cost = current_partition_cost;
+    double pre_best_cost = best_cost;
     vector<int> best_cost_balance = current_partition_balance;
     double best_cost_br_power =
         ImbalancePower(current_partition_balance, max_weight_imbalance_);
@@ -640,7 +640,7 @@ void PartitionEngineKlfm::ExecutePass(
       }
     }
 
-    if (pre_best_cost == best_cost && (nodes_moved_since_best_result.empty() ||
+    if (pre_best_cost <= best_cost && (nodes_moved_since_best_result.empty() ||
         nodes_moved_since_best_result.size() ==
             (current_partition.first.size() +
              current_partition.second.size()))) {
@@ -721,12 +721,12 @@ void PartitionEngineKlfm::ResetNodeAndEdgeKlfmState(
 
 void PartitionEngineKlfm::ComputeInitialNodeGainAndUpdateBuckets(
     Node* node, bool in_part_a) {
-  int node_gain = ComputeNodeGain(node, in_part_a);
+  double node_gain = ComputeNodeGain(node, in_part_a);
   gain_bucket_manager_->AddNode(node_gain, node, in_part_a, total_weight_);
 }
 
-int PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
-  int node_gain = 0;
+double PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
+  double node_gain = 0;
   int my_node_id = node->id;
   for (auto& port_pair : node->ports()) {
     Port& port = port_pair.second;
@@ -774,9 +774,9 @@ int PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
 
 void PartitionEngineKlfm::MakeKlfmMove(
     vector<int>& current_partition_balance,
-    int& current_partition_cost,
+    double& current_partition_cost,
     vector<int>& best_cost_balance,
-    int& best_cost,
+    double& best_cost,
     double& best_cost_br_power,
     NodePartitions& current_partition,
     vector<int>& nodes_moved_since_best_result) {
@@ -791,7 +791,7 @@ void PartitionEngineKlfm::MakeKlfmMove(
     set_vector_and_update_weights_start_time_ = GetTimeUsec();
   }
 
-  const int gain = entry.gain;
+  const double gain = entry.gain;
   const int node_id_to_move = entry.id;
   const bool from_part_a = current_partition.first.count(node_id_to_move) != 0;
   Node* node_to_move = internal_node_map_.at(node_id_to_move);
@@ -929,8 +929,8 @@ void PartitionEngineKlfm::MakeKlfmMove(
   // Check if the best solution result needs updating.
   current_partition_cost -= gain;
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 1) {
-    int rec_cost = RecomputeCurrentCost();
-    assert(current_partition_cost == rec_cost);
+    double rec_cost = RecomputeCurrentCost();
+    assert(abs(current_partition_cost - rec_cost) < 1.0);
   }
 
   double current_br_power = ImbalancePower(current_partition_balance,
@@ -1013,7 +1013,7 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     // gains increased are always in the same partition that the node was
     // moved from and the gains to be decreased are in the partition it
     // was moved to.
-    int gain_modifier = connected_edge->weight;
+    double gain_modifier = connected_edge->weight;
     gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
                                       nodes_to_decrease_gain, from_part_a);
   }
@@ -1022,8 +1022,8 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
 void PartitionEngineKlfm::RollBackToBestResultOfPass(
     vector<int>& nodes_moved_since_best_result,
     NodePartitions& current_partition,
-    int& current_partition_cost, vector<int>& current_partition_balance,
-    const int& best_cost, const vector<int>& best_cost_balance) {
+    double& current_partition_cost, vector<int>& current_partition_balance,
+    const double& best_cost, const vector<int>& best_cost_balance) {
   for (auto id : nodes_moved_since_best_result) {
     if (current_partition.first.count(id) != 0) {
       current_partition.first.erase(id);
@@ -1061,8 +1061,8 @@ void PartitionEngineKlfm::RollBackToBestResultOfPass(
     assert(cur_max_imbalance == max_weight_imbalance_);
   }
   RUN_DEBUG(DEBUG_OPT_COST_CHECK, 1) {
-    int rec_cost = RecomputeCurrentCost();
-    assert(current_partition_cost == rec_cost);
+    double rec_cost = RecomputeCurrentCost();
+    assert(abs(current_partition_cost - rec_cost) < 1.0);
   }
 }
 
@@ -1122,7 +1122,7 @@ void PartitionEngineKlfm::PopulateEdgePartitionConnections(
 }
 
 void PartitionEngineKlfm::GenerateInitialPartition(
-    NodePartitions* partition, int* cost, vector<int>* balance) {
+    NodePartitions* partition, double* cost, vector<int>* balance) {
   partition->first.clear();
   partition->second.clear();
   switch(options_.seed_mode) {
@@ -1159,7 +1159,7 @@ void PartitionEngineKlfm::GenerateInitialPartition(
 }
 
 void PartitionEngineKlfm::GenerateInitialPartitionRandom(
-    NodePartitions* partition, int* cost, vector<int>* balance) {
+    NodePartitions* partition, double* cost, vector<int>* balance) {
 
   // Randomly assign nodes to partitions, obeying balance constraints.
   vector<int> part_a_current_weight;
@@ -1273,8 +1273,8 @@ void PartitionEngineKlfm::RecomputeTotalWeightAndMaxImbalance() {
   }
 }
 
-int PartitionEngineKlfm::RecomputeCurrentCost() {
-  int current_cost = 0;
+double PartitionEngineKlfm::RecomputeCurrentCost() {
+  double current_cost = 0;
   for (auto it : internal_edge_map_) {
     const EdgeKlfm* edge = CHECK_NOTNULL(it.second);
     current_cost += ComputeEdgeCost(*edge);
@@ -1282,7 +1282,7 @@ int PartitionEngineKlfm::RecomputeCurrentCost() {
   return current_cost;
 }
 
-int PartitionEngineKlfm::ComputeEdgeCost(const EdgeKlfm& edge) {
+double PartitionEngineKlfm::ComputeEdgeCost(const EdgeKlfm& edge) {
   if (edge.CrossesPartitions()) {
     return edge.weight;
   } else {
@@ -1794,11 +1794,11 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
     while (neighbor_node_ids.size() > 0 &&
            supernode_membership_count < max_nodes_per_supernode) {
       // Compute connectivity score for each edge.
-      vector<pair<int,int>> node_id_connectivity_pairs;
+      vector<pair<int,double>> node_id_connectivity_pairs;
       for (auto neighbor_id : neighbor_node_ids) {
         Node* neighbor_node = internal_node_map_.at(neighbor_id);
-        int supernode_connectivity_weight = 0;
-        int supernode_neighbors_connectivity_weight = 0;
+        double supernode_connectivity_weight = 0.0;
+        double supernode_neighbors_connectivity_weight = 0.0;
         for (auto& port_pair : neighbor_node->ports()) {
           Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
           for (auto connected_node_id : edge->connection_ids()) {
@@ -1815,7 +1815,7 @@ void PartitionEngineKlfm::CoarsenNeighborhoodInterconnection(
         // The connectivity score will give heavier weight to connections
         // to nodes that are already locked into the supernode, but also
         // consider connectivity to potential members of the supernode.
-        int cx_score = 10 * supernode_connectivity_weight +
+        double cx_score = 10 * supernode_connectivity_weight +
                        supernode_neighbors_connectivity_weight;
         node_id_connectivity_pairs.push_back(make_pair(neighbor_id, cx_score));
       }
@@ -1928,13 +1928,13 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
         scanning_it = non_finalized_supernode_indices.begin();
       }
     } else {
-      vector<pair<int,int>> sn_index_cx_weight_pairs;
+      vector<pair<int,double>> sn_index_cx_weight_pairs;
       for (auto neighbor_index : viable_neighbor_indices) {
-        int cx_score = 0;
+        double cx_score = 0.0;
         for (auto neighbor_id : supernode_id_sets[neighbor_index]) {
           Node* neighbor_node = internal_node_map_.at(neighbor_id);
-          int supernode_connectivity_weight = 0;
-          int supernode_neighbors_connectivity_weight = 0;
+          double supernode_connectivity_weight = 0;
+          double supernode_neighbors_connectivity_weight = 0;
           for (auto& port_pair : neighbor_node->ports()) {
             Edge* edge =
                 internal_edge_map_.at(port_pair.second.external_edge_id);
@@ -1958,8 +1958,8 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
                       supernode_neighbors_connectivity_weight;
         }
         int neighbor_size = supernode_id_sets.at(neighbor_index).size();
-        if (cx_score > 0) {
-          int connection_ratio = neighbor_size / cx_score;
+        if (cx_score > 0.0) {
+          double connection_ratio = neighbor_size / cx_score;
           sn_index_cx_weight_pairs.push_back(
               make_pair(neighbor_index, connection_ratio));
         } else {

@@ -16,7 +16,7 @@ class EdgeKlfm : public Edge {
  public:
   typedef std::vector<int> NodeIdVector;
 
-  EdgeKlfm(int edge_id, int weight, const std::string& edge_name);
+  EdgeKlfm(int edge_id, double weight, const std::string& edge_name);
   explicit EdgeKlfm(Edge* edge);
   virtual ~EdgeKlfm() {
   }

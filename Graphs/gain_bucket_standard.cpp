@@ -50,7 +50,7 @@ bool GainBucketStandard::Empty() const {
 }
 
 void GainBucketStandard::UpdateGains(
-    int gain_modifier, const EdgeKlfm::NodeIdVector& nodes_to_update) {
+    double gain_modifier, const EdgeKlfm::NodeIdVector& nodes_to_update) {
   for (auto node_id : nodes_to_update) {
     GainBucketEntry entry = RemoveByNodeId(node_id);
     entry.gain += gain_modifier;

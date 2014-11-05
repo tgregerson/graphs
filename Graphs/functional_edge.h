@@ -81,6 +81,14 @@ class FunctionalEdge {
     weight_ = w;
   }
 
+  const std::vector<NodePortDescriptor>& SourcePorts() const {
+    return source_ports_;
+  }
+
+  const std::vector<NodePortDescriptor>& SinkPorts() const {
+    return sink_ports_;
+  }
+
  private:
   virtual double ComputeEntropy(
       std::map<std::string, FunctionalEdge*>* wires,

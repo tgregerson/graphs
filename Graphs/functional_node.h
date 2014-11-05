@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -92,6 +93,27 @@ class FunctionalNode {
     } else {
       return ComputeShannonEntropy(output_name, bit_high, wires, nodes);
     }
+  }
+
+  std::set<std::string> AllConnectedWires() {
+    std::set<std::string> wires;
+    for (const auto& conn_desc_pair : named_input_connections) {
+      for (const std::string& wire_name :
+           conn_desc_pair.second.connection_bit_names) {
+        if (!wire_name.empty()) {
+          wires.insert(wire_name);
+        }
+      }
+    }
+    for (const auto& conn_desc_pair : named_output_connections) {
+      for (const std::string& wire_name :
+           conn_desc_pair.second.connection_bit_names) {
+        if (!wire_name.empty()) {
+          wires.insert(wire_name);
+        }
+      }
+    }
+    return wires;
   }
 
   ConnectionDescriptor& GetConnectionDescriptor(const std::string& port_name) {

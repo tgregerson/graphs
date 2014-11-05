@@ -50,7 +50,9 @@ double FunctionalEdge::ComputeProbabilityOne(
   double ret;
   if (probability_calculation_in_progress_) {
     // If we have a dependency loop, break it by returning full entropy.
-    cout << base_name_ << ": Got P1 from Loop." << endl;
+    // cout << base_name_ << ": Got P1 from Loop." << endl;
+    // TODO We could try to repeatedly run the calculation on the loop until it
+    // converges to get a more accurate entropy.
     ret = 0.5;
   } else {
     probability_calculation_in_progress_ = true;

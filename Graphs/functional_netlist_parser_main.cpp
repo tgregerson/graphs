@@ -93,42 +93,39 @@ int main(int argc, char *argv[]) {
   FunctionalEdge* const1w = functional_wires.at("\\<const1> [0]");
   const1w->SetProbabilityOne(1.0);
 
-  // Remove synthesis-tool-specific nets that should not be included in graph.
-  /*
-  set<string> blacklisted_global_nets = {
-    "CLK_IBUF_BUFG",
-    "RST_IBUF",
-    "\\<const0>",
-    "\\<const1>",
-    "GND",
-    "GND_2",
-    "CLK_IBUF",
-    "VCC",
-    "VCC_2",
-    "CLK",
-  };
-  parser.RemoveNetConnectionFromModules(&modules, blacklisted_global_nets);
-  */
-
-  /*
-  set<string> blacklisted_net_substrings = {
-    "UNCONNECTED",
-  };
-  parser.RemoveNetConnectionFromModulesSubstring(
-      &modules, blacklisted_net_substrings);
-  */
-
   parser.PopulateFunctionalEdgePorts(
       functional_nodes, &functional_edges, &functional_wires);
 
-  // Write output in NTL format.
-  for (const auto& node_pair : functional_nodes) {
-    parser.PrintFunctionalNodeXNtlFormat(
-        node_pair.second, &functional_edges, &functional_wires,
-        &functional_nodes, output_stream);
-    output_stream << endl;
+  for (const auto& wire_pair : functional_wires) {
+    FunctionalEdge* wire = wire_pair.second;
+    wire->Entropy(&functional_wires, &functional_nodes);
   }
 
+  // Remove synthesis-tool-specific nets that should not be included in graph.
+  set<string> blacklisted_global_nets = {
+    "CLK_IBUF_BUFG[0]",
+    "RST_IBUF[0]",
+    "\\<const0> [0]",
+    "\\<const1> [0]",
+    "GND[0]",
+    "GND_2[0]",
+    "CLK_IBUF[0]",
+    "VCC[0]",
+    "VCC_2[0]",
+    "CLK[0]",
+    "RST[0]",
+  };
+  parser.RemoveWires(&functional_nodes, &functional_wires, blacklisted_global_nets);
+
+  set<string> blacklisted_net_substrings = {
+    "UNCONNECTED",
+  };
+  parser.RemoveWiresBySubstring(
+      &functional_nodes, &functional_wires, blacklisted_net_substrings);
+
+  parser.RemoveUnconnectedNodes(&functional_nodes);
+
+  /*
   const double BIN1_MIN = 0.999;
   const double BIN2_MIN = 0.95;
   const double BIN3_MIN = 0.90;
@@ -144,13 +141,6 @@ int main(int argc, char *argv[]) {
     FunctionalEdge* wire = wire_pair.second;
     double reported_entropy = wire->Entropy(&functional_wires,
                                             &functional_nodes);
-    double reported_p1 = wire->ProbabilityOne(&functional_wires,
-                                              &functional_nodes);
-    output_stream << wire_pair.first << ": ("
-                  << reported_entropy
-                  << ") ("
-                  << reported_p1
-                  << ")\n";
     if (reported_entropy >= BIN1_MIN) {
       bin_count[BIN1_MIN]++;
     } else if (reported_entropy >= BIN2_MIN) {
@@ -169,30 +159,40 @@ int main(int argc, char *argv[]) {
       bin_count[BIN8_MIN]++;
     }
   }
-  cout << "[1.0:" << BIN1_MIN << "] "
+
+  output_stream << "[1.0:" << BIN1_MIN << "] "
        << (100.0 * bin_count[BIN1_MIN] / functional_wires.size())
        << "% " << bin_count[BIN1_MIN] << endl;
-  cout << "[" << BIN1_MIN << ":" << BIN2_MIN << "] "
+  output_stream << "[" << BIN1_MIN << ":" << BIN2_MIN << "] "
        << (100.0 * bin_count[BIN2_MIN] / functional_wires.size())
        << "% " << bin_count[BIN2_MIN] << endl;
-  cout << "[" << BIN2_MIN << ":" << BIN3_MIN << "] "
+  output_stream << "[" << BIN2_MIN << ":" << BIN3_MIN << "] "
        << (100.0 * bin_count[BIN3_MIN] / functional_wires.size())
        << "% " << bin_count[BIN3_MIN] << endl;
-  cout << "[" << BIN3_MIN << ":" << BIN4_MIN << "] "
+  output_stream << "[" << BIN3_MIN << ":" << BIN4_MIN << "] "
        << (100.0 * bin_count[BIN4_MIN] / functional_wires.size())
        << "% " << bin_count[BIN4_MIN] << endl;
-  cout << "[" << BIN4_MIN << ":" << BIN5_MIN << "] "
+  output_stream << "[" << BIN4_MIN << ":" << BIN5_MIN << "] "
        << (100.0 * bin_count[BIN5_MIN] / functional_wires.size())
        << "% " << bin_count[BIN5_MIN] << endl;
-  cout << "[" << BIN5_MIN << ":" << BIN6_MIN << "] "
+  output_stream << "[" << BIN5_MIN << ":" << BIN6_MIN << "] "
        << (100.0 * bin_count[BIN6_MIN] / functional_wires.size())
        << "% " << bin_count[BIN6_MIN] << endl;
-  cout << "[" << BIN6_MIN << ":" << BIN7_MIN << "] "
+  output_stream << "[" << BIN6_MIN << ":" << BIN7_MIN << "] "
        << (100.0 * bin_count[BIN7_MIN] / functional_wires.size())
        << "% " << bin_count[BIN7_MIN] << endl;
-  cout << "[" << BIN7_MIN << ":" << BIN8_MIN << "] "
+  output_stream << "[" << BIN7_MIN << ":" << BIN8_MIN << "] "
        << (100.0 * bin_count[BIN8_MIN] / functional_wires.size())
        << "% " << bin_count[BIN8_MIN] << endl;
+       */
+
+  // Write output in NTL format.
+  for (const auto& node_pair : functional_nodes) {
+    parser.PrintFunctionalNodeXNtlFormat(
+        node_pair.second, &functional_edges, &functional_wires,
+        &functional_nodes, output_stream);
+    output_stream << endl;
+  }
 
   if (out_file.is_open()) {
     out_file.close();

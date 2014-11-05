@@ -596,8 +596,9 @@ void StructuralNetlistParser::PrintFunctionalNodeXNtlFormat(
     map<string, FunctionalNode*>* nodes,
     ostream& output_stream) {
   output_stream << "module_begin" << "\n";
-  output_stream << "TYPE " << node->type_name << "\n";
-  output_stream << "NAME " << node->instance_name << "\n";
+  output_stream /*<< "TYPE "*/ << node->type_name << "\n";
+  output_stream /*<< "NAME "*/ << node->instance_name << "\n";
+  /*
   if (node->named_parameters.size() > 0) {
     output_stream << "PARAMETERS:\n";
     for (const auto& param : node->named_parameters) {
@@ -605,42 +606,29 @@ void StructuralNetlistParser::PrintFunctionalNodeXNtlFormat(
     }
     output_stream << "------------\n";
   }
-  output_stream << "OUTPUT CONNECTIONS\n";
-  for (const auto& connection : node->named_output_connections) {
-    const vector<string>& bit_names = connection.second.connection_bit_names;
-    for (int bit = bit_names.size() - 1; bit >= 0; --bit) {
-      output_stream << connection.first;
-      if (bit_names.size() > 1) {
-        output_stream << "[" << bit << "]";
+  */
+  for (const string& wire_name : node->AllConnectedWires()) {
+    output_stream << wire_name << "\n"
+                  << wires->at(wire_name)->Entropy(wires, nodes) << "\n";
+  }
+  /*
+  for (auto& conn : node->named_output_connections) {
+    for (const string& wire_name : conn.second.connection_bit_names) {
+      if (!wire_name.empty()) {
+        output_stream << wire_name << " "
+                      << wires->at(wire_name)->Entropy(wires, nodes) << "\n";
       }
-      cout << ": ";
-      output_stream << bit_names[bit];
-      output_stream << " ("
-                    << wires->at(bit_names[bit])->Entropy(wires, nodes)
-                    << ") ("
-                    << wires->at(bit_names[bit])->ProbabilityOne(wires, nodes)
-                    << ")\n";
     }
   }
-  output_stream << "--------------\n";
-  output_stream << "INPUT CONNECTIONS\n";
-  for (const auto& connection : node->named_input_connections) {
-    const vector<string>& bit_names = connection.second.connection_bit_names;
-    for (int bit = bit_names.size() - 1; bit >= 0; --bit) {
-      output_stream << connection.first;
-      if (bit_names.size() > 1) {
-        output_stream << "[" << bit << "]";
+  for (auto& conn : node->named_input_connections) {
+    for (const string& wire_name : conn.second.connection_bit_names) {
+      if (!wire_name.empty()) {
+        output_stream << wire_name << " "
+                      << wires->at(wire_name)->Entropy(wires, nodes) << "\n";
       }
-      cout << ": ";
-      output_stream << bit_names[bit];
-      output_stream << " ("
-                    << wires->at(bit_names[bit])->Entropy(wires, nodes)
-                    << ") ("
-                    << wires->at(bit_names[bit])->ProbabilityOne(wires, nodes)
-                    << ")\n";
     }
   }
-  output_stream << "--------------\n";
+  */
   output_stream << "module_end" << "\n";
 }
 
@@ -881,6 +869,52 @@ void StructuralNetlistParser::RemoveNetConnectionFromModules(
   }
 }
 
+void StructuralNetlistParser::RemoveWires(
+    map<string, FunctionalNode*>* nodes,
+    map<string, FunctionalEdge*>* wires,
+    const set<string>& wires_to_remove) {
+  for (const string& wire_name : wires_to_remove) {
+    auto wire_it = wires->find(wire_name);
+    if (wire_it != wires->end()) {
+      FunctionalEdge* wire = wire_it->second;
+      for (const auto& desc : wire->SourcePorts()) {
+        ConnectionDescriptor& conn_desc =
+            nodes->at(desc.node_instance_name)->GetConnectionDescriptor(
+                desc.node_port_name);
+        for (int i = desc.bit_low; i <= desc.bit_high; ++i) {
+          conn_desc.RemoveBitConnection(i, wire_name);
+        }
+      }
+      for (const auto& desc : wire->SinkPorts()) {
+        ConnectionDescriptor& conn_desc =
+            nodes->at(desc.node_instance_name)->GetConnectionDescriptor(
+                desc.node_port_name);
+        for (int i = desc.bit_low; i <= desc.bit_high; ++i) {
+          conn_desc.RemoveBitConnection(i, wire_name);
+        }
+      }
+      wires->erase(wire_it);
+    }
+  }
+}
+
+void StructuralNetlistParser::RemoveWiresBySubstring(
+    map<string, FunctionalNode*>* nodes,
+    map<string, FunctionalEdge*>* wires,
+    const set<string>& substrings) {
+  set<string> wires_to_remove;
+  for (auto wire_pair : *wires) {
+    const string& wire_name = wire_pair.first;
+    for (const string& substring : substrings) {
+      if (wire_name.find(substring) != string::npos) {
+        wires_to_remove.insert(wire_name);
+        break;
+      }
+    }
+  }
+  RemoveWires(nodes, wires, wires_to_remove);
+}
+
 void StructuralNetlistParser::RemoveNetConnectionFromModulesSubstring(
     map<string, VlogModule>* module_container,
     const set<string>& nets_to_remove_substring) {
@@ -897,5 +931,17 @@ void StructuralNetlistParser::RemoveNetConnectionFromModulesSubstring(
       }
     }
     module_ref.connected_net_names = updated_connections;
+  }
+}
+
+void StructuralNetlistParser::RemoveUnconnectedNodes(
+    map<string, FunctionalNode*>* nodes) {
+  auto it = nodes->begin();
+  while (it != nodes->end()) {
+    auto old_it = it;
+    ++it;
+    if (old_it->second->AllConnectedWires().empty()) {
+      nodes->erase(old_it);
+    }
   }
 }

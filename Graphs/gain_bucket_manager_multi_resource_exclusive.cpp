@@ -454,7 +454,7 @@ bool GainBucketManagerMultiResourceExclusive::Empty() const {
   return num_nodes_ == 0;
 }
 
-void GainBucketManagerMultiResourceExclusive::AddNode(int gain, Node* node,
+void GainBucketManagerMultiResourceExclusive::AddNode(double gain, Node* node,
     bool in_part_a, const std::vector<int>& total_weight) {
   GainBucketEntry entry(gain, node);
   if (use_adaptive_) {
@@ -512,7 +512,7 @@ void GainBucketManagerMultiResourceExclusive::AddEntry(
 }
 
 void GainBucketManagerMultiResourceExclusive::UpdateGains(
-    int gain_modifier, const vector<int>& nodes_to_increase_gain,
+    double gain_modifier, const vector<int>& nodes_to_increase_gain,
     const vector<int>& nodes_to_decrease_gain, bool moved_from_part_a) {
   vector<vector<int>> inc;  
   inc.resize(num_resources_per_node_);

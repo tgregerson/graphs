@@ -12,7 +12,7 @@ EdgeKlfm::EdgeKlfm(Edge* edge) : is_critical(true), locked_noncritical(false) {
   Compress();
 }
 
-EdgeKlfm::EdgeKlfm(int edge_id, int weight, const string& edge_name)
+EdgeKlfm::EdgeKlfm(int edge_id, double weight, const string& edge_name)
   : Edge(edge_id, weight, edge_name), is_critical(true),
     locked_noncritical(true) {}
 

@@ -27,13 +27,13 @@ class GainBucketManager {
   virtual bool Empty() const = 0;
 
   // Adds a node to the gain bucket(s).
-  virtual void AddNode(int gain, Node* node, bool in_part_a,
+  virtual void AddNode(double gain, Node* node, bool in_part_a,
                        const std::vector<int>& total_weight) = 0;
 
   // Updates the gains of the nodes in 'nodes_to_increase_gain' and
   // 'nodes_to_decrease_gain' by 'gain_modifier' depending on whether the
   // node that caused the gain update was 'moved_from_part_a'.
-  virtual void UpdateGains(int gain_modifier,
+  virtual void UpdateGains(double gain_modifier,
                            const std::vector<int>& nodes_to_increase_gain, 
                            const std::vector<int>& nodes_to_decrease_gain, 
                            bool moved_from_part_a) = 0;

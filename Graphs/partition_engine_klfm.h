@@ -272,10 +272,10 @@ class PartitionEngineKlfm : public PartitionEngine {
 
   // Returns number of passes taken.
   int RunKlfmAlgorithm(int cur_run, NodePartitions& current_partition,
-      int& current_partition_cost, std::vector<int>& current_partition_balance);
+      double& current_partition_cost, std::vector<int>& current_partition_balance);
 
   void ExecutePass(NodePartitions& current_partition,
-      int& current_partition_cost, std::vector<int>& current_partition_balance,
+      double& current_partition_cost, std::vector<int>& current_partition_balance,
       bool& partition_changed);
 
   // Reset any execution-specific state to allow Execute() to be called again.
@@ -298,9 +298,9 @@ class PartitionEngineKlfm : public PartitionEngine {
   // Performs one node move for the KLFM algorithm.
   void MakeKlfmMove(
       std::vector<int>& current_partition_balance,
-      int& current_partition_cost,
+      double& current_partition_cost,
       std::vector<int>& best_cost_balance_by_pass,
-      int& best_cost_by_pass,
+      double& best_cost_by_pass,
       double& best_cost_br_power_by_pass,
       NodePartitions& current_partition,
       std::vector<int>& nodes_moved_since_best_result);
@@ -314,7 +314,7 @@ class PartitionEngineKlfm : public PartitionEngine {
   void ComputeInitialNodeGainAndUpdateBuckets(Node* node, bool in_part_a);
 
   // Compute the gain for 'node'. KLFM helper fn.
-  int ComputeNodeGain(Node* node, bool in_part_a);
+  double ComputeNodeGain(Node* node, bool in_part_a);
 
   // Moves node (to 'part_b' if 'from_part_a' is true, else to 'part_a') and
   // updates 'balance' according to the change in weight. KLFM helper fn.
@@ -335,8 +335,8 @@ class PartitionEngineKlfm : public PartitionEngine {
   void RollBackToBestResultOfPass(
       std::vector<int>& nodes_moved_since_best_result,
       NodePartitions& current_partition,
-      int& current_partition_cost, std::vector<int>& current_partition_balance,
-      const int& best_cost, const std::vector<int>& best_cost_balance);
+      double& current_partition_cost, std::vector<int>& current_partition_balance,
+      const double& best_cost, const std::vector<int>& best_cost_balance);
 
   // Removes ports from node and edge sets. Removes any edges that no
   // longer have both a source and sink. NOTE: The pointers to any removed
@@ -359,13 +359,13 @@ class PartitionEngineKlfm : public PartitionEngine {
   // seed mode set in KlfmPartitionEngine::Options. Also returns the cost
   // and balance of the initial partition.
   void GenerateInitialPartition(NodePartitions* partition,
-                                int* cost, std::vector<int>* balance);
+                                double* cost, std::vector<int>* balance);
   void GenerateInitialPartitionRandom(NodePartitions* partition,
-                                      int* cost, std::vector<int>* balance);
+                                      double* cost, std::vector<int>* balance);
   // Always returns the same initial partition for a given graph. Used for
   // debugging purposes.
   void GenerateInitialPartitionSimpleDeterministic(
-      NodePartitions* partition, int* cost, std::vector<int>* balance);
+      NodePartitions* partition, double* cost, std::vector<int>* balance);
 
   // Attempts to correct a weight imbalance that exceeds the maximum allowable
   // imbalance, either by moving a node between partitions or by changing
@@ -382,8 +382,8 @@ class PartitionEngineKlfm : public PartitionEngine {
   bool ExceedsMaxWeightImbalance(const std::vector<int>& current_balance) const;
 
   void RecomputeTotalWeightAndMaxImbalance();
-  int RecomputeCurrentCost();
-  int ComputeEdgeCost(const EdgeKlfm& edge);
+  double RecomputeCurrentCost();
+  double ComputeEdgeCost(const EdgeKlfm& edge);
   std::vector<int> RecomputeCurrentBalance(
       const NodePartitions& current_partition);
   std::vector<int> RecomputeCurrentBalanceAtBaseLevel(

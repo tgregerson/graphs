@@ -94,7 +94,7 @@ bool GainBucketManagerSingleResource::Empty() const {
 }
 
 void GainBucketManagerSingleResource::AddNode(
-    int gain, Node* node, bool in_part_a,
+    double gain, Node* node, bool in_part_a,
     const std::vector<int>& /* total_weight */) {
   GainBucketEntry entry(gain, node);
   AddEntry(entry, in_part_a);
@@ -120,7 +120,7 @@ void GainBucketManagerSingleResource::UpdateNodeImplementation(Node* node) {
 }
 
 void GainBucketManagerSingleResource::UpdateGains(
-    int gain_modifier, const std::vector<int>& nodes_to_increase_gain, 
+    double gain_modifier, const std::vector<int>& nodes_to_increase_gain,
     const std::vector<int>& nodes_to_decrease_gain, bool moved_from_part_a) {
   if (moved_from_part_a) {
     gain_bucket_a_->UpdateGains(gain_modifier, nodes_to_increase_gain);

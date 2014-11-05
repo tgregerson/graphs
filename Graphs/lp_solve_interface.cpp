@@ -225,7 +225,7 @@ void LpSolveInterface::GraphParsingState::SetObjectiveFunction(lprec* model) {
   for (const pair<int, int>& e : edge_to_crossing_variable_indices_) {
     indices[added] = e.second;
     Edge* edge = graph_->internal_edges().at(e.first);
-    coeffs[added++] = (REAL)(edge->weight);
+    coeffs[added++] = (REAL)(edge->weight_);
   }
   set_obj_fnex(model, num_x_vars, coeffs.get(), indices.get());
 }

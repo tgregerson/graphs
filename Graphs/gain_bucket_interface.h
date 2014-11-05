@@ -2,7 +2,7 @@
 #define GAIN_BUCKET_INTERFACE_H_
 
 #ifndef MAX_GAIN
-#define MAX_GAIN 4000
+#define MAX_GAIN 40000
 #endif
 
 #include <vector>

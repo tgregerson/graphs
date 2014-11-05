@@ -125,7 +125,7 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
       const std::vector<int>& current_balance,
       int search_depth);
   // Lower is better.
-  double ComputeGainImbalanceFn(int gain, double imbalance_power);
+  double ComputeGainImbalanceFn(double gain, double imbalance_power);
 
   size_t num_resources_per_node_;
   size_t max_bucket_search_depth_;

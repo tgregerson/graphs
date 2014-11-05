@@ -58,7 +58,7 @@ class GainBucketStandard : public GainBucketInterface {
   std::set<int, std::greater<int>> occupied_buckets_by_index_;
   std::vector<BucketContents> buckets_;
   // Note: gain, NOT gain offset!
-  std::unordered_map<int, int> node_id_to_current_gain_;
+  std::unordered_map<int, int> node_id_to_current_gain_index_;
   // This data structure is used to accelerate finding items in a bucket.
   // Care must be taken to update it any time any operation may change or
   // invalidate an iterator to BucketContents.

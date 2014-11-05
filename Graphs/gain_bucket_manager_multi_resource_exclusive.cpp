@@ -67,7 +67,7 @@ GainBucketEntry
 
   // Remove any duplicate entries from other gain buckets.
   // TODO Is this call still necessary?
-  RemoveNode(entry.id);
+  RemoveNode(entry.Id());
   return entry;
 }
 
@@ -78,13 +78,13 @@ void GainBucketManagerMultiResourceExclusive::RemoveNode(int node_id) {
       if (bucket->HasNode(node_id)) {
         // TODO Get rid of debug check when stable.
         GainBucketEntry debug = bucket->RemoveByNodeId(node_id);
-        assert(debug.id == node_id);
+        assert(debug.Id() == node_id);
       }
     }
     for (auto& bucket : gain_buckets_b_) {
       if (bucket->HasNode(node_id)) {
         GainBucketEntry debug = bucket->RemoveByNodeId(node_id);
-        assert(debug.id == node_id);
+        assert(debug.Id() == node_id);
       }
     }
     num_nodes_--;
@@ -237,10 +237,10 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryL
     return GetNextGainBucketEntryRandomResource(current_balance, total_weight);
   }
 
-  int max_unconstrained_gain = unconstrained_buckets[0]->Top().gain;
+  double max_unconstrained_gain = unconstrained_buckets[0]->Top().CostGain();
   int index = 0;
   for (size_t i = 1; i < unconstrained_buckets.size(); i++) {
-    int my_gain = unconstrained_buckets[i]->Top().gain;
+    double my_gain = unconstrained_buckets[i]->Top().CostGain();
     if (my_gain > max_unconstrained_gain) {
       max_unconstrained_gain = my_gain;
       index = i;
@@ -248,7 +248,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::GetNextGainBucketEntryL
   }
   GainBucketEntry entry = unconstrained_buckets[index]->Top();
   unconstrained_buckets[index]->Pop();
-  RemoveNode(entry.id);
+  RemoveNode(entry.Id());
   return entry;
 }
 
@@ -332,7 +332,7 @@ GainBucketEntry
     assert(use_adaptive_);
     assert(!buckets.empty());
     GainBucketEntry entry = buckets[0].second.second->Top();
-    RemoveNode(entry.id);
+    RemoveNode(entry.Id());
     return entry;
   }
 
@@ -341,14 +341,14 @@ GainBucketEntry
   shuffle(top_entries.begin(), top_entries.end(), random_engine_);
 
   // Find max-gain entry. Put any non-max entries back in their buckets.
-  int max_gain = top_entries[0].second.gain;
+  double max_gain = top_entries[0].second.CostGain();
   int max_index = 0;
   for (size_t i = 1; i < top_entries.size(); i++) {
-    if (top_entries[i].second.gain > max_gain) {
+    if (top_entries[i].second.CostGain() > max_gain) {
       // Put the previous max back in its bucket.
       buckets[top_entries[max_index].first].second.second->Add(
           top_entries[max_index].second);
-      max_gain = top_entries[i].second.gain;
+      max_gain = top_entries[i].second.CostGain();
       max_index = i;
     } else {
       // Not the max, so put it back in its bucket.
@@ -359,7 +359,7 @@ GainBucketEntry
   // At this point, all non-max entries have been copied back to their buckets,
   // so it is safe to return.
   GainBucketEntry& entry = top_entries[max_index].second;
-  RemoveNode(entry.id);
+  RemoveNode(entry.Id());
   return entry;
 }
 
@@ -377,13 +377,13 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::SelectBetweenBuckets(
     assert(!unconstrained_bucket->Empty()); // DEBUG
     unconstrained_entry = unconstrained_bucket->Top();
     unconstrained_bucket->Pop();
-    RemoveNode(unconstrained_entry.id);
+    RemoveNode(unconstrained_entry.Id());
     return unconstrained_entry;
   } else if (unconstrained_bucket->Empty()) {
     assert(!constrained_bucket->Empty()); // DEBUG
     constrained_entry = constrained_bucket->Top();
     constrained_bucket->Pop();
-    RemoveNode(constrained_entry.id);
+    RemoveNode(constrained_entry.Id());
     return constrained_entry;
   }
 
@@ -400,7 +400,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::SelectBetweenBuckets(
       (constrained_bucket->num_entries() > MAX_CONSTRAINED_ENTRY_CHECKS) ?
       MAX_CONSTRAINED_ENTRY_CHECKS : constrained_bucket->num_entries() - 1;
   vector<GainBucketEntry> constrained_entries_passed;
-  while ((constrained_entry.gain > unconstrained_entry.gain) &&
+  while ((constrained_entry.CostGain() > unconstrained_entry.CostGain()) &&
          (constrained_entry.current_weight_vector()[resource_index] >
           max_constrained_node_weight) &&
          (constrained_entries_checked <= max_checks)) {
@@ -411,7 +411,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::SelectBetweenBuckets(
   }
 
   bool use_constrained =
-    (constrained_entry.gain > unconstrained_entry.gain) &&
+    (constrained_entry.CostGain() > unconstrained_entry.CostGain()) &&
     (constrained_entry.current_weight_vector()[resource_index] <=
      max_constrained_node_weight);
 
@@ -426,7 +426,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::SelectBetweenBuckets(
   }
 
   if (use_constrained) {
-    RemoveNode(constrained_entry.id);
+    RemoveNode(constrained_entry.Id());
     DLOG(DEBUG_OPT_BUCKET_NODE_SELECT, 0) <<
         "Used constrained entry with weight " <<
         constrained_entry.current_weight_vector()[0] << " " <<
@@ -435,7 +435,7 @@ GainBucketEntry GainBucketManagerMultiResourceExclusive::SelectBetweenBuckets(
         " when max weight is " << max_constrained_node_weight << endl;
     return constrained_entry;
   } else {
-    RemoveNode(unconstrained_entry.id);
+    RemoveNode(unconstrained_entry.Id());
     DLOG(DEBUG_OPT_BUCKET_NODE_SELECT, 0) <<
         "Used unconstrained entry with weight " <<
         unconstrained_entry.current_weight_vector()[0] << " " <<
@@ -476,7 +476,7 @@ void GainBucketManagerMultiResourceExclusive::AddNode(double gain, Node* node,
     }
     for (auto it : res_min_index) {
       if (it.first >= 0) {
-        entry.current_weight_vector_index = it.first;
+        entry.SetCurrentWeightVectorIndex(it.first);
         AddEntry(entry, in_part_a);
       }
     }
@@ -495,20 +495,20 @@ void GainBucketManagerMultiResourceExclusive::AddEntry(
       assert_b(pos == -1) {
         printf("Using a Resource-Exclusive gain bucket, but detected a weight "
                "vector with weights in more than one resource in node %d\n",
-               entry.id);
+               entry.Id());
       }
       pos = i;
     }
   }
   assert_b(pos >= 0) {
-    printf("Encountered an empty weight vector in node %d\n", entry.id);
+    printf("Encountered an empty weight vector in node %d\n", entry.Id());
   }
   if (in_part_a) {
     gain_buckets_a_[pos]->Add(entry);
   } else {
     gain_buckets_b_[pos]->Add(entry);
   }
-  node_id_to_resource_index_.insert(make_pair(entry.id, pos));
+  node_id_to_resource_index_.insert(make_pair(entry.Id(), pos));
 }
 
 void GainBucketManagerMultiResourceExclusive::UpdateGains(
@@ -563,10 +563,12 @@ void GainBucketManagerMultiResourceExclusive::UpdateNodeImplementation(
   }
   int res_index = res_it->second;
   if (gain_buckets_a_[res_index]->HasNode(node->id)) {
-    int gain = gain_buckets_a_[res_index]->RemoveByNodeId(node->id).gain;
+    double gain =
+        gain_buckets_a_[res_index]->RemoveByNodeId(node->id).CostGain();
     gain_buckets_a_[res_index]->Add(GainBucketEntry(gain, node));
   } else {
-    int gain = gain_buckets_b_[res_index]->RemoveByNodeId(node->id).gain;
+    double gain =
+        gain_buckets_b_[res_index]->RemoveByNodeId(node->id).CostGain();
     gain_buckets_b_[res_index]->Add(GainBucketEntry(gain, node));
   }
 }

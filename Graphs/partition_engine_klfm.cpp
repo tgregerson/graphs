@@ -791,8 +791,8 @@ void PartitionEngineKlfm::MakeKlfmMove(
     set_vector_and_update_weights_start_time_ = GetTimeUsec();
   }
 
-  const double gain = entry.gain;
-  const int node_id_to_move = entry.id;
+  const double gain = entry.CostGain();
+  const int node_id_to_move = entry.Id();
   const bool from_part_a = current_partition.first.count(node_id_to_move) != 0;
   Node* node_to_move = internal_node_map_.at(node_id_to_move);
 
@@ -803,7 +803,7 @@ void PartitionEngineKlfm::MakeKlfmMove(
   // step should be carried out regardless of gain bucket type.
   vector<int> previous_weight_vector = node_to_move->SelectedWeightVector();
   node_to_move->SetSelectedWeightVectorWithRollback(
-      entry.current_weight_vector_index);
+      entry.CurrentWeightVectorIndex());
   UpdateTotalWeightsForImplementationChange(
       previous_weight_vector, node_to_move->SelectedWeightVector());
 

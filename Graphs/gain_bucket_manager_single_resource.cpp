@@ -53,7 +53,7 @@ GainBucketEntry
       (constrained_bucket->num_entries() > MAX_CONSTRAINED_ENTRY_CHECKS) ?
       MAX_CONSTRAINED_ENTRY_CHECKS : constrained_bucket->num_entries() - 1;
   vector<GainBucketEntry> constrained_entries_passed;
-  while ((constrained_entry.gain > unconstrained_entry.gain) &&
+  while ((constrained_entry.CostGain() > unconstrained_entry.CostGain()) &&
          (constrained_entry.current_weight_vector()[resource_index_] >
           max_constrained_node_weight) &&
          (constrained_entries_checked <= max_checks)) {
@@ -64,7 +64,7 @@ GainBucketEntry
   }
 
   bool use_constrained =
-    (constrained_entry.gain > unconstrained_entry.gain) &&
+    (constrained_entry.CostGain() > unconstrained_entry.CostGain()) &&
     (constrained_entry.current_weight_vector()[resource_index_] <=
      max_constrained_node_weight);
 
@@ -112,10 +112,10 @@ void GainBucketManagerSingleResource::AddEntry(
 void GainBucketManagerSingleResource::UpdateNodeImplementation(Node* node) {
   if (gain_bucket_a_->HasNode(node->id)) {
     GainBucketEntry& gbe = gain_bucket_a_->GbeRefByNodeId(node->id);
-    gbe.current_weight_vector_index = node->selected_weight_vector_index();
+    gbe.SetCurrentWeightVectorIndex(node->selected_weight_vector_index());
   } else if (gain_bucket_b_->HasNode(node->id)) {
     GainBucketEntry& gbe = gain_bucket_b_->GbeRefByNodeId(node->id);
-    gbe.current_weight_vector_index = node->selected_weight_vector_index();
+    gbe.SetCurrentWeightVectorIndex(node->selected_weight_vector_index());
   }
 }
 

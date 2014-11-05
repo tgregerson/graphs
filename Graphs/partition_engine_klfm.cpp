@@ -77,7 +77,7 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
       DLOG(DEBUG_OPT_TRACE, 0) <<
           "Creating SINGLE RESOURCE gain bucket manager." << endl;
       gain_bucket_manager_ = new GainBucketManagerSingleResource(
-          0, options_.max_imbalance_fraction[0]);
+          0, options_.max_imbalance_fraction.at(0));
     break;
     case PartitionerConfig::kGainBucketMultiResourceExclusive:
       DLOG(DEBUG_OPT_TRACE, 0) <<
@@ -127,11 +127,11 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
   for (auto node_pair : internal_node_map_) {
     vector<int> node_weight = node_pair.second->SelectedWeightVector();
     for (size_t i = 0; i < num_resources_per_node_; i++) {
-      if (node_weight[i] >= 2 * max_weight_imbalance_[i]) {
+      if (node_weight.at(i) >= 2 * max_weight_imbalance_.at(i)) {
         printf("WARNING: Node %s with weight %d exceeded the max weight allowance: %d "
                "in resource %lu.\n",
-               node_pair.second->name.c_str(), node_weight[i],
-               2 * max_weight_imbalance_[i], i);
+               node_pair.second->name.c_str(), node_weight.at(i),
+               2 * max_weight_imbalance_.at(i), i);
         printf("Suppressing future warnings of this type for this run.\n");
         skip = true;
         break;
@@ -283,7 +283,7 @@ void PartitionEngineKlfm::ExecuteRun(
 
   if (options_.use_multilevel_constraint_relaxation) {
     for (size_t i = 1; i < num_resources_per_node_; i++) {
-      options_.constrain_balance_by_resource[i] = false;
+      options_.constrain_balance_by_resource.at(i) = false;
     }
     RecomputeTotalWeightAndMaxImbalance();
   }
@@ -356,7 +356,7 @@ void PartitionEngineKlfm::ExecuteRun(
 
   if (options_.use_multilevel_constraint_relaxation) {
     for (size_t i = 1; i < num_resources_per_node_; i++) {
-      options_.constrain_balance_by_resource[i] = true;
+      options_.constrain_balance_by_resource.at(i) = true;
     }
     RecomputeTotalWeightAndMaxImbalance();
     // Rebalance using ratio first, then balance.
@@ -395,7 +395,7 @@ void PartitionEngineKlfm::ExecuteRun(
         os_ << "Attempting to rebalance violater partition."
             << endl;
         for (size_t i = 0; i < num_resources_per_node_; i++) {
-          options_.constrain_balance_by_resource[i] = true;
+          options_.constrain_balance_by_resource.at(i) = true;
         }
         RecomputeTotalWeightAndMaxImbalance();
         // TODO It appears that this operation is adjusting for ratio even
@@ -411,8 +411,8 @@ void PartitionEngineKlfm::ExecuteRun(
       // This is a technique to avoid the problem that resources which have
       // been completely eliminated are unable to be used.
       bool need_mutate = false;
-      for (size_t i = 0; i < num_resources_per_node_; i++) {
-        if (total_weight_[i] == 0) {
+      for (int tw : total_weight_) {
+        if (tw == 0) {
           need_mutate = true;
         }
       }
@@ -437,10 +437,10 @@ void PartitionEngineKlfm::ExecuteRun(
     // TODO This is used more than once. Factor into function.
     vector<double> partition_imbalance;
     for (size_t tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
-      if (total_weight_[tw_i] != 0) {
+      if (total_weight_.at(tw_i) != 0) {
         partition_imbalance.push_back(
-            ((double)abs(current_partition_balance[tw_i]) /
-            (double)total_weight_[tw_i]));
+            ((double)abs(current_partition_balance.at(tw_i)) /
+            (double)total_weight_.at(tw_i)));
       } else {
         partition_imbalance.push_back(0.0);
       }
@@ -564,7 +564,7 @@ int PartitionEngineKlfm::RunKlfmAlgorithm(
     best_cost_balance_by_pass.push_back(current_partition_balance);
 
     RUN_VERBOSE(2) {
-      printf("Best cost this pass: %f\n", best_cost_by_pass[cur_pass]);
+      printf("Best cost this pass: %f\n", best_cost_by_pass.at(cur_pass));
       printf("Best result found after %lu moves.\n", max_at_node_count_);
       printf("Imbalance: ");
       for (size_t tw_i = 0; tw_i < num_resources_per_node_; tw_i++) {
@@ -1875,7 +1875,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
   supernode_id_sets.resize(internal_node_map_.size());
   int insert_index = 0;
   for (auto node_pair : internal_node_map_) {
-    supernode_id_sets[insert_index].insert(node_pair.first);
+    supernode_id_sets.at(insert_index).insert(node_pair.first);
     node_id_to_current_supernode_index.insert(
         make_pair(node_pair.first, insert_index));
     insert_index++;
@@ -1892,7 +1892,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
   while (!non_finalized_supernode_indices.empty()) {
     int sn_index = *scanning_it;
     set<int> viable_neighbor_indices;
-    for (auto node_id : supernode_id_sets[sn_index]) {
+    for (auto node_id : supernode_id_sets.at(sn_index)) {
       Node* seed_node = internal_node_map_.at(node_id);
       for (auto& port_pair : seed_node->ports()) {
         Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
@@ -1900,9 +1900,9 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
           int neighbor_sn_index =
               node_id_to_current_supernode_index.at(neighbor_node_id);
           if (neighbor_sn_index != sn_index) {
-            if (!supernode_indices_is_finalized[neighbor_sn_index]) {
-              int potential_size = supernode_id_sets[sn_index].size() +
-                                   supernode_id_sets[neighbor_sn_index].size();
+            if (!supernode_indices_is_finalized.at(neighbor_sn_index)) {
+              int potential_size = supernode_id_sets.at(sn_index).size() +
+                                   supernode_id_sets.at(neighbor_sn_index).size();
               if (potential_size <= max_nodes_per_supernode) {
                 viable_neighbor_indices.insert(neighbor_sn_index);
                 if (neighbor_limit != 0 &&
@@ -1923,7 +1923,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
       finalized_supernode_indices.insert(sn_index);
       scanning_it++;
       non_finalized_supernode_indices.erase(sn_index);
-      supernode_indices_is_finalized[sn_index] = true;
+      supernode_indices_is_finalized.at(sn_index) = true;
       if (scanning_it == non_finalized_supernode_indices.end()) {
         scanning_it = non_finalized_supernode_indices.begin();
       }
@@ -1931,7 +1931,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
       vector<pair<int,double>> sn_index_cx_weight_pairs;
       for (auto neighbor_index : viable_neighbor_indices) {
         double cx_score = 0.0;
-        for (auto neighbor_id : supernode_id_sets[neighbor_index]) {
+        for (auto neighbor_id : supernode_id_sets.at(neighbor_index)) {
           Node* neighbor_node = internal_node_map_.at(neighbor_id);
           double supernode_connectivity_weight = 0;
           double supernode_neighbors_connectivity_weight = 0;
@@ -1980,9 +1980,9 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
       }
       // Take the nodes from min_it and merge them into the seed supernode.
       for (auto to_move_node_id : supernode_id_sets.at(min_it->first)) {
-        supernode_id_sets[sn_index].insert(to_move_node_id);
+        supernode_id_sets.at(sn_index).insert(to_move_node_id);
       }
-      supernode_indices_is_finalized[min_it->first] = true;
+      supernode_indices_is_finalized.at(min_it->first) = true;
       non_finalized_supernode_indices.erase(min_it->first);
       scanning_it++;
       if (scanning_it == non_finalized_supernode_indices.end()) {
@@ -1993,7 +1993,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
 
   VLOG(0) << finalized_supernode_indices.size() << " finalized sets." << endl;
   for (auto sn_index : finalized_supernode_indices) {
-    set<int>& sn_set = supernode_id_sets[sn_index];
+    set<int>& sn_set = supernode_id_sets.at(sn_index);
     if (sn_set.size() > 1) {
       MakeSupernode(sn_set, &internal_node_map_, &internal_edge_map_, NULL);
     }

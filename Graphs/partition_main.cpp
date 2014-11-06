@@ -29,32 +29,25 @@ using namespace std;
 
 class KlfmRunConfig {
  public:
-  KlfmRunConfig()
-    : num_runs(1),
-      num_ways(2),
-      graph_file_type(kChacoGraph),
-      export_initial_sol_only(false),
-      sol_scip_format(true),
-      sol_gurobi_format(false)
-    {}
   enum GraphFileType {
     kChacoGraph,
     kNtlGraph,
     kXntlGraph,
   };
   PartitionerConfig partitioner_config;
-  int num_runs;
-  int num_ways;
+  int num_runs{1};
+  int num_ways{2};
   string graph_filename;
-  GraphFileType graph_file_type;
+  GraphFileType graph_file_type{kChacoGraph};
   string result_filename;
   string log_filename;
   string testbench_filename;
   string initial_sol_base_filename;
   string final_sol_base_filename;
-  bool export_initial_sol_only;
-  bool sol_scip_format;
-  bool sol_gurobi_format;
+  bool export_initial_sol_only{false};
+  bool sol_scip_format{true};
+  bool sol_gurobi_format{false};
+  bool use_entropy{false};
 };
 
 void print_usage_and_exit();
@@ -147,6 +140,7 @@ int main(int argc, char *argv[]) {
   options.export_initial_sol_only = run_config.export_initial_sol_only;
   options.sol_scip_format = run_config.sol_scip_format;
   options.sol_gurobi_format = run_config.sol_gurobi_format;
+  options.use_entropy = run_config.use_entropy;
 
   run_config.partitioner_config.PrintPreprocessorOptions(rs);
   options.Print(rs);
@@ -224,7 +218,8 @@ int main(int argc, char *argv[]) {
         for (auto edge_name : it.partition_edge_names) {
           cutset_edge_names.insert(clean_edge_string(edge_name));
         }
-      } else if (run_config.graph_file_type == KlfmRunConfig::kNtlGraph) {
+      } else if (run_config.graph_file_type == KlfmRunConfig::kNtlGraph ||
+                 run_config.graph_file_type == KlfmRunConfig::kXntlGraph) {
         for (auto edge_id : it.partition_edge_ids) {
           if (edge_id_name_map.find(edge_id) == edge_id_name_map.end()) {
             rs << "WARNING: Could not find name for edge " << edge_id << endl;
@@ -352,10 +347,14 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
       "n", "ntl", "NTL-format input file name", false, "", "string");
   input_file_args.push_back(&ntl_input_file_flag);
 
+  TCLAP::ValueArg<string> xntl_input_file_flag(
+      "x", "xntl", "XNTL-format input file name", false, "", "string");
+  input_file_args.push_back(&xntl_input_file_flag);
+
   cmd.xorAdd(input_file_args);
 
   TCLAP::ValueArg<string> config_input_file_flag(
-      "x", "config", "Config XML-format input file name", true, "", "string",
+      "m", "config", "Config XML-format input file name", true, "", "string",
       cmd);
 
   TCLAP::ValueArg<int> num_runs_flag(
@@ -397,6 +396,10 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
       "", "sol-gurobi-format", "Write solution in Gurobi's .MST format", cmd,
       false);
 
+  TCLAP::SwitchArg use_entropy_switch(
+      "", "use_entropy", "Use an entropy-based cost function", cmd,
+      false);
+
   cmd.parse(argc, argv);
 
   KlfmRunConfig run_config;
@@ -404,9 +407,12 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
   if (chaco_input_file_flag.isSet()) {
     run_config.graph_file_type = KlfmRunConfig::kChacoGraph;
     run_config.graph_filename = chaco_input_file_flag.getValue();
-  } else {
+  } else if (ntl_input_file_flag.isSet()){
     run_config.graph_file_type = KlfmRunConfig::kNtlGraph;
     run_config.graph_filename = ntl_input_file_flag.getValue();
+  } else {
+    run_config.graph_file_type = KlfmRunConfig::kXntlGraph;
+    run_config.graph_filename = xntl_input_file_flag.getValue();
   }
 
   PartitionerConfig config;
@@ -434,6 +440,7 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
   run_config.sol_gurobi_format = sol_gurobi_format_switch.isSet();
   run_config.sol_scip_format = sol_scip_format_switch.isSet() ||
                                !run_config.sol_gurobi_format;
+  run_config.use_entropy = use_entropy_switch.isSet();
   return run_config;
 }
 
@@ -442,7 +449,8 @@ void print_usage_and_exit() {
        << endl
        << "REQUIRED_ARGS: " << endl
        << "(--chaco chaco_graph_input_file_path | "
-       << "--ntl ntl_graph_input_file_path)" << endl
+       << "--ntl ntl_graph_input_file_path |"
+       << "--xntl xntl_graph_input_file_path)" << endl
        << "--config config_xml_input_file_path" << endl
        << endl
        << "OPTIONS:" << endl

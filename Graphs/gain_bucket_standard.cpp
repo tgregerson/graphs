@@ -18,7 +18,10 @@ void GainBucketStandard::Add(GainBucketEntry entry) {
   }
 
   buckets_[bucket_index].push_front(entry);
-  node_id_to_current_gain_index_.at(entry.Id()) = entry.GainIndex();
+  assert(node_id_to_current_gain_index_.find(entry.Id()) ==
+         node_id_to_current_gain_index_.end());
+  node_id_to_current_gain_index_.insert(
+      make_pair(entry.Id(), entry.GainIndex()));
   BucketContents::iterator bucket_iterator = buckets_.at(bucket_index).begin();
   node_id_to_bucket_iterator_.insert(make_pair(entry.Id(), bucket_iterator));
 

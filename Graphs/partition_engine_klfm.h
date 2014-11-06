@@ -90,7 +90,8 @@ class PartitionEngineKlfm : public PartitionEngine {
         multilevel(true),
         export_initial_sol_only(false),
         sol_scip_format(true),
-        sol_gurobi_format(false) {
+        sol_gurobi_format(false),
+        use_entropy(false) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -124,7 +125,8 @@ class PartitionEngineKlfm : public PartitionEngine {
         multilevel(true),
         export_initial_sol_only(false),
         sol_scip_format(true),
-        sol_gurobi_format(false) {
+        sol_gurobi_format(false),
+        use_entropy(false) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -256,6 +258,9 @@ class PartitionEngineKlfm : public PartitionEngine {
 
     // Will write solutions in the Gurobi .MST format.
     bool sol_gurobi_format;
+
+    // Use edge entropy to determine move cost.
+    bool use_entropy;
   };
 
  private:
@@ -362,6 +367,8 @@ class PartitionEngineKlfm : public PartitionEngine {
                                 double* cost, std::vector<int>* balance);
   void GenerateInitialPartitionRandom(NodePartitions* partition,
                                       double* cost, std::vector<int>* balance);
+  void GenerateInitialPartitionRandomEntropyAware(
+      NodePartitions* partition, double* cost, std::vector<int>* balance);
   // Always returns the same initial partition for a given graph. Used for
   // debugging purposes.
   void GenerateInitialPartitionSimpleDeterministic(
@@ -381,6 +388,8 @@ class PartitionEngineKlfm : public PartitionEngine {
   // of the resources.
   bool ExceedsMaxWeightImbalance(const std::vector<int>& current_balance) const;
 
+  int CurrentSpan();
+  double CurrentEntropy();
   void RecomputeTotalWeightAndMaxImbalance();
   double RecomputeCurrentCost();
   double ComputeEdgeCost(const EdgeKlfm& edge);
@@ -492,7 +501,7 @@ class PartitionEngineKlfm : public PartitionEngine {
 
   void SummarizeResults(const std::vector<PartitionSummary>& summaries);
   void PrintResultFull(const PartitionSummary& summary, int run_num);
-  void PrintHistogram(const std::vector<int>& val, bool cummulative);
+  void PrintHistogram(const std::vector<double>& val, bool cummulative);
   // Write solution in .sol format used by SCIP.
   void WriteScipSol(const NodePartitions& partition,
                     const std::string& filename);
@@ -515,6 +524,9 @@ class PartitionEngineKlfm : public PartitionEngine {
     assert(clock_gettime(CLOCK_REALTIME, &tS) != -1);
     return (uint64_t)tS.tv_sec * 1000000LL + (uint64_t)tS.tv_nsec / 1000LL;
   }
+
+  // For Debugging Purposes
+  double ComputeNodeGain(int node_id);
 
   Options options_;
 

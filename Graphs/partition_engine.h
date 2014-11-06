@@ -21,8 +21,6 @@ class PartitionEngine {
 
 class PartitionSummary {
  public:
-  PartitionSummary()
-      : total_cost(0), rms_resource_deviation(0.0), num_passes_used(0) {}
   ~PartitionSummary() {}
 
   void Print() {
@@ -41,13 +39,15 @@ class PartitionSummary {
   std::vector<EdgeKlfm::NodeIdSet> partition_node_ids;
   std::set<int> partition_edge_ids;
   std::set<std::string> partition_edge_names;
-  int total_cost;
-  double rms_resource_deviation;
+  double total_cost{0.0};
+  double total_entropy{0.0};
+  int total_span{0};
+  double rms_resource_deviation{0.0};
   std::vector<double> balance;
   std::vector<int> total_weight;
   std::vector<double> total_resource_ratio;
   std::vector<std::vector<double>> partition_resource_ratios;
-  int num_passes_used;
+  int num_passes_used{0};
 };
 
 #endif /* PARTITION_ENGINE_H_ */

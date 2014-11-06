@@ -16,7 +16,7 @@ class EdgeKlfm : public Edge {
  public:
   typedef std::vector<int> NodeIdVector;
 
-  EdgeKlfm(int edge_id, double weight, const std::string& edge_name);
+  EdgeKlfm(int edge_id, const std::string& edge_name);
   explicit EdgeKlfm(Edge* edge);
   virtual ~EdgeKlfm() {
   }
@@ -61,12 +61,15 @@ class EdgeKlfm : public Edge {
                 NodeIdVector* nodes_to_increase_gain,
                 NodeIdVector* nodes_to_reduce_gain);
 
+  // Returns the value this edge would contribute to the node's gain value.
+  double GainContributionToNode(int node_id);
+
   // An edge is critical iff at least one partition has 0 locked nodes and
   // 0-2 unlocked nodes from the edge's connected nodes.
-  bool is_critical;
+  bool is_critical{false};
   // An edge is locked non-critical iff both partitions have at least one
   // locked node from the edge's connected nodes.
-  bool locked_noncritical;
+  bool locked_noncritical{false};
   NodeIdVector part_a_connected_unlocked_nodes;
   NodeIdVector part_b_connected_unlocked_nodes;
   NodeIdVector part_a_connected_locked_nodes;

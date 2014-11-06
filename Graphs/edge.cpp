@@ -7,9 +7,8 @@
 
 using namespace std;
 
-Edge::Edge(int edge_id, double weight, const string& edge_name)
+Edge::Edge(int edge_id, const string& edge_name)
   : id(edge_id), name(edge_name) {
-  SetWeight(weight);
   // TODO - Omitting name saves memory.
   if (name.empty()) {
     // Create generic name.
@@ -66,6 +65,7 @@ void Edge::RemoveConnection(int cnx_id) {
 void Edge::CopyFrom(Edge* src) {
   id = src->id;
   width_ = src->width_;
+  entropy_ = src->entropy_;
   name = src->name;
   connection_ids_ = src->connection_ids();
 }
@@ -89,3 +89,5 @@ void Edge::Compress() {
 int Edge::degree() const {
   return connection_ids_.size();
 }
+
+bool Edge::use_entropy = false;

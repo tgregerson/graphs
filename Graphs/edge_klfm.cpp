@@ -7,14 +7,13 @@
 
 using namespace std;
 
-EdgeKlfm::EdgeKlfm(Edge* edge) : is_critical(true), locked_noncritical(false) {
+EdgeKlfm::EdgeKlfm(Edge* edge) {
   CopyFrom(edge);
   Compress();
 }
 
-EdgeKlfm::EdgeKlfm(int edge_id, double weight, const string& edge_name)
-  : Edge(edge_id, weight, edge_name), is_critical(true),
-    locked_noncritical(true) {}
+EdgeKlfm::EdgeKlfm(int edge_id, const string& edge_name)
+  : Edge(edge_id, edge_name) {}
 
 void EdgeKlfm::Print() const {
   Edge::Print();
@@ -125,4 +124,8 @@ void EdgeKlfm::MoveNode(int node_id, NodeIdVector* nodes_to_increase_gain,
       is_critical = true;
     }
   }
+}
+
+double EdgeKlfm::GainContributionToNode(int node_id) {
+  return 0.0;
 }

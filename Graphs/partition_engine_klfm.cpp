@@ -22,6 +22,8 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
     PartitionEngineKlfm::Options& options, ostream& os)
   : options_(options), os_(os), balance_exceeded_(false) {
 
+  Edge::use_entropy = options_.use_entropy;
+
   //random_engine_.seed(time(NULL));
   // Give the same seed each time for consistency between benchmarks. The
   // randomization of initial partition from run-to-run will still be different,
@@ -522,6 +524,8 @@ void PartitionEngineKlfm::ExecuteRun(
     summary.balance = partition_imbalance;
     summary.total_resource_ratio = graph_ratio;
     summary.total_cost = current_partition_cost;
+    summary.total_span = CurrentSpan();
+    summary.total_entropy = CurrentEntropy();
     summary.total_weight = total_weight_;
     summary.rms_resource_deviation = rms_avg;
     summary.num_passes_used = num_passes;
@@ -651,10 +655,18 @@ void PartitionEngineKlfm::ExecutePass(
 
     // Roll-back to the best result of the pass.
     DLOG(DEBUG_OPT_TRACE, 2) << "Roll back to best result." << endl;
+    if (current_partition_cost != RecomputeCurrentCost()) {
+      throw std::exception();
+    }
     RollBackToBestResultOfPass(nodes_moved_since_best_result,
         current_partition, current_partition_cost, current_partition_balance,
         best_cost, best_cost_balance);
+    if (current_partition_cost != RecomputeCurrentCost()) {
+      throw std::exception();
+    }
     //assert(!ExceedsMaxWeightImbalance(*current_partition_balance));
+    // TODO Fix bug that makes this necessary.
+    current_partition_cost = RecomputeCurrentCost();
 }
 
 void PartitionEngineKlfm::PrintPassInfo(int cur_pass, int cur_run) {
@@ -780,6 +792,12 @@ void PartitionEngineKlfm::MakeKlfmMove(
     double& best_cost_br_power,
     NodePartitions& current_partition,
     vector<int>& nodes_moved_since_best_result) {
+  // TODO Remove
+  double orig_cost = current_partition_cost;
+  orig_cost += 0;
+  if (current_partition_cost != RecomputeCurrentCost()) {
+    throw std::exception();
+  }
   if (PROFILE_ENABLED) {
     gbe_start_time_ = GetTimeUsec();
     total_move_start_time_ = GetTimeUsec();
@@ -932,6 +950,10 @@ void PartitionEngineKlfm::MakeKlfmMove(
     double rec_cost = RecomputeCurrentCost();
     assert(abs(current_partition_cost - rec_cost) < 1.0);
   }
+  // TODO Remove
+  if (current_partition_cost != RecomputeCurrentCost()) {
+    throw std::exception();
+  }
 
   double current_br_power = ImbalancePower(current_partition_balance,
                                            max_weight_imbalance_);
@@ -961,6 +983,10 @@ void PartitionEngineKlfm::MakeKlfmMove(
   if (PROFILE_ENABLED) {
     cost_update_time_ += GetTimeUsec() - cost_update_start_time_;
     total_move_time_ += GetTimeUsec() - total_move_start_time_;
+  }
+  // TODO Remove
+  if (current_partition_cost != RecomputeCurrentCost()) {
+    throw std::exception();
   }
 }
 
@@ -1129,7 +1155,11 @@ void PartitionEngineKlfm::GenerateInitialPartition(
     case Options::kSeedModeRandom:
       DLOG(DEBUG_OPT_TRACE, 1) <<
           "Generating initial partition using RANDOM policy." << endl;
-      GenerateInitialPartitionRandom(partition, cost, balance);
+      if (options_.use_entropy) {
+        GenerateInitialPartitionRandomEntropyAware(partition, cost, balance);
+      } else {
+        GenerateInitialPartitionRandom(partition, cost, balance);
+      }
       break;
     case Options::kSeedModeUserSpecified:
       DLOG(DEBUG_OPT_TRACE, 1) <<
@@ -1225,6 +1255,121 @@ void PartitionEngineKlfm::GenerateInitialPartitionRandom(
   *cost = RecomputeCurrentCost();
 }
 
+void PartitionEngineKlfm::GenerateInitialPartitionRandomEntropyAware(
+    NodePartitions* partition, double* cost, vector<int>* balance) {
+
+  int num_entropy_forced_placements = 0;
+
+  // Randomly assign nodes to partitions, obeying balance constraints.
+  vector<int> part_a_current_weight;
+  vector<int> part_b_current_weight;
+  vector<int> current_balance;
+  part_a_current_weight.insert(
+      part_a_current_weight.begin(), num_resources_per_node_, 0);
+  part_b_current_weight.insert(
+      part_b_current_weight.begin(), num_resources_per_node_, 0);
+  current_balance.insert(current_balance.begin(), num_resources_per_node_, 0);
+  vector<int> node_ids;
+  for (auto it : internal_node_map_) {
+    node_ids.push_back(it.first);
+  }
+  shuffle(node_ids.begin(), node_ids.end(), random_engine_initial_);
+
+  for (auto it : node_ids) {
+    vector<int> node_weights =
+        internal_node_map_.at(it)->SelectedWeightVector();
+    assert_b(node_weights.size() == num_resources_per_node_) {
+      printf("\nDetected an inconsistent number of resource weights per node "
+             "implementation. All implementations of all nodes in the graph "
+             "must have the same number of resources.\n");
+    }
+
+    // Try to place the node to put a low-entropy edge across the boundary.
+    Node* node = internal_node_map_.at(it);
+    double min_crossing_edge_entropy = 1.0;
+    bool crosses_to_first = true;
+    set<int> touching_edge_ids;
+    for (auto port_pair : node->ports()) {
+      touching_edge_ids.insert(port_pair.second.external_edge_id);
+    }
+    for (int edge_id : touching_edge_ids) {
+      Edge* edge = internal_edge_map_.at(edge_id);
+      if (edge->Entropy() < min_crossing_edge_entropy) {
+        bool first_anchor = false;
+        bool second_anchor = false;
+        for (int anchor_node_id : edge->connection_ids()) {
+          if (partition->first.find(anchor_node_id) !=
+              partition->first.end()) {
+            first_anchor = true;
+          } else if (partition->second.find(anchor_node_id) !=
+                     partition->second.end()) {
+            second_anchor = true;
+          }
+        }
+        if (first_anchor != second_anchor) {
+          min_crossing_edge_entropy = edge->Entropy();
+          crosses_to_first = first_anchor;
+        }
+      }
+    }
+
+    // This is an imperfect method to guarantee balance, but may be good enough
+    // with the fixer method called afterward. It finds the resource that is
+    // most out of balance and assigns the node to the partition that decreases
+    // that imbalance, prioritizing resources that exceed maximum imbalance.
+    // TODO: Come up with something more robust.
+    double max_imbalance_frac = 0.0;
+    int choose_resource = 0;
+    for (size_t i = 0; i < num_resources_per_node_; i++) {
+      if (node_weights[i] != 0) {
+        int imbalance = abs(current_balance[i]);
+        double imbalance_frac =
+            (double)imbalance / (double)max_weight_imbalance_[i];
+        if (imbalance_frac >= max_imbalance_frac) {
+          max_imbalance_frac = imbalance_frac;
+          choose_resource = i;
+        }
+      }
+    }
+
+    bool force_first =  (max_imbalance_frac < 0.9) &&
+                        (!crosses_to_first) &&
+                        (min_crossing_edge_entropy < 0.9);
+    bool force_second = (max_imbalance_frac < 0.9) &&
+                        (crosses_to_first) &&
+                        (min_crossing_edge_entropy < 0.9);
+
+    if (force_first || force_second) {
+      num_entropy_forced_placements++;
+    }
+
+    if (force_second ||
+        (!force_first && current_balance[choose_resource] >= 0)) {
+      partition->second.insert(it);
+      for (size_t i = 0; i < node_weights.size(); i++) {
+        part_b_current_weight[i] += node_weights[i];
+        current_balance[i] -= node_weights[i];
+      }
+    } else {
+      partition->first.insert(it);
+      for (size_t i = 0; i < node_weights.size(); i++) {
+        part_a_current_weight[i] += node_weights[i];
+        current_balance[i] += node_weights[i];
+      }
+    }
+  }
+  *balance = current_balance;
+  assert(!partition->first.empty() && !partition->second.empty());
+
+  PopulateEdgePartitionConnections(*partition);
+
+  // Get the initial cost.
+  *cost = RecomputeCurrentCost();
+
+  cout << "Forced " << num_entropy_forced_placements << " placements based "
+       << "on entropy.\n";
+}
+
 void PartitionEngineKlfm::FixInitialWeightImbalance(
     NodePartitions* partition, vector<int>* part_a_current_weight,
     vector<int>* part_b_current_weight, vector<int>* current_balance) {
@@ -1271,6 +1416,26 @@ void PartitionEngineKlfm::RecomputeTotalWeightAndMaxImbalance() {
       max_weight_imbalance_[i] = numeric_limits<int>::max() / 3;
     }
   }
+}
+
+int PartitionEngineKlfm::CurrentSpan() {
+  int span = 0;
+  for (auto it : internal_edge_map_) {
+    if (it.second->CrossesPartitions()) {
+      span += (int)(it.second->Width());
+    }
+  }
+  return span;
+}
+
+double PartitionEngineKlfm::CurrentEntropy() {
+  double entropy = 0.0;
+  for (auto it : internal_edge_map_) {
+    if (it.second->CrossesPartitions()) {
+      entropy += it.second->Entropy();
+    }
+  }
+  return entropy;
 }
 
 double PartitionEngineKlfm::RecomputeCurrentCost() {
@@ -1606,6 +1771,7 @@ void PartitionEngineKlfm::Options::Print(ostream& os) {
     os << "Rebalance on Demand Cap per Pass: "
        << rebalance_on_demand_cap_per_pass << endl;
   }
+  os << "Use Entropy: " << (use_entropy ? "true" : "false");
   os << endl;
 }
 
@@ -2180,8 +2346,9 @@ void PartitionEngineKlfm::SplitSupernodeBoundaryEdges(
     // Make new edge.
     int new_edge_id = IdManager::AcquireEdgeId();
     EdgeKlfm* new_boundary_edge = new EdgeKlfm(
-        new_edge_id, edge->Weight(), edge->GenerateSplitEdgeName(new_edge_id));
-        //new_edge_id, edge->weight, "");
+        new_edge_id, edge->GenerateSplitEdgeName(new_edge_id));
+    new_boundary_edge->SetEntropy(edge->Entropy());
+    new_boundary_edge->SetWidth(edge->Width());
     edge_map->insert(make_pair(new_edge_id, new_boundary_edge));
     new_boundary_edge->AddConnection(supernode_id); 
 
@@ -2330,20 +2497,20 @@ void PartitionEngineKlfm::MergeSupernodeBoundaryEdges(
 
 void PartitionEngineKlfm::SummarizeResults(
     const vector<PartitionSummary>& summaries) {
-  vector<int> costs;
+  vector<double> costs;
   for (auto& it : summaries) {
     costs.push_back(it.total_cost);
   }
   sort(costs.begin(), costs.end());
-  int min_cost = costs.front();
-  int max_cost = costs.back();
+  double min_cost = costs.front();
+  double max_cost = costs.back();
   int median_index = costs.size() / 2;
   int median_cost = costs[median_index];
-  int sum_of_costs = accumulate(costs.begin(), costs.end(), 0);
-  double average_cost = (double)sum_of_costs / (double)costs.size();
+  double sum_of_costs = accumulate(costs.begin(), costs.end(), 0);
+  double average_cost = sum_of_costs / (double)costs.size();
   double variance_of_costs = 0.0;
   for (auto it : costs) {
-    int dif = average_cost - it;
+    double dif = average_cost - it;
     variance_of_costs += dif * dif / costs.size();
   }
   double std_dev_of_costs = sqrt(variance_of_costs);
@@ -2380,7 +2547,11 @@ void PartitionEngineKlfm::PrintResultFull(const PartitionSummary& summary,
   os_ << endl << "----------------Run Summary------------------" << endl;
   os_ << "Run " << run_num << endl;
   os_ << "Passes: " << summary.num_passes_used << endl;
-  os_ << "Cut size: " << summary.total_cost << endl;
+  os_ << "Cut cost: " << summary.total_cost << endl;
+  os_ << "Cut span: " << summary.total_span << endl;
+  os_ << "Cut entropy: " << summary.total_entropy << endl;
+  os_ << "Entropy/Span: " << (summary.total_entropy / (double)(summary.total_span))
+      << endl;
   os_ << "RMS Resource Deviation: " << summary.rms_resource_deviation << endl;
   os_ << "Imbalance: ";
   for (auto imb : summary.balance) {
@@ -2412,12 +2583,12 @@ void PartitionEngineKlfm::PrintResultFull(const PartitionSummary& summary,
 }
 
 void PartitionEngineKlfm::PrintHistogram(
-    const vector<int>& val, bool cummulative) {
-  vector<int> values = val;
+    const vector<double>& val, bool cummulative) {
+  vector<double> values = val;
   sort(values.begin(), values.end());
-  int min_val = values.front();
-  int max_val = values.back();
-  int diff = max_val - min_val;
+  double min_val = values.front();
+  double max_val = values.back();
+  double diff = max_val - min_val;
   int num_buckets;
   if ((diff / 10) > 10) {
     num_buckets = 10;
@@ -2656,4 +2827,9 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
       of << "B 0\n";
     }
   }
+}
+
+double PartitionEngineKlfm::ComputeNodeGain(int node_id) {
+  Node* node = internal_node_map_.at(node_id);
+
 }

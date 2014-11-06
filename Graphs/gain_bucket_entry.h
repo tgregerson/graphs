@@ -14,13 +14,13 @@ class GainBucketEntry {
                   int current_weight_vector_index = 0)
     : cost_(cost), id_(id),
       current_weight_vector_index_(current_weight_vector_index) {
-    gain_ = FastDoublePower2Mul(cost, kExponent);
+    UpdateGainIndex();
     all_weight_vectors_.push_back(weight_vector);
   }
 
   GainBucketEntry(double cost, Node* node) : cost_(cost), id_(node->id),
       current_weight_vector_index_(node->selected_weight_vector_index()) {
-    gain_ = FastDoublePower2Mul(cost, kExponent);
+    UpdateGainIndex();
     assert(!node->WeightVectors().empty());
     for (auto& wv : node->WeightVectors()) {
       all_weight_vectors_.push_back(wv);
@@ -30,9 +30,11 @@ class GainBucketEntry {
 
   int Id() const { return id_; }
   double CostGain() const { return cost_; }
-  void SetCostGain(double cost) { cost_ = cost; }
+  void SetCostGain(double cost) {
+    cost_ = cost;
+    UpdateGainIndex();
+  }
   int GainIndex() const { return gain_; }
-  void SetGainIndex(int gain) { gain_ = gain; }
 
   int CurrentWeightVectorIndex() const {
     return current_weight_vector_index_;
@@ -63,6 +65,10 @@ class GainBucketEntry {
     exponent_masked = exponent_val << 52;
     return static_cast<double>(
         (static_cast<long long>(input) & 0x800FFFFFULL) & exponent_masked);
+  }
+
+  void UpdateGainIndex() {
+    gain_ = FastDoublePower2Mul(cost_, kExponent);
   }
 
   int gain_{0};

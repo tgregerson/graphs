@@ -13,8 +13,10 @@ class Edge {
   typedef std::set<int> NodeIdSet;
   typedef std::vector<int> NodeIdVector;
 
+  static bool use_entropy;
+
   Edge() {}
-  Edge(int edge_id, double weight = 1.0, const std::string& edge_name = "");
+  Edge(int edge_id, const std::string& edge_name = "");
   virtual ~Edge() {}
 
   // Add/remove a connection to a node or port.
@@ -44,10 +46,18 @@ class Edge {
   }
 
   double Weight() const {
-    return Width();
+    if (use_entropy) {
+      return Entropy();
+    } else {
+      return Width();
+    }
   }
   void SetWeight(double weight) {
-    SetWidth(weight);
+    if (use_entropy) {
+      SetEntropy(weight);
+    } else {
+      SetWidth(weight);
+    }
   }
 
   const std::string GenerateSplitEdgeName(int new_id) const;
@@ -64,7 +74,7 @@ class Edge {
 
   // connection_ids is kept sorted for fast searching.
   int id{-1};
-  double entropy_{0.0};
+  double entropy_{0.1};
   double width_{1.0};
   std::string name;
  protected:

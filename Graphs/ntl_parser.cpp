@@ -207,7 +207,10 @@ void NtlParser::PopulateGraph(
     const string& edge_name = edge_name_id_entropy_pair.first;
     int new_edge_id = edge_name_id_entropy_pair.second.first;
     double edge_entropy = edge_name_id_entropy_pair.second.second;
-    Edge* new_edge = new Edge(new_edge_id, edge_entropy, edge_name);
+    Edge* new_edge = new Edge(new_edge_id, edge_name);
+    new_edge->SetEntropy(edge_entropy);
+    new_edge->SetWidth(1.0);
+    assert(edge_entropy <= 1.0);
     for (auto node_id :
          edge_name_to_connection_ids.at(edge_name)) {
       new_edge->AddConnection(node_id);

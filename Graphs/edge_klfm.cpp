@@ -124,11 +124,11 @@ void EdgeKlfm::MoveNode(int node_id, NodeIdVector* nodes_to_increase_gain,
   }
 }
 
-bool EdgeKlfm::InGroup(const NodeIdVector& group, int node_id) {
+bool EdgeKlfm::InGroup(const NodeIdVector& group, int node_id) const {
   return find(group.begin(), group.end(), node_id) != group.end();
 }
 
-double EdgeKlfm::GainContributionToNode(int node_id) {
+double EdgeKlfm::GainContributionToNode(int node_id) const {
   if (!is_critical) {
     return 0.0;
   } else if (InGroup(part_a_locked_nodes, node_id) ||

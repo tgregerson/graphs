@@ -47,6 +47,9 @@ class EdgeKlfm : public Edge {
   bool CrossesPartitions() const {
     return TouchesPartitionA() && TouchesPartitionB();
   }
+  bool IsCritical() const {
+    return is_critical;
+  }
 
   // This method should be called once a node has been selected by the KLFM
   // algorithm for movement, and should be called for all edges that are
@@ -63,7 +66,15 @@ class EdgeKlfm : public Edge {
                 NodeIdVector* nodes_to_reduce_gain);
 
   // Returns the value this edge would contribute to the node's gain value.
-  double GainContributionToNode(int node_id);
+  double GainContributionToNode(int node_id) const;
+
+ private:
+  void SetInitialCriticality();
+  bool InGroup(const NodeIdVector& group, int node_id) const;
+  NodeIdVector part_a_unlocked_nodes;
+  NodeIdVector part_b_unlocked_nodes;
+  NodeIdVector part_a_locked_nodes;
+  NodeIdVector part_b_locked_nodes;
 
   // An edge is critical iff at least one partition has 0 locked nodes and
   // 0-2 unlocked nodes from the edge's connected nodes.
@@ -71,14 +82,6 @@ class EdgeKlfm : public Edge {
   // An edge is locked non-critical iff both partitions have at least one
   // locked node from the edge's connected nodes.
   bool locked_noncritical{false};
-  NodeIdVector part_a_unlocked_nodes;
-  NodeIdVector part_b_unlocked_nodes;
-  NodeIdVector part_a_locked_nodes;
-  NodeIdVector part_b_locked_nodes;
-
- private:
-  void SetInitialCriticality();
-  bool InGroup(const NodeIdVector& group, int node_id);
 };
 
 template<typename T>

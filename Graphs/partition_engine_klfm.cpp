@@ -744,42 +744,7 @@ double PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
     Port& port = port_pair.second;
     int connecting_edge_id = port.external_edge_id;
     EdgeKlfm* connecting_edge = internal_edge_map_.at(connecting_edge_id);
-    auto& my_partition_unlocked = (in_part_a) ?
-        connecting_edge->part_a_connected_unlocked_nodes :
-        connecting_edge->part_b_connected_unlocked_nodes;
-    auto& my_partition_locked = (in_part_a) ?
-        connecting_edge->part_a_connected_locked_nodes :
-        connecting_edge->part_b_connected_locked_nodes;
-    auto& opposite_partition_unlocked = (in_part_a) ?
-        connecting_edge->part_b_connected_unlocked_nodes :
-        connecting_edge->part_a_connected_unlocked_nodes;
-    auto& opposite_partition_locked = (in_part_a) ?
-        connecting_edge->part_b_connected_locked_nodes :
-        connecting_edge->part_a_connected_locked_nodes;
-
-    if (find(my_partition_locked.begin(), my_partition_locked.end(), my_node_id) !=
-        my_partition_locked.end()) {
-      // Node is locked. No gain possible.
-      return 0;
-    }
-
-    if (my_partition_unlocked.size() == 1 && my_partition_locked.empty()) {
-      // This node is the only one of this side of the partition for the
-      // edge, so its gain increases, because moving it would eliminate
-      // the cut in this edge.
-      node_gain += connecting_edge->Weight();
-    } else if (opposite_partition_unlocked.empty() &&
-               opposite_partition_locked.empty()) {
-        // This would indicate that there was only one node on an edge, which
-        // is an invalid configuration. If this method ever gets called in the
-        // inner loop of the algorithm, remove this.
-        int nodes_on_this_side = my_partition_unlocked.size() +
-                                 my_partition_locked.size();
-        assert(nodes_on_this_side != 1);
-      // There are no nodes on the opposite partition, so decrease the
-      // gain of this node, since moving it will cause the edge to be cut.
-      node_gain -= connecting_edge->Weight();
-    }
+    node_gain += connecting_edge->GainContributionToNode(my_node_id);
   }
   return node_gain;
 }
@@ -1029,7 +994,7 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     num_connected_edges_++;
     const int connected_edge_id = port_pair.second.external_edge_id;
     EdgeKlfm* connected_edge = internal_edge_map_.at(connected_edge_id);
-    if (connected_edge->is_critical) num_critical_connected_edges_++;
+    if (connected_edge->IsCritical()) num_critical_connected_edges_++;
     EdgeKlfm::NodeIdVector nodes_to_increase_gain;
     EdgeKlfm::NodeIdVector nodes_to_decrease_gain;
     connected_edge->MoveNode(moved_node->id, &nodes_to_increase_gain,
@@ -2827,9 +2792,4 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
       of << "B 0\n";
     }
   }
-}
-
-double PartitionEngineKlfm::ComputeNodeGain(int node_id) {
-  Node* node = internal_node_map_.at(node_id);
-
 }

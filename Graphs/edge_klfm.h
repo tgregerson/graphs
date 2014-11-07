@@ -10,6 +10,7 @@
 #include <iostream>
 #include <set>
 #include <unordered_set>
+#include <map>
 #include <vector>
 
 class EdgeKlfm : public Edge {
@@ -36,12 +37,12 @@ class EdgeKlfm : public Edge {
   void PopulatePartitionNodeIds(const std::pair<T,T>& partitions);
 
   bool TouchesPartitionA() const {
-    return !(part_a_connected_locked_nodes.empty() &&
-             part_a_connected_unlocked_nodes.empty());
+    return !(part_a_locked_nodes.empty() &&
+             part_a_unlocked_nodes.empty());
   }
   bool TouchesPartitionB() const {
-    return !(part_b_connected_locked_nodes.empty() &&
-             part_b_connected_unlocked_nodes.empty());
+    return !(part_b_locked_nodes.empty() &&
+             part_b_unlocked_nodes.empty());
   }
   bool CrossesPartitions() const {
     return TouchesPartitionA() && TouchesPartitionB();
@@ -70,10 +71,10 @@ class EdgeKlfm : public Edge {
   // An edge is locked non-critical iff both partitions have at least one
   // locked node from the edge's connected nodes.
   bool locked_noncritical{false};
-  NodeIdVector part_a_connected_unlocked_nodes;
-  NodeIdVector part_b_connected_unlocked_nodes;
-  NodeIdVector part_a_connected_locked_nodes;
-  NodeIdVector part_b_connected_locked_nodes;
+  NodeIdVector part_a_unlocked_nodes;
+  NodeIdVector part_b_unlocked_nodes;
+  NodeIdVector part_a_locked_nodes;
+  NodeIdVector part_b_locked_nodes;
 
  private:
   void SetInitialCriticality();
@@ -81,15 +82,15 @@ class EdgeKlfm : public Edge {
 
 template<typename T>
 void EdgeKlfm::PopulatePartitionNodeIds(const std::pair<T,T>& partitions) {
-  part_a_connected_locked_nodes.clear();
-  part_b_connected_locked_nodes.clear();
-  part_a_connected_unlocked_nodes.clear();
-  part_b_connected_unlocked_nodes.clear();
+  part_a_locked_nodes.clear();
+  part_b_locked_nodes.clear();
+  part_a_unlocked_nodes.clear();
+  part_b_unlocked_nodes.clear();
   for (int node_id : connection_ids_) {
     if (partitions.first.find(node_id) != partitions.first.end()) {
-      part_a_connected_unlocked_nodes.push_back(node_id);
+      part_a_unlocked_nodes.push_back(node_id);
     } else {
-      part_b_connected_unlocked_nodes.push_back(node_id);
+      part_b_unlocked_nodes.push_back(node_id);
     }
   }
 }

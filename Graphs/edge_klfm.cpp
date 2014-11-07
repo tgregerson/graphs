@@ -54,9 +54,7 @@ void EdgeKlfm::MoveNode(int node_id, NodeIdVector* nodes_to_increase_gain,
      to detect this case. */
 
   // Check if node is moving from a to b.
-  bool from_part_a = find(part_a_unlocked_nodes.begin(),
-                          part_a_unlocked_nodes.end(), node_id) !=
-                          part_a_unlocked_nodes.end();
+  bool from_part_a = InGroup(part_a_unlocked_nodes, node_id);
   auto& from_part_locked_nodes = (from_part_a) ?
       part_a_locked_nodes : part_b_locked_nodes;
   auto& to_part_locked_nodes = (from_part_a) ?
@@ -126,6 +124,42 @@ void EdgeKlfm::MoveNode(int node_id, NodeIdVector* nodes_to_increase_gain,
   }
 }
 
+bool EdgeKlfm::InGroup(const NodeIdVector& group, int node_id) {
+  return find(group.begin(), group.end(), node_id) != group.end();
+}
+
 double EdgeKlfm::GainContributionToNode(int node_id) {
-  return 0.0;
+  if (!is_critical) {
+    return 0.0;
+  } else if (InGroup(part_a_locked_nodes, node_id) ||
+             InGroup(part_b_locked_nodes, node_id)) {
+    return 0.0;
+  } else {
+    bool in_part_a = InGroup(part_a_unlocked_nodes, node_id);
+    const auto& my_part_locked_nodes = (in_part_a) ?
+        part_a_locked_nodes : part_b_locked_nodes;
+    const auto& my_part_unlocked_nodes = (in_part_a) ?
+        part_a_locked_nodes : part_b_locked_nodes;
+    const auto& other_part_locked_nodes = (in_part_a) ?
+        part_b_locked_nodes : part_a_locked_nodes;
+    const auto& other_part_unlocked_nodes = (in_part_a) ?
+        part_b_locked_nodes : part_a_locked_nodes;
+    if (my_part_locked_nodes.empty() && my_part_unlocked_nodes.size() == 1) {
+      // Only node in a partition case. Moving it would cause the edge to stop
+      // crossing the boundary.
+      assert(!other_part_locked_nodes.empty() ||
+             !other_part_unlocked_nodes.empty());
+      return Weight();
+    } else if (other_part_locked_nodes.empty() &&
+               other_part_unlocked_nodes.empty()) {
+      // Other side is empty case. We already know node is unlocked.
+      assert(!my_part_locked_nodes.empty() ||
+             my_part_unlocked_nodes.size() > 1);
+      return -Weight();
+    } else {
+      // Moving this node would cause the gains of other nodes to change, but
+      // not actually impact the cost function.
+      return 0.0;
+    }
+  }
 }

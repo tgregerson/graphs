@@ -78,6 +78,7 @@ class EdgeKlfm : public Edge {
 
  private:
   void SetInitialCriticality();
+  bool InGroup(const NodeIdVector& group, int node_id);
 };
 
 template<typename T>

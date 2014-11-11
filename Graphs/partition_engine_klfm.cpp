@@ -661,12 +661,7 @@ void PartitionEngineKlfm::ExecutePass(
     RollBackToBestResultOfPass(nodes_moved_since_best_result,
         current_partition, current_partition_cost, current_partition_balance,
         best_cost, best_cost_balance);
-    if (current_partition_cost != RecomputeCurrentCost()) {
-      throw std::exception();
-    }
     //assert(!ExceedsMaxWeightImbalance(*current_partition_balance));
-    // TODO Fix bug that makes this necessary.
-    current_partition_cost = RecomputeCurrentCost();
 }
 
 void PartitionEngineKlfm::PrintPassInfo(int cur_pass, int cur_run) {
@@ -757,12 +752,6 @@ void PartitionEngineKlfm::MakeKlfmMove(
     double& best_cost_br_power,
     NodePartitions& current_partition,
     vector<int>& nodes_moved_since_best_result) {
-  // TODO Remove
-  double orig_cost = current_partition_cost;
-  orig_cost += 0;
-  if (current_partition_cost != RecomputeCurrentCost()) {
-    throw std::exception();
-  }
   if (PROFILE_ENABLED) {
     gbe_start_time_ = GetTimeUsec();
     total_move_start_time_ = GetTimeUsec();
@@ -776,9 +765,8 @@ void PartitionEngineKlfm::MakeKlfmMove(
 
   const double gain = entry.CostGain();
   const int node_id_to_move = entry.Id();
-  // TODO Remove
-  assert(gain == ComputeNodeGain(node_id_to_move));
-  const bool from_part_a = current_partition.first.count(node_id_to_move) != 0;
+  const bool from_part_a = current_partition.first.find(node_id_to_move) !=
+                           current_partition.first.end();
   Node* node_to_move = internal_node_map_.at(node_id_to_move);
 
   // Account for the gain bucket potentially selecting a different
@@ -917,10 +905,6 @@ void PartitionEngineKlfm::MakeKlfmMove(
     double rec_cost = RecomputeCurrentCost();
     assert(abs(current_partition_cost - rec_cost) < 1.0);
   }
-  // TODO Remove
-  if (current_partition_cost != RecomputeCurrentCost()) {
-    throw std::exception();
-  }
 
   double current_br_power = ImbalancePower(current_partition_balance,
                                            max_weight_imbalance_);
@@ -950,10 +934,6 @@ void PartitionEngineKlfm::MakeKlfmMove(
   if (PROFILE_ENABLED) {
     cost_update_time_ += GetTimeUsec() - cost_update_start_time_;
     total_move_time_ += GetTimeUsec() - total_move_start_time_;
-  }
-  // TODO Remove
-  if (current_partition_cost != RecomputeCurrentCost()) {
-    throw std::exception();
   }
 }
 
@@ -1009,21 +989,6 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     double gain_modifier = connected_edge->Weight();
     gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
                                       nodes_to_decrease_gain, from_part_a);
-    // TODO Remove
-    for (int node_id : nodes_to_increase_gain) {
-      auto& gbe = gain_bucket_manager_->GbeRefByNodeId(node_id);
-      assert(gbe.CostGain() == ComputeNodeGain(node_id));
-    }
-    for (int node_id : nodes_to_decrease_gain) {
-      auto& gbe = gain_bucket_manager_->GbeRefByNodeId(node_id);
-      assert(gbe.CostGain() == ComputeNodeGain(node_id));
-    }
-    for (int node_id : connected_edge->connection_ids()) {
-      if (gain_bucket_manager_->HasNode(node_id)) {
-        auto& gbe = gain_bucket_manager_->GbeRefByNodeId(node_id);
-        assert(gbe.CostGain() == ComputeNodeGain(node_id));
-      }
-    }
   }
 }
 
@@ -1033,7 +998,8 @@ void PartitionEngineKlfm::RollBackToBestResultOfPass(
     double& current_partition_cost, vector<int>& current_partition_balance,
     const double& best_cost, const vector<int>& best_cost_balance) {
   for (auto id : nodes_moved_since_best_result) {
-    if (current_partition.first.count(id) != 0) {
+    if (current_partition.first.find(id) !=
+        current_partition.first.end()) {
       current_partition.first.erase(id);
       current_partition.second.insert(id);
     } else {

@@ -137,3 +137,15 @@ void GainBucketManagerSingleResource::Print(bool condensed) const {
   printf("\nGain Bucket B:\n");
   gain_bucket_b_->Print(condensed);
 }
+
+GainBucketEntry& GainBucketManagerSingleResource::GbeRefByNodeId(int node_id) {
+  if (gain_bucket_a_->HasNode(node_id)) {
+    return gain_bucket_a_->GbeRefByNodeId(node_id);
+  } else {
+    return gain_bucket_b_->GbeRefByNodeId(node_id);
+  }
+}
+
+bool GainBucketManagerSingleResource::HasNode(int node_id) {
+  return gain_bucket_a_->HasNode(node_id) || gain_bucket_b_->HasNode(node_id);
+}

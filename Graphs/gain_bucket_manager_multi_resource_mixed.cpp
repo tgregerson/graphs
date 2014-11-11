@@ -675,3 +675,18 @@ void GainBucketManagerMultiResourceMixed::set_selection_policy(
     PartitionerConfig::GainBucketSelectionPolicy selection_policy) {
   selection_policy_ = selection_policy;
 }
+
+GainBucketEntry& GainBucketManagerMultiResourceMixed::GbeRefByNodeId(
+    int node_id) {
+  if (gain_bucket_a_master_->HasNode(node_id)) {
+    return gain_bucket_a_master_->GbeRefByNodeId(node_id);
+  } else {
+    return gain_bucket_b_master_->GbeRefByNodeId(node_id);
+  }
+}
+
+bool GainBucketManagerMultiResourceMixed::HasNode(
+    int node_id) {
+  return gain_bucket_a_master_->HasNode(node_id) ||
+         gain_bucket_b_master_->HasNode(node_id);
+}

@@ -602,3 +602,34 @@ void GainBucketManagerMultiResourceExclusive::set_selection_policy(
     PartitionerConfig::GainBucketSelectionPolicy selection_policy) {
   selection_policy_ = selection_policy;
 }
+
+GainBucketEntry& GainBucketManagerMultiResourceExclusive::GbeRefByNodeId(
+    int node_id) {
+  for (auto& gb : gain_buckets_a_) {
+    if (gb->HasNode(node_id)) {
+      return gb->GbeRefByNodeId(node_id);
+    }
+  }
+  for (auto& gb : gain_buckets_b_) {
+    if (gb->HasNode(node_id)) {
+      return gb->GbeRefByNodeId(node_id);
+    }
+  }
+  assert(false);
+  // Shouldn't execute.
+  return gain_buckets_a_.at(0)->GbeRefByNodeId(node_id);
+}
+
+bool GainBucketManagerMultiResourceExclusive::HasNode(int node_id) {
+  for (auto& gb : gain_buckets_a_) {
+    if (gb->HasNode(node_id)) {
+      return true;
+    }
+  }
+  for (auto& gb : gain_buckets_b_) {
+    if (gb->HasNode(node_id)) {
+      return true;
+    }
+  }
+  return false;
+}

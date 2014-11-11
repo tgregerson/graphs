@@ -73,7 +73,7 @@ class Edge {
   }
 
   // connection_ids is kept sorted for fast searching.
-  int id{-1};
+  int id_{-1};
   double entropy_{0.1};
   double width_{1.0};
   std::string name;

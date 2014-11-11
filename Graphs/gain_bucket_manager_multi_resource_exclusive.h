@@ -60,6 +60,10 @@ class GainBucketManagerMultiResourceExclusive : public GainBucketManager {
 
   virtual void set_selection_policy(
       PartitionerConfig::GainBucketSelectionPolicy selection_policy);
+
+  virtual GainBucketEntry& GbeRefByNodeId(int node_id);
+
+  virtual bool HasNode(int node_id);
  
  private:
   virtual void AddEntry(const GainBucketEntry& entry, bool in_part_a);

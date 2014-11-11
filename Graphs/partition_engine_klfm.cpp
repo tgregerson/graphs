@@ -65,7 +65,7 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
     assert(!edge_pair.second->name.empty());
     EdgeKlfm* copied_edge = new EdgeKlfm(edge_pair.second);
     assert(edge_pair.second->name == copied_edge->name);
-    internal_edge_map_.insert(make_pair(copied_edge->id, copied_edge));
+    internal_edge_map_.insert(make_pair(copied_edge->id_, copied_edge));
   }
 
   // Check that all nodes have the correct number of resources in their weight
@@ -733,18 +733,18 @@ void PartitionEngineKlfm::ResetNodeAndEdgeKlfmState(
 
 void PartitionEngineKlfm::ComputeInitialNodeGainAndUpdateBuckets(
     Node* node, bool in_part_a) {
-  double node_gain = ComputeNodeGain(node, in_part_a);
+  double node_gain = ComputeNodeGain(node->id);
   gain_bucket_manager_->AddNode(node_gain, node, in_part_a, total_weight_);
 }
 
-double PartitionEngineKlfm::ComputeNodeGain(Node* node, bool in_part_a) {
+double PartitionEngineKlfm::ComputeNodeGain(int node_id) {
   double node_gain = 0;
-  int my_node_id = node->id;
+  Node* node = internal_node_map_.at(node_id);
   for (auto& port_pair : node->ports()) {
     Port& port = port_pair.second;
     int connecting_edge_id = port.external_edge_id;
     EdgeKlfm* connecting_edge = internal_edge_map_.at(connecting_edge_id);
-    node_gain += connecting_edge->GainContributionToNode(my_node_id);
+    node_gain += connecting_edge->GainContributionToNode(node_id);
   }
   return node_gain;
 }
@@ -776,6 +776,8 @@ void PartitionEngineKlfm::MakeKlfmMove(
 
   const double gain = entry.CostGain();
   const int node_id_to_move = entry.Id();
+  // TODO Remove
+  assert(gain == ComputeNodeGain(node_id_to_move));
   const bool from_part_a = current_partition.first.count(node_id_to_move) != 0;
   Node* node_to_move = internal_node_map_.at(node_id_to_move);
 
@@ -1007,6 +1009,21 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     double gain_modifier = connected_edge->Weight();
     gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
                                       nodes_to_decrease_gain, from_part_a);
+    // TODO Remove
+    for (int node_id : nodes_to_increase_gain) {
+      auto& gbe = gain_bucket_manager_->GbeRefByNodeId(node_id);
+      assert(gbe.CostGain() == ComputeNodeGain(node_id));
+    }
+    for (int node_id : nodes_to_decrease_gain) {
+      auto& gbe = gain_bucket_manager_->GbeRefByNodeId(node_id);
+      assert(gbe.CostGain() == ComputeNodeGain(node_id));
+    }
+    for (int node_id : connected_edge->connection_ids()) {
+      if (gain_bucket_manager_->HasNode(node_id)) {
+        auto& gbe = gain_bucket_manager_->GbeRefByNodeId(node_id);
+        assert(gbe.CostGain() == ComputeNodeGain(node_id));
+      }
+    }
   }
 }
 
@@ -1433,7 +1450,7 @@ void PartitionEngineKlfm::GetCutSet(const NodePartitions& partition,
         b_count++;
       }
       if (a_count != 0 && b_count != 0) {
-        cut_set->insert(edge->id);
+        cut_set->insert(edge->id_);
         break;
       }
     }
@@ -2437,10 +2454,10 @@ void PartitionEngineKlfm::MergeSupernodeBoundaryEdges(
         internal_edge->AddConnection(entity_id);
         if (node_map->count(entity_id) != 0) {
           node_map->at(entity_id)->SwapPortConnection(
-              external_edge->id, internal_edge->id);
+              external_edge->id_, internal_edge->id_);
         } else if (port_map != NULL && port_map->count(entity_id) != 0) {
           Port p = port_map->at(entity_id);
-          p.internal_edge_id = internal_edge->id;
+          p.internal_edge_id = internal_edge->id_;
         } else {
           printf("Fatal error: Edge connection not found in internal nodes");
           assert(false);
@@ -2452,9 +2469,9 @@ void PartitionEngineKlfm::MergeSupernodeBoundaryEdges(
     // deleted twice? Will something that shouldn't have been deleted get
     // deleted?
     // Remove external edge.
-    auto external_edge_it = edge_map->find(external_edge->id);
+    auto external_edge_it = edge_map->find(external_edge->id_);
     if (external_edge_it != edge_map->end()) {
-      edge_map->erase(external_edge->id);
+      edge_map->erase(external_edge->id_);
       delete external_edge;
     }
   }
@@ -2631,7 +2648,7 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
     if (edge->CrossesPartitions()) {
-      of << "X" << mps_name_hash::Hash(edge->id) << " 1\t (obj:" << edge->Weight()
+      of << "X" << mps_name_hash::Hash(edge->id_) << " 1\t (obj:" << edge->Weight()
          << ")\n";
     }
 
@@ -2639,10 +2656,10 @@ void PartitionEngineKlfm::WriteScipSol(const NodePartitions& partitions,
     // the partition. It is not important which partition is denoted as A vs B,
     // as long as we are consistent with what we did for the nodes.
     if (edge->TouchesPartitionA()) {
-      of << "C" << mps_name_hash::Hash(edge->id) << "A 1\t (obj:0)\n";
+      of << "C" << mps_name_hash::Hash(edge->id_) << "A 1\t (obj:0)\n";
     }
     if (edge->TouchesPartitionB()) {
-      of << "C" << mps_name_hash::Hash(edge->id) << "B 1\t (obj:0)\n";
+      of << "C" << mps_name_hash::Hash(edge->id_) << "B 1\t (obj:0)\n";
     }
   }
 }
@@ -2696,7 +2713,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     EdgeKlfm* edge = CHECK_NOTNULL(internal_edge_map_.at(edge_id));
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
-    of << "X" << mps_name_hash::Hash(edge->id);
+    of << "X" << mps_name_hash::Hash(edge->id_);
     if (edge->CrossesPartitions()) {
       of << " 1\t (obj:" << edge->Weight() << ")\n";
     } else {
@@ -2706,7 +2723,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     // For edge partition connectivity variables, print them if the edge touches
     // the partition. It is not important which partition is denoted as A vs B,
     // as long as we are consistent with what we did for the nodes.
-    of << "C" << mps_name_hash::Hash(edge->id) << "A ";
+    of << "C" << mps_name_hash::Hash(edge->id_) << "A ";
     if (edge->TouchesPartitionA()) {
       of << "1";
     } else {
@@ -2714,7 +2731,7 @@ void PartitionEngineKlfm::WriteScipSolAlt(const NodePartitions& partitions,
     }
     of << "\t (obj:0)\n";
 
-    of << "C" << mps_name_hash::Hash(edge->id) << "B ";
+    of << "C" << mps_name_hash::Hash(edge->id_) << "B ";
     if (edge->TouchesPartitionB()) {
       of << "1";
     } else {
@@ -2769,7 +2786,7 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     EdgeKlfm* edge = CHECK_NOTNULL(ep.second);
     // For edge crossing variables, print the names for any edge that crosses
     // partitions.
-    of << "X" << mps_name_hash::Hash(edge->id);
+    of << "X" << mps_name_hash::Hash(edge->id_);
     if (edge->CrossesPartitions()) {
       of << " 1\n";
     } else {
@@ -2779,13 +2796,13 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     // For edge partition connectivity variables, print them if the edge touches
     // the partition. It is not important which partition is denoted as A vs B,
     // as long as we are consistent with what we did for the nodes.
-    of << "C" << mps_name_hash::Hash(edge->id);
+    of << "C" << mps_name_hash::Hash(edge->id_);
     if (edge->TouchesPartitionA()) {
       of << "A 1\n";
     } else {
       of << "A 0\n";
     }
-    of << "C" << mps_name_hash::Hash(edge->id);
+    of << "C" << mps_name_hash::Hash(edge->id_);
     if (edge->TouchesPartitionB()) {
       of << "B 1\n";
     } else {

@@ -318,8 +318,8 @@ class PartitionEngineKlfm : public PartitionEngine {
   // 'in_part_a' indicates if the node is in Partition A or B. KLFM helper fn.
   void ComputeInitialNodeGainAndUpdateBuckets(Node* node, bool in_part_a);
 
-  // Compute the gain for 'node'. KLFM helper fn.
-  double ComputeNodeGain(Node* node, bool in_part_a);
+  // Compute the gain for 'node_id'. KLFM helper fn.
+  double ComputeNodeGain(int node_id);
 
   // Moves node (to 'part_b' if 'from_part_a' is true, else to 'part_a') and
   // updates 'balance' according to the change in weight. KLFM helper fn.
@@ -524,9 +524,6 @@ class PartitionEngineKlfm : public PartitionEngine {
     assert(clock_gettime(CLOCK_REALTIME, &tS) != -1);
     return (uint64_t)tS.tv_sec * 1000000LL + (uint64_t)tS.tv_nsec / 1000LL;
   }
-
-  // For Debugging Purposes
-  double ComputeNodeGain(int node_id);
 
   Options options_;
 

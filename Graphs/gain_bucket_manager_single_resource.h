@@ -51,6 +51,10 @@ class GainBucketManagerSingleResource : public GainBucketManager {
            "different selection policies.\n");
     exit(1);
   }
+
+  virtual GainBucketEntry& GbeRefByNodeId(int node_id);
+
+  virtual bool HasNode(int node_id);
  
  private:
   virtual void AddEntry(const GainBucketEntry& entry, bool in_part_a);

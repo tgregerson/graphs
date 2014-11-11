@@ -84,11 +84,11 @@ bool ChacoParser::Parse(Node* top_level_graph, const char* filename) {
         connecting_edge->AddConnection(node_num);
         connecting_edge->AddConnection(connected_node_id);
         pair<int,Edge*> my_pair =
-            make_pair(connecting_edge->id, connecting_edge);
+            make_pair(connecting_edge->id_, connecting_edge);
         parsed_edges_.insert(my_pair);
-        new_node->AddConnection(connecting_edge->id);
+        new_node->AddConnection(connecting_edge->id_);
         back_connections[connected_node_id].insert(
-            make_pair(node_num, connecting_edge->id));
+            make_pair(node_num, connecting_edge->id_));
         if (edge_weight_mode_ == USER_SPECIFIED_WEIGHT_MODE) {
           connecting_edge->SetWeight(line_ints[pos++]);
         } else {

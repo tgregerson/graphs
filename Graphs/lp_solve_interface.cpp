@@ -289,10 +289,10 @@ void LpSolveInterface::GraphParsingState::AssignNodeVariableIndices(
 
 void LpSolveInterface::GraphParsingState::AssignEdgeVariableIndices(
     const Edge& edge) {
-  SetEdgeCrossingVariableIndex(edge.id, next_variable_index_++);
+  SetEdgeCrossingVariableIndex(edge.id_, next_variable_index_++);
   for (int i = 0; i < num_partitions_; ++i) {
     SetEdgePartitionConnectivityVariableIndex(
-        edge.id, i, next_variable_index_++);
+        edge.id_, i, next_variable_index_++);
   }
 }
 
@@ -496,7 +496,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsNewToModel(
     lprec* model, const Edge& edge, bool defer_to_columns) {
 
   int edge_crossing_variable_index =
-      GetEdgeCrossingVariableIndex(edge.id);
+      GetEdgeCrossingVariableIndex(edge.id_);
 
   // All of the coefficients for the two equations are the same, except for the
   // first element, so just re-use the same array and set the first element.
@@ -509,7 +509,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsNewToModel(
   for (int i = 0; i < num_partitions_; ++i) {
     x_coeffs[i + 1] = -1.0;
     x_variable_indices[i + 1] =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, i);
+        GetEdgePartitionConnectivityVariableIndex(edge.id_, i);
   }
   if (defer_to_columns) {
     x_coeffs[0] = (REAL)num_partitions_;
@@ -534,7 +534,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsNewToModel(
     vector<int> p_indices;
     vector<REAL> p_coeffs;
     p_indices.push_back(
-        GetEdgePartitionConnectivityVariableIndex(edge.id, part));
+        GetEdgePartitionConnectivityVariableIndex(edge.id_, part));
     for (int node_id : edge.connection_ids()) {
       Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));
       for (size_t per = 0; per < node->WeightVectors().size(); ++per) {
@@ -607,7 +607,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
   assert (num_partitions_ == 2);
 
   int edge_crossing_variable_index =
-      GetEdgeCrossingVariableIndex(edge.id);
+      GetEdgeCrossingVariableIndex(edge.id_);
   REAL and_coeffs1[1 + num_partitions_];
   int and_variable_indices1[1 + num_partitions_];
 
@@ -616,7 +616,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
   for (int i = 0; i < num_partitions_; ++i) {
     and_coeffs1[i + 1] = -1.0;
     and_variable_indices1[i + 1] =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, i);
+        GetEdgePartitionConnectivityVariableIndex(edge.id_, i);
   }
   if (defer_to_columns) {
     AddConstraintEx(model, 0, nullptr, nullptr, GE, REAL(1 - num_partitions_));
@@ -633,7 +633,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
     REAL and_coeffs[2];
     and_variable_indices[0] = edge_crossing_variable_index;
     and_variable_indices[1] =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, i);
+        GetEdgePartitionConnectivityVariableIndex(edge.id_, i);
     and_coeffs[0] = 1.0;
     and_coeffs[1] = -1.0;
     if (defer_to_columns) {
@@ -655,7 +655,7 @@ void LpSolveInterface::GraphParsingState::AddEdgeConstraintsToModel(
   // Repeat for all partition variables.
   for (int part = 0; part < num_partitions_; ++part) {
     int partition_variable_index =
-        GetEdgePartitionConnectivityVariableIndex(edge.id, part);
+        GetEdgePartitionConnectivityVariableIndex(edge.id_, part);
     vector<pair<int, REAL>> eq1_index_coeff_pairs;
     for (int node_id : edge.connection_ids()) {
       Node* node = CHECK_NOTNULL(graph_->internal_nodes().at(node_id));

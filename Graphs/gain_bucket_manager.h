@@ -50,6 +50,10 @@ class GainBucketManager {
   virtual void set_selection_policy(
       PartitionerConfig::GainBucketSelectionPolicy selection_policy) = 0;
 
+  virtual GainBucketEntry& GbeRefByNodeId(int node_id) = 0;
+
+  virtual bool HasNode(int node_id) = 0;
+
  protected:
   virtual std::vector<int> GetMaxImbalance(
       const std::vector<double> frac, const std::vector<int> total_weight) {

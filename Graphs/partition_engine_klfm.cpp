@@ -626,9 +626,6 @@ void PartitionEngineKlfm::ExecutePass(
 
     // Roll-back to the best result of the pass.
     DLOG(DEBUG_OPT_TRACE, 2) << "Roll back to best result." << endl;
-    if (current_partition_cost != RecomputeCurrentCost()) {
-      throw std::exception();
-    }
     RollBackToBestResultOfPass(nodes_moved_since_best_result,
         current_partition, current_partition_cost, current_partition_balance,
         best_cost, best_cost_balance);
@@ -1137,7 +1134,6 @@ void PartitionEngineKlfm::GenerateInitialPartitionRandom(
     // with the fixer method called afterward. It finds the resource that is
     // most out of balance and assigns the node to the partition that decreases
     // that imbalance, prioritizing resources that exceed maximum imbalance.
-    // TODO: Come up with something more robust.
     double max_imbalance_frac = 0.0;
     int choose_resource = 0;
     for (size_t i = 0; i < num_resources_per_node_; i++) {
@@ -1236,7 +1232,6 @@ void PartitionEngineKlfm::GenerateInitialPartitionRandomEntropyAware(
     // with the fixer method called afterward. It finds the resource that is
     // most out of balance and assigns the node to the partition that decreases
     // that imbalance, prioritizing resources that exceed maximum imbalance.
-    // TODO: Come up with something more robust.
     double max_imbalance_frac = 0.0;
     int choose_resource = 0;
     for (size_t i = 0; i < num_resources_per_node_; i++) {

@@ -426,6 +426,16 @@ class PartitionEngineKlfm : public PartitionEngine {
   void CoarsenHierarchalInterconnection(
       int max_nodes_per_supernode, int neighbor_limit);
 
+  // Transfers nodes from 'coarsened' to 'decoarsened', breaking them down
+  // into component nodes if they are supernodes.
+  void DecoarsenPartitions(
+      NodePartitions* coarsened, NodePartitions* decoarsened);
+
+  // Decoarsen a single partition.
+  void DecoarsenPartition(
+      NodeIdSet* coarsened, NodeIdSet* decoarsened);
+
+
   // De-Coarsen the graph by one level - i.e. break every supernode in the
   // internal node map down once. Returns false if none of the nodes in the
   // internal node map was a supernode.

@@ -315,36 +315,7 @@ void PartitionEngineKlfm::ExecuteRun(
   DLOG(DEBUG_OPT_TRACE, 1) << "De-Coarsening graph." << endl;
   options_.max_passes = 30;
   NodePartitions decoarsened_partition;
-  // TODO Factor to helper fn.
-  for (auto node_id : coarsened_partition.first) {
-    Node* node = internal_node_map_.at(node_id);
-    if (node->is_supernode()) {
-      RUN_DEBUG(DEBUG_OPT_SUPERNODE_WEIGHT_VECTOR, 0) {
-        node->CheckSupernodeWeightVectorOrDie();
-      }
-      for (auto internal_node_pair : node->internal_nodes()) {
-        decoarsened_partition.first.insert(internal_node_pair.first);
-      }
-    } else {
-      decoarsened_partition.first.insert(node_id);
-    }
-  }
-  coarsened_partition.first.clear();
-  for (auto node_id : coarsened_partition.second) {
-    Node* node = internal_node_map_.at(node_id);
-    if (node->is_supernode()) {
-      RUN_DEBUG(DEBUG_OPT_SUPERNODE_WEIGHT_VECTOR, 0) {
-        node->CheckSupernodeWeightVectorOrDie();
-      }
-      for (auto internal_node_pair : node->internal_nodes()) {
-        decoarsened_partition.second.insert(internal_node_pair.first);
-      }
-    } else {
-      decoarsened_partition.second.insert(node_id);
-    }
-  }
-  coarsened_partition.second.clear();
-  DeCoarsen();
+  DecoarsenPartitions(&coarsened_partition, &decoarsened_partition);
 
   PopulateEdgePartitionConnections(decoarsened_partition);
 
@@ -2164,6 +2135,31 @@ void PartitionEngineKlfm::CoarsenSimple(int num_nodes_per_supernode) {
   }
 }
 
+void PartitionEngineKlfm::DecoarsenPartitions(
+    NodePartitions* coarsened, NodePartitions* decoarsened) {
+  DecoarsenPartition(&(coarsened->first), &(decoarsened->first));
+  DecoarsenPartition(&(coarsened->second), &(decoarsened->second));
+  DeCoarsen();
+}
+
+void PartitionEngineKlfm::DecoarsenPartition(
+    NodeIdSet* coarsened, NodeIdSet* decoarsened) {
+  for (auto node_id : *coarsened) {
+    Node* node = internal_node_map_.at(node_id);
+    if (node->is_supernode()) {
+      RUN_DEBUG(DEBUG_OPT_SUPERNODE_WEIGHT_VECTOR, 0) {
+        node->CheckSupernodeWeightVectorOrDie();
+      }
+      for (auto internal_node_pair : node->internal_nodes()) {
+        decoarsened->insert(internal_node_pair.first);
+      }
+    } else {
+      decoarsened->insert(node_id);
+    }
+  }
+  coarsened->clear();
+}
+
 bool PartitionEngineKlfm::DeCoarsen() {
   // De-coarsening will alter internal_node_map_, therefore we cannot directly
   // iterate on it.
@@ -2776,3 +2772,4 @@ void PartitionEngineKlfm::WriteGurobiMst(const NodePartitions& partitions,
     }
   }
 }
+

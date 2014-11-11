@@ -360,6 +360,19 @@ void PartitionEngineKlfm::ExecuteRun(
            RecomputeCurrentBalance(decoarsened_partition));
   }
 
+  AppendPartitionSummary(
+      summaries, decoarsened_partition, current_partition_balance,
+      current_partition_cost, num_passes);
+
+  DLOG(DEBUG_OPT_TRACE, 1) << "Run complete." << endl;
+}
+
+void PartitionEngineKlfm::AppendPartitionSummary(
+   vector<PartitionSummary>* summaries,
+   const NodePartitions& partitions,
+   vector<int>& current_partition_balance,
+   double current_partition_cost,
+   int num_passes) {
   int num_summaries = 3;
 
   for (int sum_num = 0; sum_num < num_summaries; sum_num++) {
@@ -374,7 +387,7 @@ void PartitionEngineKlfm::ExecuteRun(
         // TODO It appears that this operation is adjusting for ratio even
         // though it shouldn't.
         RebalanceImplementations(
-            decoarsened_partition, current_partition_balance, true, false);
+            partitions, current_partition_balance, true, false);
       } else {
         continue;
       }
@@ -395,10 +408,10 @@ void PartitionEngineKlfm::ExecuteRun(
       }
       if (!ExceedsMaxWeightImbalance(current_partition_balance)) {
         RebalanceImplementations(
-            decoarsened_partition, current_partition_balance, false, true);
+            partitions, current_partition_balance, false, true);
       } else {
         RebalanceImplementations(
-            decoarsened_partition, current_partition_balance, true, true);
+            partitions, current_partition_balance, true, true);
       }
       if (ExceedsMaxWeightImbalance(current_partition_balance)) {
         os_ << "Could not fix balance" << endl;
@@ -447,7 +460,7 @@ void PartitionEngineKlfm::ExecuteRun(
     double sum_of_squares_a = 0;
     double sum_of_squares_b = 0;
     for (size_t i = 0; i < options_.resource_ratio_weights.size(); i++) {
-      double ratio_mult = 
+      double ratio_mult =
           double(options_.resource_ratio_weights[i]) / ratio_denominator;
       double part_a_target_weight = part_a_weight_sum * ratio_mult;
       double diff_a = abs(part_a_target_weight - part_a_weight[i]);
@@ -464,7 +477,7 @@ void PartitionEngineKlfm::ExecuteRun(
     double rms_a = sqrt(sum_of_squares_a / 3);
     double rms_b = sqrt(sum_of_squares_b / 3);
     double rms_avg = (rms_a + rms_b) / 2;
-    
+
     RUN_VERBOSE(1) {
       printf("Best cost this run: %f\n", current_partition_cost);
       printf("Imbalance: ");
@@ -487,10 +500,10 @@ void PartitionEngineKlfm::ExecuteRun(
 
     // Populate summary.
     PartitionSummary summary;
-    summary.partition_node_ids.push_back(decoarsened_partition.first);
-    summary.partition_node_ids.push_back(decoarsened_partition.second);
-    GetCutSet(decoarsened_partition, &summary.partition_edge_ids);
-    GetCutSetNames(decoarsened_partition, &summary.partition_edge_names);
+    summary.partition_node_ids.push_back(partitions.first);
+    summary.partition_node_ids.push_back(partitions.second);
+    GetCutSet(partitions, &summary.partition_edge_ids);
+    GetCutSetNames(partitions, &summary.partition_edge_names);
     summary.partition_resource_ratios = partition_ratios;
     summary.balance = partition_imbalance;
     summary.total_resource_ratio = graph_ratio;
@@ -502,8 +515,6 @@ void PartitionEngineKlfm::ExecuteRun(
     summary.num_passes_used = num_passes;
     summaries->push_back(summary);
   }
-
-  DLOG(DEBUG_OPT_TRACE, 1) << "Run complete." << endl;
 }
 
 int PartitionEngineKlfm::RunKlfmAlgorithm(
@@ -2436,46 +2447,52 @@ void PartitionEngineKlfm::MergeSupernodeBoundaryEdges(
 
 void PartitionEngineKlfm::SummarizeResults(
     const vector<PartitionSummary>& summaries) {
+  vector<double> passes;
   vector<double> costs;
-  for (auto& it : summaries) {
-    costs.push_back(it.total_cost);
-  }
-  sort(costs.begin(), costs.end());
-  double min_cost = costs.front();
-  double max_cost = costs.back();
-  int median_index = costs.size() / 2;
-  int median_cost = costs[median_index];
-  double sum_of_costs = accumulate(costs.begin(), costs.end(), 0);
-  double average_cost = sum_of_costs / (double)costs.size();
-  double variance_of_costs = 0.0;
-  for (auto it : costs) {
-    double dif = average_cost - it;
-    variance_of_costs += dif * dif / costs.size();
-  }
-  double std_dev_of_costs = sqrt(variance_of_costs);
+  vector<double> spans;
+  vector<double> entropies;
 
-  vector<int> passes;
   for (auto& it : summaries) {
-    passes.push_back(it.num_passes_used);
+    passes.push_back((double)(it.num_passes_used));
+    costs.push_back(it.total_cost);
+    spans.push_back(it.total_span);
+    entropies.push_back(it.total_entropy);
   }
-  sort(passes.begin(), passes.end());
-  int sum_of_passes = accumulate(passes.begin(), passes.end(), 0);
-  double average_passes = (double)sum_of_passes / (double)passes.size();
-  median_index = passes.size() / 2;
-  int median_passes = passes[median_index];
 
   os_ << endl << "----------------KLFM Results------------------" << endl;
-  os_ << "MIN COST: " << min_cost << endl;
-  os_ << "MAX COST: " << max_cost << endl;
-  os_ << "AVERAGE COST: " << average_cost << endl;
-  os_ << "MEDIAN COST: " << median_cost << endl;
-  os_ << "STANDARD DEVIATION: " << std_dev_of_costs << endl;
-  os_ << "AVERAGE PASSES: " << average_passes << endl;
-  os_ << "MEDIAN PASSES: " << median_passes << endl << endl;
-  PrintHistogram(costs, false);
-  os_ << "SORTED COSTS: " << endl;
-  for (auto it : costs) {
-    os_ << it << endl;
+
+  SummarizeResultMetric(passes, "PASSES", false);
+  SummarizeResultMetric(costs, "COST", true);
+  SummarizeResultMetric(spans, "SPAN", true);
+  SummarizeResultMetric(entropies, "ENTROPY", true);
+}
+
+void PartitionEngineKlfm::SummarizeResultMetric(
+    vector<double>& data, const string& name, bool extended) {
+  sort(data.begin(), data.end());
+  double min = data.front();
+  double max = data.back();
+  int median = data[data.size() / 2];
+  double sum = accumulate(data.begin(), data.end(), 0);
+  double average = sum / (double)data.size();
+  double variance = 0.0;
+  for (auto it : data) {
+    double dif = average - it;
+    variance += dif * dif / (double)data.size();
+  }
+  double std_dev = sqrt(variance);
+
+  os_ << "MIN " << name << ": " << min << endl;
+  os_ << "MAX " << name << ": " << max << endl;
+  os_ << "AVERAGE " << name << ": " << average << endl;
+  if (extended) {
+    os_ << "MEDIAN " << name << ": " << median << endl;
+    os_ << "STANDARD DEVIATION: " << std_dev << endl;
+    PrintHistogram(data, false);
+    os_ << "SORTED RAW " << name << " DATA: " << endl;
+    for (auto it : data) {
+      os_ << it << endl;
+    }
   }
   os_ << endl;
 }

@@ -264,6 +264,11 @@ class PartitionEngineKlfm : public PartitionEngine {
   };
 
  private:
+  void AppendPartitionSummary(
+    std::vector<PartitionSummary>* summaries, const NodePartitions& partitions,
+    std::vector<int>& current_partition_balance, double current_partition_cost,
+    int num_passes);
+
   // Verifies that all of weight vectors for every node in the node map have
   // the same number of entries as num_resources_per_node_;
   void CheckSizeOfWeightVectors();
@@ -510,6 +515,8 @@ class PartitionEngineKlfm : public PartitionEngine {
       PortMap* port_map);
 
   void SummarizeResults(const std::vector<PartitionSummary>& summaries);
+  void SummarizeResultMetric(
+    std::vector<double>& data, const std::string& name, bool extended);
   void PrintResultFull(const PartitionSummary& summary, int run_num);
   void PrintHistogram(const std::vector<double>& val, bool cummulative);
   // Write solution in .sol format used by SCIP.

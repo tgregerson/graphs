@@ -13,7 +13,12 @@ class Edge {
   typedef std::set<int> NodeIdSet;
   typedef std::vector<int> NodeIdVector;
 
-  static bool use_entropy;
+  static void SetEntropyMode(bool val) {
+    use_entropy_ = val;
+  }
+  static bool UseEntropyMode() {
+    return use_entropy_;
+  }
 
   Edge() {}
   Edge(int edge_id, const std::string& edge_name = "");
@@ -46,14 +51,14 @@ class Edge {
   }
 
   double Weight() const {
-    if (use_entropy) {
+    if (use_entropy_) {
       return Entropy();
     } else {
       return Width();
     }
   }
   void SetWeight(double weight) {
-    if (use_entropy) {
+    if (use_entropy_) {
       SetEntropy(weight);
     } else {
       SetWidth(weight);
@@ -74,11 +79,12 @@ class Edge {
 
   // connection_ids is kept sorted for fast searching.
   int id_{-1};
-  double entropy_{0.1};
+  double entropy_{1.0};
   double width_{1.0};
   std::string name;
  protected:
   NodeIdVector connection_ids_;
+  static bool use_entropy_;
 };
 
 #endif /* EDGE_H_ */

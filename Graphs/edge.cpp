@@ -90,4 +90,4 @@ int Edge::degree() const {
   return connection_ids_.size();
 }
 
-bool Edge::use_entropy = false;
+bool Edge::use_entropy_ = false;

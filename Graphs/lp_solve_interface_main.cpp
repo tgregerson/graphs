@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 
+#include "edge.h"
 #include "tclap/CmdLine.h"
 
 using namespace std;
@@ -86,6 +87,9 @@ int main(int argc, char *argv[]) {
     TCLAP::SwitchArg verbose_switch(
         "v", "verbose", "Print progress information", cmd, false);
 
+    TCLAP::SwitchArg entropy_switch(
+        "e", "use_entropy", "Use an entropy-based edge weight", cmd, false);
+
     cmd.parse(argc, argv);
 
     if (chaco_input_file_flag.isSet()) {
@@ -102,6 +106,10 @@ int main(int argc, char *argv[]) {
     if (lp_output_file_flag.isSet()) {
       write_lp = true;
       output_lp_filename = lp_output_file_flag.getValue();
+    }
+
+    if (entropy_switch.isSet()) {
+      Edge::SetEntropyMode(true);
     }
 
     if (mps_output_file_flag.isSet()) {

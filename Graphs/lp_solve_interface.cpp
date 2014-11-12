@@ -29,7 +29,8 @@ void LpSolveInterface::LoadFromMps(const string& filename) {
 }
 
 void LpSolveInterface::LoadFromNtl(const string& filename) {
-  NtlParser netlist_parser;
+  double ntl_ver = Edge::UseEntropyMode() ? 2.0 : 1.0;
+  NtlParser netlist_parser(ntl_ver);
   Node graph(-1, "top-level");
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
   graph.StripPorts();
@@ -251,7 +252,7 @@ void LpSolveInterface::GraphParsingState::SetEdgeCrossingVariableIndex(
 void LpSolveInterface::GraphParsingState::SetEdgePartitionConnectivityVariableIndex(
     size_t edge_id, size_t partition_num, size_t index) {
   vector<int>& entry =
-      edge_to_partition_connectivity_variable_indices_.at(edge_id);
+      edge_to_partition_connectivity_variable_indices_[edge_id];
   if (entry.size() <= partition_num) {
     entry.resize(partition_num + 1, kIndexGuard);
   }

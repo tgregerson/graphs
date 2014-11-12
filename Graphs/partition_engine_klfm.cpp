@@ -22,7 +22,7 @@ PartitionEngineKlfm::PartitionEngineKlfm(Node* graph,
     PartitionEngineKlfm::Options& options, ostream& os)
   : options_(options), os_(os), balance_exceeded_(false) {
 
-  Edge::use_entropy = options_.use_entropy;
+  Edge::SetEntropyMode(options_.use_entropy);
 
   //random_engine_.seed(time(NULL));
   // Give the same seed each time for consistency between benchmarks. The

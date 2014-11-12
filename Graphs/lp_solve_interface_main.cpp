@@ -13,6 +13,7 @@ void print_usage_and_exit() {
        << "REQUIRED_ARGS: " << endl
        << "(--chaco chaco_graph_input_file] | "
        << "--ntl ntl_input_file | "
+       << "--xntl xntl_input_file | "
        << "--mps mps_input_file) " << endl
        << endl
        << "OPTIONS:" << endl
@@ -33,6 +34,7 @@ int main(int argc, char *argv[]) {
   bool solve = false;
   bool use_chaco = false;
   bool use_ntl = false;
+  bool use_xntl = false;
   bool use_mps = false;
   bool write_lp = false;
   bool write_mps = false;
@@ -57,6 +59,11 @@ int main(int argc, char *argv[]) {
         "n", "ntl", "NTL-format input file name", false, "", "string",
         nullptr);
     input_file_args.push_back(&ntl_input_file_flag);
+
+    TCLAP::ValueArg<string> xntl_input_file_flag(
+        "x", "xntl", "XNTL-format input file name", false, "", "string",
+        nullptr);
+    input_file_args.push_back(&xntl_input_file_flag);
 
     TCLAP::ValueArg<string> mps_input_file_flag(
         "m", "mps", "MPS-format input file name", false, "", "string",
@@ -98,6 +105,9 @@ int main(int argc, char *argv[]) {
     } else if (ntl_input_file_flag.isSet()) {
       use_ntl = true;
       input_filename = ntl_input_file_flag.getValue();
+    } else if (xntl_input_file_flag.isSet()) {
+      use_xntl = true;
+      input_filename = xntl_input_file_flag.getValue();
     } else if (mps_input_file_flag.isSet()) {
       use_mps = true;
       input_filename = mps_input_file_flag.getValue();
@@ -138,6 +148,8 @@ int main(int argc, char *argv[]) {
     interface.LoadFromChaco(input_filename);
   } else if (use_ntl) {
     interface.LoadFromNtl(input_filename);
+  } else if (use_xntl) {
+    interface.LoadFromXntl(input_filename);
   } else if (use_mps) {
     interface.LoadFromMps(input_filename);
   }

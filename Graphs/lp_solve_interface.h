@@ -27,6 +27,7 @@ class LpSolveInterface {
   // Load and construct ILP model from CHACO graph or netlist format.
   void LoadFromChaco(const std::string& filename);
   void LoadFromNtl(const std::string& filename);
+  void LoadFromXntl(const std::string& filename);
 
   // After loading a model, it can be written to a native ILP format for much
   // faster parsing in the future.

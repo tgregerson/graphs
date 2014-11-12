@@ -29,8 +29,16 @@ void LpSolveInterface::LoadFromMps(const string& filename) {
 }
 
 void LpSolveInterface::LoadFromNtl(const string& filename) {
-  double ntl_ver = Edge::UseEntropyMode() ? 2.0 : 1.0;
-  NtlParser netlist_parser(ntl_ver);
+  NtlParser netlist_parser(1.0);
+  Node graph(-1, "top-level");
+  netlist_parser.Parse(&graph, filename.c_str(), nullptr);
+  graph.StripPorts();
+  GraphParsingState gpstate(&graph, max_imbalance_, verbose_);
+  state_.reset(new LpSolveState(gpstate.ConstructModel()));
+}
+
+void LpSolveInterface::LoadFromXntl(const string& filename) {
+  NtlParser netlist_parser(2.0);
   Node graph(-1, "top-level");
   netlist_parser.Parse(&graph, filename.c_str(), nullptr);
   graph.StripPorts();

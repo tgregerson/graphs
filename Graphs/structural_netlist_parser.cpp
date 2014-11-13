@@ -21,12 +21,6 @@
 
 using namespace std;
 
-void StructuralNetlistParser::PrintHelpAndDie() {
-  cout << "Usage: ./structural_netlist_parser netlist_file [parsed_netlist]"
-       << endl;
-  exit(1);
-}
-
 list<string> StructuralNetlistParser::RawLinesToSemicolonTerminated(
     const list<string>& raw_lines) {
   string current;
@@ -557,6 +551,23 @@ void StructuralNetlistParser::PopulateFunctionalEdgePorts(
       }
     }
   }
+}
+
+void StructuralNetlistParser::PrePopulateProbabilityOnes(
+    ifstream& p1_file, map<string, FunctionalEdge*>* wires) {
+  string cur_line;
+  string wire_name;
+  double wire_p1;
+
+  getline(p1_file, cur_line);
+  do {
+    string remainder =
+        StructuralNetlistLexer::ConsumeIdentifier(cur_line, &wire_name);
+    wire_p1 = stod(remainder);
+    FunctionalEdge* wire = wires->at(wire_name);
+    wire->SetProbabilityOne(wire_p1);
+    getline(p1_file, cur_line);
+  } while (!p1_file.eof());
 }
 
 void StructuralNetlistParser::PrintModule(const VlogModule& module) {

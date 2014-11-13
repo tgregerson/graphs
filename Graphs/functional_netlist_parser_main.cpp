@@ -19,13 +19,20 @@
 
 using namespace std;
 
+void PrintHelpAndDie() {
+  cout << "Usage: ./functional_netlist_parser netlist_file [entropy_file [parsed_netlist]]"
+       << endl;
+  exit(1);
+}
+
 int main(int argc, char *argv[]) {
   StructuralNetlistParser parser;
 
   ifstream v_file;
+  ifstream p1_file;
   ofstream out_file;
-  if (argc != 2 && argc != 3) {
-    parser.PrintHelpAndDie();
+  if (argc < 2 || argc > 4) {
+    PrintHelpAndDie();
     exit(1);
   } else {
     // Open file.
@@ -35,8 +42,16 @@ int main(int argc, char *argv[]) {
       cout << "Can't open input file " << file_to_read << endl;
       exit(1);
     }
-    if (argc == 3) {
-      string file_to_write = argv[2];
+    if (argc > 2) {
+      string p1_file_name = argv[2];
+      p1_file.open(p1_file_name.c_str());
+      if (!p1_file.is_open()) {
+        cout << "Can't open entropy input file " << p1_file_name << endl;
+        exit(1);
+      }
+    }
+    if (argc > 3) {
+      string file_to_write = argv[3];
       out_file.open(file_to_write.c_str());
       if (!out_file.is_open()) {
         cout << "Can't open output file " << file_to_write << endl;
@@ -92,6 +107,9 @@ int main(int argc, char *argv[]) {
   const1->SetProbabilityOne(1.0);
   FunctionalEdge* const1w = functional_wires.at("\\<const1> [0]");
   const1w->SetProbabilityOne(1.0);
+  if (p1_file.is_open()) {
+    parser.PrePopulateProbabilityOnes(p1_file, &functional_wires);
+  }
 
   parser.PopulateFunctionalEdgePorts(
       functional_nodes, &functional_edges, &functional_wires);

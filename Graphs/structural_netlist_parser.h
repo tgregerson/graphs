@@ -95,6 +95,9 @@ class StructuralNetlistParser {
       std::map<std::string, FunctionalEdge*>* edges,
       std::map<std::string, FunctionalEdge*>* wires);
 
+  void PrePopulateProbabilityOnes(
+      std::ifstream& p1_file, std::map<std::string, FunctionalEdge*>* edges);
+
   // Prints debug information about a VlogModule.
   void PrintModule(const VlogModule& module);
 
@@ -112,9 +115,6 @@ class StructuralNetlistParser {
 
   // Prints a net in the .NTL format used by Processed Netlist Parser.
   void PrintNet(const VlogNet& net);
-
-  // Prints command-line invokation format and exit.
-  void PrintHelpAndDie();
 
   // Takes a list of strings in the form of lines read from the netlist.
   // Concatenates lines such that all strings end with a semi-colon.

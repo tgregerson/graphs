@@ -9,6 +9,13 @@
 
 using namespace std;
 
+// Prints command-line invokation format and exit.
+void PrintHelpAndDie() {
+  cout << "Usage: ./structural_netlist_parser netlist_file [parsed_netlist]"
+       << endl;
+  exit(1);
+}
+
 int main(int argc, char *argv[]) {
   map<string, VlogModule> modules;
   map<string, VlogNet> nets;
@@ -18,7 +25,7 @@ int main(int argc, char *argv[]) {
   ifstream v_file;
   ofstream out_file;
   if (argc != 2 && argc != 3) {
-    parser.PrintHelpAndDie();
+    PrintHelpAndDie();
     exit(1);
   } else {
     // Open file.

@@ -36,7 +36,7 @@ class StructuralNetlistLexer {
   // Whitespace is a sequential combination of spaces, newlines, and tabs.
   // DOES NOT THROW EXCEPTION IF NOTHING CAN BE CONSUMED.
   static std::string ConsumeWhitespaceIfPresent(const std::string& input,
-                                                std::string* token);
+                                                std::string* token = nullptr);
 
   // Identifier = SimpleIdentifier || EscapedIdentifier
   static std::string ConsumeIdentifier(const std::string& input,

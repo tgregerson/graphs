@@ -22,7 +22,7 @@ LPSI_BASE_O = $(addprefix $(OBJDIR)/,lp_solve_interface.o) \
 NTL_BASE_O = $(addprefix $(OBJDIR)/,ntl_parser.o) \
              $(GRAPH_BASE_O)
 SNP_BASE_O = $(addprefix $(OBJDIR)/,functional_edge.o structural_netlist_lexer.o structural_netlist_parser.o xilinx_functional_nodes.o)
-VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_parser.o)
+VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_lexer.o vcd_parser.o)
 LPSI_BIN_O = $(OBJDIR)/lp_solve_interface_main.o \
              $(LPSI_BASE_O)
 PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_config.o preprocessor.o xml_config_reader.o) \
@@ -98,6 +98,7 @@ ntl_parser_H = ntl_parser.h
 structural_netlist_lexer_H = structural_netlist_lexer.h
 testbench_generator_H = testbench_generator.h
 universal_macros_H = universal_macros.h
+vcd_lexer_H = vcd_lexer.h
 vcd_parser_H = vcd_parser.h
 weight_score_H = weight_score.h
 
@@ -205,6 +206,9 @@ $(OBJDIR)/testbench_generator.o: $(testbench_generator_H) testbench_generator.cp
 
 $(OBJDIR)/vcd_dumpvars_generator_main.o: $(vcd_parser_H) vcd_dumpvars_generator_main.cpp
 	$(CXX) -c vcd_dumpvars_generator_main.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/vcd_lexer.o: $(universal_macros_H) $(vcd_lexer_H) vcd_lexer.cpp
+	$(CXX) -c vcd_lexer.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/vcd_parser.o: $(universal_macros_H) vcd_parser.cpp
 	$(CXX) -c vcd_parser.cpp $(CXXFLAGS) -o $@

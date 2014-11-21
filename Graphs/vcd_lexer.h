@@ -32,6 +32,68 @@ class VcdLexer {
   // otherwise stated, the Consume methods throw LexingException if they
   // cannot consume the requested token.
 
+  // VcdDefinitions = [DeclarationCommand]* [SimulationCommand]*
+  static std::string ConsumeVcdDefinitions(
+      const std::string& input, std::string* token = nullptr);
+
+  // DeclarationCommand = DeclarationKeyword TextToEnd
+  static std::string ConsumeDeclarationCommand(
+      const std::string& input, std::string* token = nullptr);
+
+  // SimulationCommand = SimulationValueCommand | Comment | SimulationTime |
+  //                     ValueChange
+  static std::string ConsumeSimulationCommand(
+      const std::string& input, std::string* token = nullptr);
+
+  // SimulationValueCommand = SimulationKeyword ValueChange* $end
+  static std::string ConsumeSimulationValueCommand(
+      const std::string& input, std::string* token = nullptr);
+
+  // Comment = $comment [.*] $end
+  static std::string ConsumeComment(
+      const std::string& input, std::string* token = nullptr);
+
+  // DeclarationKeyword = $comment | $date | $enddefinitions | $scope |
+  //                      $timescale | $upscope | $var | $version
+  static std::string ConsumeDeclarationKeyword(
+      const std::string& input, std::string* token = nullptr);
+
+  // SimulationKeyword = $dumpall | $dumpoff | $dumpon | $dumpvars
+  static std::string ConsumeSimulationKeyword(
+      const std::string& input, std::string* token = nullptr);
+
+  // SimulationTime = # DecimalNumber
+  static std::string ConsumeSimulationTime(
+      const std::string& input, std::string* token = nullptr);
+
+  // Value = 0 | 1 | x | X | z | Z
+  static std::string ConsumeValueNoWhitespace(
+      const std::string& input, std::string* token = nullptr);
+
+  // ValueChange = ScalarValueChange | VectorValueChange
+  static std::string ConsumeValueChange(
+      const std::string& input, std::string* token = nullptr);
+
+  // ScalarValueChange = Value IdentifierCode
+  static std::string ConsumeScalarValueChange(
+      const std::string& input, std::string* token = nullptr);
+
+  // BinaryVectorValueChange = (b | B) BinaryNumber IdentifierCode
+  static std::string ConsumeBinaryVectorValueChange(
+      const std::string& input, std::string* token = nullptr);
+
+  // RealVectorValueChange = (r | R) RealNumber IdentifierCode
+  static std::string ConsumeRealVectorValueChange(
+      const std::string& input, std::string* token = nullptr);
+
+  // VectorValueChange = BinaryVectorValueChange | RealVectorValueChange
+  static std::string ConsumeVectorValueChange(
+      const std::string& input, std::string* token = nullptr);
+
+  // IdentifierCode = Non-whitespace characters
+  static std::string ConsumeIdentifierCode(
+      const std::string& input, std::string* token = nullptr);
+
   // ExactString = str
   static std::string ConsumeExactString(
       const std::string& str, const std::string& input,
@@ -42,16 +104,12 @@ class VcdLexer {
       const std::string& tag_name, const std::string& input,
       std::string* token = nullptr);
 
+  // TextToEnd = [text] $end
+  static std::string ConsumeTextToEnd(
+      const std::string& input, std::string* token = nullptr);
+
   static std::string ConsumeNonWhitespace(
       const std::string& input, std::string* token = nullptr);
-
-  static std::string ConsumeVar(
-      const std::string& input, std::string* token = nullptr);
-
-
 };
-
-
-
 
 #endif /* VCD_LEXER_H_ */

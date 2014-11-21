@@ -22,7 +22,7 @@ LPSI_BASE_O = $(addprefix $(OBJDIR)/,lp_solve_interface.o) \
 NTL_BASE_O = $(addprefix $(OBJDIR)/,ntl_parser.o) \
              $(GRAPH_BASE_O)
 SNP_BASE_O = $(addprefix $(OBJDIR)/,functional_edge.o structural_netlist_lexer.o structural_netlist_parser.o xilinx_functional_nodes.o)
-VP_BASE_O = $(addprefix $(OBJDIR)/,vcd_lexer.o vcd_parser.o)
+VP_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_lexer.o vcd_lexer.o vcd_parser.o)
 LPSI_BIN_O = $(OBJDIR)/lp_solve_interface_main.o \
              $(LPSI_BASE_O)
 PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_config.o preprocessor.o xml_config_reader.o) \

@@ -112,6 +112,7 @@ void VcdParser::ParseScope(ifstream& input_file, const string& parent_scope) {
   }
   int parsed = 0;
   while (true) {
+    assert(!input_file.eof());
     input_file >> token;
     if (token == "$upscope") {
       SkipToEndToken(input_file);
@@ -131,41 +132,47 @@ void VcdParser::ParseScope(ifstream& input_file, const string& parent_scope) {
 }
 
 void VcdParser::ParseVar(ifstream& input_file) {
-  string token;
-  int width;
-  string short_name;
-  string net_name;
+  string temp_token;
 
-  input_file >> token; // Consume var type.
-  input_file >> width; // Consume bitwidth of var.
-  assert (width == 1); // TODO Support multi-bit nets.
-  input_file >> short_name; // Consume short name.
-  input_file >> net_name; // Consume base net name.
-  input_file >> token; // Consume bit-select, range, or $end.
+  string var_type;
+  int size;
+  string identifier_code;
+  string reference_identifier;
+  int bit_select = 0;
+
+  input_file >> var_type; // Consume var type.
+  input_file >> size; // Consume bitwidth of var.
+  assert (size == 1); // TODO Support multi-bit nets.
+  input_file >> identifier_code; // Consume short name.
+  input_file >> reference_identifier; // Consume base net name.
+  input_file >> temp_token; // Consume bit-select, range, or $end.
 
   // If it is a bit-select or range, append it to the net name.
-  if (token != "$end") {
-    assert(token[0] == '[');
-    assert(token.find(':') == string::npos); // TODO Support ranges.
-    // Append bit-select to net name.
-    net_name.append(token);
-    input_file >> token; // Consume $end.
+  if (temp_token != "$end") {
+    assert(temp_token[0] == '[');
+    assert(temp_token.find(':') == string::npos); // TODO Support ranges.
+    bit_select = strtod(
+        temp_token.substr(1, temp_token.length() - 2).c_str(), nullptr);
+    input_file >> temp_token; // Consume $end.
+    assert(temp_token == "$end");
   }
 
-  all_var_names_.insert(net_name);
-  if (monitored_signals_.find(net_name) == monitored_signals_.end()) {
-    SkipToEndToken(input_file);
-    return;
+  pair<string, int> identifier = make_pair(reference_identifier, bit_select);
+
+  all_vcd_identifier_names_.insert(identifier);
+  if (name_fixed_monitored_signals_.find(identifier) !=
+      name_fixed_monitored_signals_.end()) {
+    modified_signal_name_to_identifier_code_.insert(
+        make_pair(identifier, identifier_code));
+    identifier_code_to_values_.insert(
+        make_pair(identifier_code, vector<char>()));
   }
-  
-  net_name_to_short_name_.insert(make_pair(net_name, short_name));
-  short_name_to_values_.insert(make_pair(short_name, vector<char>()));
 }
 
-int VcdParser::ParseDumpAll(ifstream& input_file) {
+long long VcdParser::ParseDumpAll(ifstream& input_file) {
   string token;
   input_file >> token;
-  int vals_processed = 0;
+  long long vals_processed = 0ULL;
   while (!input_file.eof() && (token != "$end")) {
     char val = token[0];
     assert_b(val == '0' || val == '1' || val == 'x' || val == 'X' ||
@@ -173,11 +180,14 @@ int VcdParser::ParseDumpAll(ifstream& input_file) {
       cout << "Unexpected value: " << val << " in value change: "
            << token << endl;
     }
-    string short_name = token.substr(1, string::npos);
-    auto it = short_name_to_values_.find(short_name);
-    if (it != short_name_to_values_.end()) {
-      it->second.push_back(val);
-      ++vals_processed;
+    string identifier_code = token.substr(1, string::npos);
+    if (monitored_identifier_codes_.find(identifier_code) !=
+        monitored_identifier_codes_.end()) {
+      auto it = identifier_code_to_values_.find(identifier_code);
+      if (it != identifier_code_to_values_.end()) {
+        it->second.push_back(val);
+        ++vals_processed;
+      }
     }
     input_file >> token;
   }
@@ -187,11 +197,11 @@ int VcdParser::ParseDumpAll(ifstream& input_file) {
 void VcdParser::PrintStats() {
   cout << "------------------------------" << endl;
   cout << "SUMMARY" << endl << endl;
-  cout << "Processed " << short_name_to_values_.size() << " nets." << endl;
-  cout << "Processed " << short_name_to_values_.begin()->second.size()
+  cout << "Processed " << identifier_code_to_values_.size() << " nets." << endl;
+  cout << "Processed " << identifier_code_to_values_.begin()->second.size()
        << " cycles per net." << endl;
   long total_changes = 0;
-  for (auto name_val_vector_pair : short_name_to_values_) {
+  for (auto name_val_vector_pair : identifier_code_to_values_) {
     total_changes += name_val_vector_pair.second.size();
   }
   cout << "Processed " << total_changes << " total value changes." << endl;
@@ -199,31 +209,43 @@ void VcdParser::PrintStats() {
 
 void VcdParser::CheckSignalsExistOrDie() {
   bool die = false;
-  for (const string& raw_signal : raw_signals_) {
-    string signal = StripLeadingEscapeChar(raw_signal);
+  for (const string& raw_signal : raw_monitored_signals_) {
+    pair<string, int> modified_signal = ConvertToVcdSignalName(raw_signal);
     bool not_found = false;
-    if (net_name_to_short_name_.find(signal) == net_name_to_short_name_.end()) {
-      // Maybe the signal is not found because it is written as a single bit and
-      // the VCD specifies a bus. Detect this case:
-      size_t index_start = signal.rfind('[');
-      if (index_start != string::npos) {
-        signal = signal.substr(0, index_start);
-        if (net_name_to_short_name_.find(signal) !=
-            net_name_to_short_name_.end()) {
-          cout << "Warning: Got bus match rather than signal match for "
-               << raw_signal << " and " << signal << endl;
-        }
-      }
+    if (modified_signal_name_to_identifier_code_.find(modified_signal) ==
+        modified_signal_name_to_identifier_code_.end()) {
+      die = true;
     }
-    die = not_found && die;
   }
   if (die) {
     cout << "Registered signals:" << endl;
-    for (const string& name : all_var_names_) {
+    for (const string& name : all_vcd_identifier_names_) {
       cout << name << endl;
     }
   }
   assert(!die);
+}
+
+pair<string, int> ConvertToVcdSignalName(const string& raw_signal_name) {
+  int bit_select = 0;
+  // Assume all raw names end in a bit select.
+  assert(raw_signal_name.back() == ']');
+  size_t bit_select_start_pos = raw_signal_name.rfind('[');
+  assert(bit_select_start_pos != raw_signal_name.rend());
+  string bit_select_str =
+      raw_signal_name.substr(bit_select_start_pos, string::npos);
+  string identifier = raw_signal_name.substr(0, bit_select_start_pos);
+
+  if (identifier.at(0) == '\\') {
+    // Escaped identifier
+    // Remove both the leading '\\' and the trailing space.
+    identifier = identifier.substr(1, identifier.length() - 2);
+  }
+
+  // Convert everything but the opening '[' and the closing ']'.
+  bit_select = strtod(
+      bit_select_str.substr(1, bit_select_str.length() - 2).c_str(), nullptr);
+  return make_pair(identifier, bit_select);
 }
 
 string VcdParser::StripLeadingEscapeChar(const string& str) {

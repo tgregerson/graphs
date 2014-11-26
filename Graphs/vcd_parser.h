@@ -6,14 +6,16 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
 
 class VcdParser {
  public:
   VcdParser(const std::string& vcd_filename,
             const std::set<std::string>& signals)
-    : vcd_filename_(vcd_filename), raw_signals_(signals) {
-    for (const std::string& signal : raw_signals_) {
-      monitored_signals_.insert(StripLeadingEscapeChar(signal));
+    : vcd_filename_(vcd_filename), raw_monitored_signals_(signals) {
+    for (const std::string& signal : raw_monitored_signals_) {
+      name_fixed_monitored_signals_.insert(ConvertToVcdSignalName(signal));
     }
   }
 
@@ -31,14 +33,19 @@ class VcdParser {
   void ParseScope(std::ifstream& input_file,
                   const std::string& parent_scope);
 
-
   void ParseVar(std::ifstream& input_file);
 
-  int ParseDumpAll(std::ifstream& input_file);
+  long long ParseDumpAll(std::ifstream& input_file);
 
   void PrintStats();
 
   void CheckSignalsExistOrDie();
+
+  // Converts a signal name to the format used by the VCD file. Bit selects are
+  // removed and stored in the second part of the pair. If the signal name was
+  // escaped, removes the leading '\\' and the trailing space.
+  std::pair<std::string, int> ConvertToVcdSignalName(
+      const std::string& raw_signal_name);
 
   // Removes the leading '\' character that is present in signal names, but
   // not printed in var names by ModelSim.
@@ -47,17 +54,24 @@ class VcdParser {
   const std::string vcd_filename_;
 
   bool echo_status_;
-  std::map<std::string, std::string> net_name_to_short_name_;
-  std::map<std::string, std::vector<char>> short_name_to_values_;
+  std::unordered_map<std::pair<std::string, int>, std::string>
+      modified_signal_name_to_identifier_code_;
+  std::unordered_map<std::string, std::vector<char>> identifier_code_to_values_;
 
-  // Only store data from these signals, even if VCD defines additional vars.
-  std::set<std::string> raw_signals_;
-  // Monitored signals are the raw signals modified to match the format of the
-  // VCD file (i.e. bus versus bit-select, removal of escape codes).
-  std::set<std::string> monitored_signals_;
+  // These are the signals that were requested for monitoring using their raw
+  // names from the parsed verilog file. VCD does not properly support escaped
+  // variable names, so these names may need to be modified to match the
+  // identifiers used in the VCD.
+  std::unordered_set<std::string> raw_monitored_signals_;
 
-  // Includes names of vars that are not selected signals. Used for debugging.
-  std::set<std::string> all_var_names_;
+  // Contains the monitored signals, with escaped signal names modified to
+  // match the requirements of the VCD format. Bit selects are removed from
+  // the name and included in the second element of the pair.
+  std::unordered_set<std::pair<std::string, int>> name_fixed_monitored_signals_;
+
+  std::unordered_set<std::string> monitored_identifier_codes_;
+
+  std::unordered_set<std::pair<std::string, int>> all_vcd_identifier_names_;
 };
 
 #endif /* VCD_PARSER_H_ */

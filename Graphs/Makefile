@@ -37,7 +37,8 @@ NFC_BIN_O = $(OBJDIR)/ntl_format_converter.o
 PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
 SNP_BIN_O = $(OBJDIR)/structural_netlist_parser_main.o \
             $(SNP_BASE_O)
-VDG_BIN_O = $(addprefix $(OBJDIR)/,vcd_parser.o vcd_dumpvars_generator_main.o)
+VDG_BIN_O = $(OBJDIR)/vcd_dumpvars_generator_main.o \
+            $(VP_BASE_O)
 VP_BIN_O = $(VP_BASE_O) $(OBJDIR)/vcd_parser_main.o
 WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \

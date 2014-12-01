@@ -5,9 +5,10 @@
 #include <map>
 #include <set>
 #include <string>
-#include <vector>
+#include <utility>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class VcdParser {
  public:
@@ -54,7 +55,7 @@ class VcdParser {
   const std::string vcd_filename_;
 
   bool echo_status_;
-  std::unordered_map<std::pair<std::string, int>, std::string>
+  std::map<std::pair<std::string, int>, std::string>
       modified_signal_name_to_identifier_code_;
   std::unordered_map<std::string, std::vector<char>> identifier_code_to_values_;
 
@@ -62,16 +63,16 @@ class VcdParser {
   // names from the parsed verilog file. VCD does not properly support escaped
   // variable names, so these names may need to be modified to match the
   // identifiers used in the VCD.
-  std::unordered_set<std::string> raw_monitored_signals_;
+  std::set<std::string> raw_monitored_signals_;
 
   // Contains the monitored signals, with escaped signal names modified to
   // match the requirements of the VCD format. Bit selects are removed from
   // the name and included in the second element of the pair.
-  std::unordered_set<std::pair<std::string, int>> name_fixed_monitored_signals_;
+  std::set<std::pair<std::string, int>> name_fixed_monitored_signals_;
 
-  std::unordered_set<std::string> monitored_identifier_codes_;
+  std::set<std::string> monitored_identifier_codes_;
 
-  std::unordered_set<std::pair<std::string, int>> all_vcd_identifier_names_;
+  std::set<std::pair<std::string, int>> all_vcd_identifier_names_;
 };
 
 #endif /* VCD_PARSER_H_ */

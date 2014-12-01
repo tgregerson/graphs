@@ -500,10 +500,12 @@ void PartitionEngineKlfm::AppendPartitionSummary(
 
     // Populate summary.
     PartitionSummary summary;
-    summary.partition_node_ids.push_back(partitions.first);
-    summary.partition_node_ids.push_back(partitions.second);
-    GetCutSet(partitions, &summary.partition_edge_ids);
-    GetCutSetNames(partitions, &summary.partition_edge_names);
+    if (options_.save_cutset) {
+      summary.partition_node_ids.push_back(partitions.first);
+      summary.partition_node_ids.push_back(partitions.second);
+      GetCutSet(partitions, &summary.partition_edge_ids);
+      GetCutSetNames(partitions, &summary.partition_edge_names);
+    }
     summary.partition_resource_ratios = partition_ratios;
     summary.balance = partition_imbalance;
     summary.total_resource_ratio = graph_ratio;

@@ -48,6 +48,7 @@ class KlfmRunConfig {
   bool sol_scip_format{true};
   bool sol_gurobi_format{false};
   bool use_entropy{false};
+  bool save_cutset{false};
 };
 
 void print_usage_and_exit();
@@ -141,6 +142,7 @@ int main(int argc, char *argv[]) {
   options.sol_scip_format = run_config.sol_scip_format;
   options.sol_gurobi_format = run_config.sol_gurobi_format;
   options.use_entropy = run_config.use_entropy;
+  options.save_cutset = run_config.save_cutset;
 
   run_config.partitioner_config.PrintPreprocessorOptions(rs);
   options.Print(rs);
@@ -400,6 +402,10 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
       "", "use_entropy", "Use an entropy-based cost function", cmd,
       false);
 
+  TCLAP::SwitchArg save_cutset_switch(
+      "", "save_cutset", "Store the cutset information from each run", cmd,
+      false);
+
   cmd.parse(argc, argv);
 
   KlfmRunConfig run_config;
@@ -441,6 +447,7 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
   run_config.sol_scip_format = sol_scip_format_switch.isSet() ||
                                !run_config.sol_gurobi_format;
   run_config.use_entropy = use_entropy_switch.isSet();
+  run_config.save_cutset = save_cutset_switch.isSet();
   return run_config;
 }
 

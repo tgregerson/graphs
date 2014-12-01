@@ -91,7 +91,8 @@ class PartitionEngineKlfm : public PartitionEngine {
         export_initial_sol_only(false),
         sol_scip_format(true),
         sol_gurobi_format(false),
-        use_entropy(false) {
+        use_entropy(false),
+        save_cutset(true) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -126,7 +127,8 @@ class PartitionEngineKlfm : public PartitionEngine {
         export_initial_sol_only(false),
         sol_scip_format(true),
         sol_gurobi_format(false),
-        use_entropy(false) {
+        use_entropy(false),
+        save_cutset(true) {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -261,6 +263,12 @@ class PartitionEngineKlfm : public PartitionEngine {
 
     // Use edge entropy to determine move cost.
     bool use_entropy;
+
+    // If set to false, edge names and node IDs that define a cutset will
+    // not be stored in the partition summary. This is a memory-saving
+    // technique used when performing a large number of runs if it is not
+    // necessary to print the cutset.
+    bool save_cutset;
   };
 
  private:

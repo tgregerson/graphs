@@ -211,7 +211,6 @@ void VcdParser::CheckSignalsExistOrDie() {
   bool die = false;
   for (const string& raw_signal : raw_monitored_signals_) {
     pair<string, int> modified_signal = ConvertToVcdSignalName(raw_signal);
-    bool not_found = false;
     if (modified_signal_name_to_identifier_code_.find(modified_signal) ==
         modified_signal_name_to_identifier_code_.end()) {
       die = true;
@@ -219,19 +218,20 @@ void VcdParser::CheckSignalsExistOrDie() {
   }
   if (die) {
     cout << "Registered signals:" << endl;
-    for (const string& name : all_vcd_identifier_names_) {
-      cout << name << endl;
+    for (const pair<string, int>& name : all_vcd_identifier_names_) {
+      cout << name.first << " " << name.second << endl;
     }
   }
   assert(!die);
 }
 
-pair<string, int> ConvertToVcdSignalName(const string& raw_signal_name) {
+pair<string, int> VcdParser::ConvertToVcdSignalName(
+    const string& raw_signal_name) {
   int bit_select = 0;
   // Assume all raw names end in a bit select.
   assert(raw_signal_name.back() == ']');
   size_t bit_select_start_pos = raw_signal_name.rfind('[');
-  assert(bit_select_start_pos != raw_signal_name.rend());
+  assert(bit_select_start_pos != string::npos);
   string bit_select_str =
       raw_signal_name.substr(bit_select_start_pos, string::npos);
   string identifier = raw_signal_name.substr(0, bit_select_start_pos);

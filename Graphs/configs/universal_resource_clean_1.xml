@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE partitioner_configuration SYSTEM "partitioner_configuration.dtd">
+<partitioner_configuration>
+  <general_configuration>
+    <use_ratio_as_quality_metric/>
+    <device_resource>
+      <resource_id>0</resource_id>
+      <resource_capacity>2000000</resource_capacity>
+      <resource_ratio_weight>200</resource_ratio_weight>
+      <max_imbalance>0.02</max_imbalance>
+    </device_resource>
+  </general_configuration>
+  <preprocessor_configuration>
+    <fixed_random_seed>0</fixed_random_seed>
+    <all_universal_resource_strategy>
+      <universal_resource_id>0</universal_resource_id>
+    </all_universal_resource_strategy>
+  </preprocessor_configuration>
+  <klfm_configuration>
+    <gain_bucket_type>
+      <single_resource_bucket/>
+    </gain_bucket_type>
+    <node_implementation_options>
+      <supernode_implementations_cap>16</supernode_implementations_cap>
+      <mutation_options>
+        <mutation_rate>0</mutation_rate>
+      </mutation_options>
+      <rebalance_options>
+      </rebalance_options>
+    </node_implementation_options>
+  </klfm_configuration>
+</partitioner_configuration>

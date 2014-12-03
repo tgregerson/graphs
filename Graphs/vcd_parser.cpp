@@ -280,3 +280,20 @@ void VcdParser::WriteDumpVars(const string& signal_filename,
   }
   output_file << ");" << endl;
 }
+
+void VcdParser::ParseIdentifierCode(
+    const string& token,
+    vcd_token::IdentifierCode* identifier_code,
+    bool check_token) {
+  if (identifier_code == nullptr) {
+    throw std::invalid_argument();
+  }
+  if (check_token) {
+    string post_lex_token;
+    string remaining = VcdLexer::ConsumeIdentifierCode(token, &post_lex_token);
+    if (!remaining.empty() || post_lex_token != token) {
+      throw std::invalid_argument();
+    }
+  }
+  identifier_code->code = token;
+}

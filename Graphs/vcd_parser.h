@@ -10,6 +10,86 @@
 #include <unordered_set>
 #include <vector>
 
+// Structs for parsing VCD tokens
+namespace vcd_token {
+  struct IdentifierCode {
+    std::string code;
+  };
+
+  struct VectorValueChange {
+    enum class RadixType {
+      BinaryNumber,
+      RealNumber,
+    };
+    RadixType radix{RadixType::BinaryNumber};
+    char radix_char{'b'};
+    std::string number_string;
+  };
+
+  struct Value {
+    char value{'0'};
+  };
+
+  struct ScalarValueChange {
+    Value value;
+    IdentifierCode identifier_code;
+  };
+
+  struct ValueChange {
+    enum class ValueChangeType {
+      ScalarValueChange,
+      VectorValueChange
+    };
+    ValueChangeType type;
+    ScalarValueChange scalar_value_change;
+    VectorValueChange vector_value_change;
+  };
+
+  struct SimulationTime {
+    unsigned long long time{0ULL};
+  };
+
+  struct SimulationKeyword {
+    std::string keyword;
+  };
+
+  struct DeclarationKeyword {
+    std::string keyword;
+  };
+
+  struct SimulationValueCommand {
+    std::string simulation_keyword;
+    std::vector<ValueChange> value_changes;
+  };
+
+  struct Comment {
+    std::string comment_text;
+  };
+
+  struct SimulationCommand {
+    enum class SimulationCommandType {
+      SimulationValueCommand,
+      CommentCommand,
+      TimeCommand,
+      ValueChangeCommand
+    };
+    SimulationValueCommand simulation_value_command;
+    Comment comment;
+    SimulationTime simulation_time;
+    ValueChange value_change;
+  };
+
+  struct DeclarationCommand {
+    std::string declaration_keyword;
+    std::string command_text;
+  };
+
+  struct VcdDefinitions {
+    std::vector<DeclarationCommand> declaration_commands;
+    std::vector<SimulationCommand> simulation_commands;
+  };
+}  // namespace vcd_token
+
 class VcdParser {
  public:
   VcdParser(const std::string& vcd_filename,
@@ -20,6 +100,10 @@ class VcdParser {
     }
   }
 
+  void ParseIdentifierCode(const std::string& token,
+                           vcd_token::IdentifierCode* identifier_code,
+                           bool check_token = true);
+
   // Parses input VCD file. Parses nets in 'signals'. Writes status messages
   // to cout if 'echo_status'.
   void Parse(bool echo_status);
@@ -27,6 +111,7 @@ class VcdParser {
   static void WriteDumpVars(const std::string& signal_filename,
                             const std::string& output_filename,
                             const std::string& scope);
+
 
  private:
   void SkipToEndToken(std::ifstream& input_file);

@@ -1,8 +1,10 @@
 #include "vcd_parser.h"
 
+#include <stdexcept>
 #include <utility>
 
 #include "universal_macros.h"
+#include "vcd_lexer.h"
 
 using namespace std;
 
@@ -285,15 +287,289 @@ void VcdParser::ParseIdentifierCode(
     const string& token,
     vcd_token::IdentifierCode* identifier_code,
     bool check_token) {
-  if (identifier_code == nullptr) {
-    throw std::invalid_argument();
+  CheckParseToken(token, identifier_code, check_token,
+                  VcdLexer::ConsumeIdentifierCode);
+  identifier_code->code = token;
+}
+
+void VcdParser::ParseValue(
+    const string& token,
+    vcd_token::Value* value,
+    bool check_token) {
+  CheckParseToken(token, value, check_token,
+                  VcdLexer::ConsumeValueNoWhitespace);
+  value->value = token.at(0);
+}
+
+void VcdParser::ParseVectorValueChange(
+    const string& token,
+    vcd_token::VectorValueChange* vvc,
+    bool check_token) {
+  CheckParseToken(token, vvc, check_token, VcdLexer::ConsumeVectorValueChange);
+  string remaining;
+  switch (token.at(0)) {
+    case 'b': // Fall-through intended
+    case 'B':
+      vvc->radix = vcd_token::VectorValueChange::RadixType::BinaryNumber;
+      break;
+    case 'r': // Fall-through intended
+    case 'R': // Fall-through intended
+      vvc->radix = vcd_token::VectorValueChange::RadixType::RealNumber;
+      break;
+    default: throw std::invalid_argument("Invalid Radix\n");
+  }
+  vvc->radix_char = token.at(0);
+  remaining = VcdLexer::ConsumeNonWhitespace(token.substr(1, string::npos),
+                                             &(vvc->number_string));
+  string id_code_token;
+  VcdLexer::ConsumeIdentifierCode(remaining, &id_code_token);
+  ParseIdentifierCode(id_code_token, &(vvc->identifier_code), check_token);
+}
+
+void VcdParser::ParseScalarValueChange(
+    const string& token,
+    vcd_token::ScalarValueChange* svc,
+    bool check_token) {
+  CheckParseToken(token, svc, check_token, VcdLexer::ConsumeScalarValueChange);
+  ParseValue(token.substr(0, 1), &(svc->value), check_token);
+  ParseIdentifierCode(token.substr(1, string::npos), &(svc->identifier_code),
+                      check_token);
+}
+
+void VcdParser::ParseValueChange(
+    const string& token,
+    vcd_token::ValueChange* vc,
+    bool check_token) {
+  CheckParseToken(token, vc, check_token, VcdLexer::ConsumeValueChange);
+  try {
+    VcdLexer::ConsumeScalarValueChange(token, nullptr);
+    vc->type = vcd_token::ValueChange::ValueChangeType::ScalarValueChange;
+    ParseScalarValueChange(token, &(vc->scalar_value_change), check_token);
+  } catch (std::exception& e) {
+    vc->type = vcd_token::ValueChange::ValueChangeType::VectorValueChange;
+    ParseVectorValueChange(token, &(vc->vector_value_change), check_token);
+  }
+}
+
+void VcdParser::ParseSimulationTime(
+    const string& token,
+    vcd_token::SimulationTime* st,
+    bool check_token) {
+  CheckParseToken(token, st, check_token, VcdLexer::ConsumeSimulationTime);
+  st->time = strtoull(token.substr(1, string::npos).c_str(), nullptr, 10);
+}
+
+void VcdParser::ParseSimulationKeyword(
+    const string& token,
+    vcd_token::SimulationKeyword* sk,
+    bool check_token) {
+  CheckParseToken(token, sk, check_token, VcdLexer::ConsumeSimulationKeyword);
+  sk->keyword = token;
+}
+
+void VcdParser::ParseDeclarationKeyword(
+    const string& token,
+    vcd_token::DeclarationKeyword* dk,
+    bool check_token) {
+  CheckParseToken(token, dk, check_token, VcdLexer::ConsumeDeclarationKeyword);
+  dk->keyword = token;
+}
+
+void VcdParser::ParseSimulationValueCommand(
+    const string& token,
+    vcd_token::SimulationValueCommand* svc,
+    bool check_token) {
+  CheckParseToken(token, svc, check_token,
+                  VcdLexer::ConsumeSimulationValueCommand);
+  string cur_token;
+  string remaining = VcdLexer::ConsumeSimulationKeyword(token, &cur_token);
+  svc->simulation_keyword = cur_token;
+  while (true) {
+    try {
+      remaining = VcdLexer::ConsumeValueChange(remaining, &cur_token);
+      vcd_token::ValueChange vc;
+      ParseValueChange(cur_token, &vc, check_token);
+      svc->value_changes.push_back(vc);
+    } catch (std::exception& e) {
+      return;
+    }
+  }
+}
+
+void VcdParser::ParseComment(
+    const string& token,
+    vcd_token::Comment* comment,
+    bool check_token) {
+  CheckParseToken(token, comment, check_token, VcdLexer::ConsumeComment);
+  comment->comment_text = token;
+}
+
+void VcdParser::ParseSimulationCommand(
+    const string& token,
+    vcd_token::SimulationCommand* sc,
+    bool check_token) {
+  CheckParseToken(token, sc, check_token, VcdLexer::ConsumeSimulationCommand);
+  try {
+    VcdLexer::ConsumeSimulationValueCommand(token, nullptr);
+    sc->type =
+        vcd_token::SimulationCommand::SimulationCommandType::SimulationValueCommand;
+    ParseSimulationValueCommand(
+        token, &(sc->simulation_value_command), check_token);
+    return;
+  } catch (std::exception& e) {}
+  try {
+    VcdLexer::ConsumeComment(token, nullptr);
+    sc->type =
+        vcd_token::SimulationCommand::SimulationCommandType::CommentCommand;
+    ParseComment(token, &(sc->comment), check_token);
+    return;
+  } catch (std::exception& e) {}
+  try {
+    VcdLexer::ConsumeSimulationTime(token, nullptr);
+    sc->type =
+        vcd_token::SimulationCommand::SimulationCommandType::TimeCommand;
+    ParseSimulationTime(token, &(sc->simulation_time), check_token);
+    return;
+  } catch (std::exception& e) {}
+  try {
+    VcdLexer::ConsumeValueChange(token, nullptr);
+    sc->type =
+        vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand;
+    ParseValueChange(token, &(sc->value_change), check_token);
+    return;
+  } catch (std::exception& e) {}
+  throw std::invalid_argument("Invalid SimulationCommand\n");
+}
+
+void VcdParser::ParseDeclarationCommand(
+    const string& token,
+    vcd_token::DeclarationCommand* dc,
+    bool check_token) {
+  CheckParseToken(token, dc, check_token, VcdLexer::ConsumeDeclarationCommand);
+  string cur_token;
+  string remaining = VcdLexer::ConsumeDeclarationKeyword(token, &cur_token);
+  ParseDeclarationKeyword(cur_token, &(dc->declaration_keyword), check_token);
+  dc->command_text = VcdLexer::ConsumeTextToEnd(remaining, &cur_token);
+}
+
+void VcdParser::ParseVcdDefinitions(
+    const string& token,
+    vcd_token::VcdDefinitions* vd,
+    bool check_token) {
+  cout << "Check parse\n";
+  CheckParseToken(token, vd, check_token, VcdLexer::ConsumeVcdDefinitions);
+  string remaining = token;
+  string cur_token;
+  bool definitions_done = false;
+  int num_definitions = 0;
+  cout << "Starting definitions\n";
+  while (!definitions_done) {
+    remaining = VcdLexer::ConsumeDeclarationCommand(remaining, &cur_token);
+    vcd_token::DeclarationCommand dc;
+    ParseDeclarationCommand(cur_token, &dc, check_token);
+    vd->declaration_commands.push_back(dc);
+    if (dc.declaration_keyword.keyword == "$enddefinitions") {
+      definitions_done = true;
+    }
+    if (remaining.empty()) {
+      throw std::exception();
+    }
+    ++num_definitions;
+    if (num_definitions % 50 == 0) {
+      cout << num_definitions << " definitions\n";
+    }
+  }
+  int num_sim_commands = 0;
+  cout << "Starting sim commands\n";
+  while (!remaining.empty()) {
+    remaining = VcdLexer::ConsumeSimulationCommand(remaining, &cur_token);
+    vcd_token::SimulationCommand sc;
+    ParseSimulationCommand(cur_token, &sc, check_token);
+    vd->simulation_commands.push_back(sc);
+    ++num_sim_commands;
+    if (num_sim_commands % 1000 == 0) {
+      cout << "Processed " << num_sim_commands << " sim commands. "
+           << remaining.size() << " bytes left to process" << endl;
+    }
+  }
+}
+
+void VcdParser::ParseVcdDefinitionsStream(
+    istream& in,
+    vcd_token::VcdDefinitions* vd,
+    bool check_token) {
+  in.seekg(0, ios::end);
+  std::streampos end_pos = in.tellg();
+  in.seekg(0, ios::beg);
+
+  cout << "Check parse\n";
+  CheckParseTokenStream(
+      in, vd, check_token, VcdLexer::ConsumeVcdDefinitionsStream);
+  string cur_token;
+  bool definitions_done = false;
+  int num_definitions = 0;
+  cout << "---------------Starting parse definitions--------------\n";
+  while (!in.eof() && !definitions_done) {
+    VcdLexer::ConsumeDeclarationCommandStream(in, &cur_token);
+    // TODO remove
+    cout << cur_token << endl;
+    vcd_token::DeclarationCommand dc;
+    ParseDeclarationCommand(cur_token, &dc, check_token);
+    vd->declaration_commands.push_back(dc);
+    if (dc.declaration_keyword.keyword == "$enddefinitions") {
+      definitions_done = true;
+    }
+    ++num_definitions;
+    if (num_definitions % 50 == 0) {
+      cout << num_definitions << " definitions\n";
+    }
+  }
+  int num_sim_commands = 0;
+  cout << "---------------Starting parse sim commands----------------\n";
+  while (!in.eof()) {
+    VcdLexer::ConsumeSimulationCommandStream(in, &cur_token);
+    // TODO remove
+    cout << cur_token << endl;
+    vcd_token::SimulationCommand sc;
+    ParseSimulationCommand(cur_token, &sc, check_token);
+    vd->simulation_commands.push_back(sc);
+    ++num_sim_commands;
+    if (num_sim_commands % 1000 == 0) {
+      cout << "Processed " << num_sim_commands << " sim commands. "
+           << in.tellg() << " of " << end_pos << " bytes." << endl;
+    }
+  }
+}
+
+void VcdParser::CheckParseToken(
+    const string& token, void* token_struct_ptr, bool check_token,
+    string (*lex)(const string&, string*)) {
+  if (token_struct_ptr == nullptr) {
+    throw std::invalid_argument("Null pointer\n");
   }
   if (check_token) {
     string post_lex_token;
-    string remaining = VcdLexer::ConsumeIdentifierCode(token, &post_lex_token);
+    string remaining = lex(token, &post_lex_token);
     if (!remaining.empty() || post_lex_token != token) {
-      throw std::invalid_argument();
+      throw std::invalid_argument("Failed to parse token\n");
     }
   }
-  identifier_code->code = token;
+}
+
+void VcdParser::CheckParseTokenStream(
+    istream& in, void* token_struct_ptr, bool check_token,
+    bool (*lex)(istream&, string*)) {
+  if (token_struct_ptr == nullptr) {
+    throw std::invalid_argument("Null pointer\n");
+  }
+  if (check_token) {
+    if (!in.good()) {
+      throw std::invalid_argument("Bad stream\n");
+    }
+    std::streampos initial_pos = in.tellg();
+    if (!lex(in, nullptr)) {
+      throw std::invalid_argument("Lexing failed\n");
+    }
+    in.seekg(initial_pos);
+  }
 }

@@ -2,12 +2,14 @@ OBJDIR = build_files
 BINDIR = binaries
 CXX_GCC = g++
 CXX_CLANG = clang++
-CXX = $(CXX_CLANG)
+CXX = $(CXX_GCC)
 XML2_CXX_FLAGS = `xml2-config --cflags`
 XML2_LD_FLAGS = `xml2-config --libs`
 CXXFLAGS_OPT = -std=c++11 $(XML2_CXX_FLAGS) -O3 -flto -Wall -Wsign-compare -Werror
+CXXFLAGS_PROFILE_VALGRIND = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Wsign-compare -Werror -g
+CXXFLAGS_PROFILE_GPROF = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Wsign-compare -Werror -pg
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_CXX_FLAGS) -Wall -Wsign-compare -Werror
-CXXFLAGS = $(CXXFLAGS_DEBUG)
+CXXFLAGS = $(CXXFLAGS_OPT)
 LDFLAGS = -lrt -v $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 

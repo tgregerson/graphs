@@ -1,6 +1,7 @@
 #ifndef VCD_PARSER_H_
 #define VCD_PARSER_H_
 
+#include <istream>
 #include <fstream>
 #include <map>
 #include <set>
@@ -24,6 +25,7 @@ namespace vcd_token {
     RadixType radix{RadixType::BinaryNumber};
     char radix_char{'b'};
     std::string number_string;
+    IdentifierCode identifier_code;
   };
 
   struct Value {
@@ -73,6 +75,7 @@ namespace vcd_token {
       TimeCommand,
       ValueChangeCommand
     };
+    SimulationCommandType type;
     SimulationValueCommand simulation_value_command;
     Comment comment;
     SimulationTime simulation_time;
@@ -80,7 +83,7 @@ namespace vcd_token {
   };
 
   struct DeclarationCommand {
-    std::string declaration_keyword;
+    DeclarationKeyword declaration_keyword;
     std::string command_text;
   };
 
@@ -100,9 +103,67 @@ class VcdParser {
     }
   }
 
-  void ParseIdentifierCode(const std::string& token,
-                           vcd_token::IdentifierCode* identifier_code,
+  static void ParseIdentifierCode(const std::string& token,
+                                  vcd_token::IdentifierCode* identifier_code,
+                                  bool check_token = true);
+
+  static void ParseValue(const std::string& token,
+                         vcd_token::Value* value,
+                         bool check_token = true);
+
+  static void ParseVectorValueChange(const std::string& token,
+                                     vcd_token::VectorValueChange* vvc,
+                                     bool check_token = true);
+
+  static void ParseScalarValueChange(const std::string& token,
+                                     vcd_token::ScalarValueChange* svc,
+                                     bool check_token = true);
+
+  static void ParseValueChange(const std::string& token,
+                               vcd_token::ValueChange* vc,
+                               bool check_token = true);
+
+  static void ParseSimulationTime(const std::string& token,
+                                  vcd_token::SimulationTime* st,
+                                  bool check_token = true);
+
+  static void ParseSimulationKeyword(const std::string& token,
+                                     vcd_token::SimulationKeyword* sk,
+                                     bool check_token = true);
+
+  static void ParseDeclarationKeyword(const std::string& token,
+                                      vcd_token::DeclarationKeyword* dk,
+                                      bool check_token = true);
+
+  static void ParseSimulationValueCommand(const std::string& token,
+                                          vcd_token::SimulationValueCommand* svc,
+                                          bool check_token = true);
+
+  static void ParseComment(const std::string& token,
+                           vcd_token::Comment* comment,
                            bool check_token = true);
+
+  static void ParseSimulationCommand(const std::string& token,
+                                     vcd_token::SimulationCommand* sc,
+                                     bool check_token = true);
+
+  static void ParseDeclarationCommand(const std::string& token,
+                                      vcd_token::DeclarationCommand* dc,
+                                      bool check_token = true);
+
+  static void ParseVcdDefinitions(const std::string& token,
+                                  vcd_token::VcdDefinitions* vd,
+                                  bool check_token = true);
+  static void ParseVcdDefinitionsStream(
+      std::istream& in, vcd_token::VcdDefinitions* vd,
+      bool check_token = true);
+
+  static void CheckParseToken(
+      const std::string& token, void* token_struct_ptr, bool check_token,
+      std::string (*lex)(const std::string&, std::string*));
+  static void CheckParseTokenStream(
+      std::istream& in, void* token_struct_ptr, bool check_token,
+      bool (*lex)(std::istream&, std::string*));
 
   // Parses input VCD file. Parses nets in 'signals'. Writes status messages
   // to cout if 'echo_status'.

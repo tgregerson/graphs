@@ -7,10 +7,10 @@ XML2_CXX_FLAGS = `xml2-config --cflags`
 XML2_LD_FLAGS = `xml2-config --libs`
 CXXFLAGS_OPT = -std=c++11 $(XML2_CXX_FLAGS) -O3 -flto -Wall -Wsign-compare -Werror
 CXXFLAGS_PROFILE_VALGRIND = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Wsign-compare -Werror -g
-CXXFLAGS_PROFILE_GPROF = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Wsign-compare -Werror -pg
+XXFLAGS_PROFILE_GPROF = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Wsign-compare -Werror -pg
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_CXX_FLAGS) -Wall -Wsign-compare -Werror
-CXXFLAGS = $(CXXFLAGS_OPT)
-LDFLAGS = -lrt -v $(XML2_LD_FLAGS) -flto
+CXXFLAGS = $(CXXFLAGS_OPT) -D_FILE_OFFSET_BITS=64 -Wconversion
+LDFLAGS = -lrt $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
 CHACO_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o)
@@ -91,6 +91,7 @@ clean:
 
 chaco_weight_generator_H = chaco_weight_generator.h
 edge_H = edge.h
+file_helpers_H = file_helpers.h
 functional_edge_H = functional_edge.h
 functional_node_H = functional_node.h
 id_manager_H = id_manager.h
@@ -101,13 +102,12 @@ ntl_parser_H = ntl_parser.h
 structural_netlist_lexer_H = structural_netlist_lexer.h
 testbench_generator_H = testbench_generator.h
 universal_macros_H = universal_macros.h
-vcd_lexer_H = vcd_lexer.h
-vcd_parser_H = vcd_parser.h
 weight_score_H = weight_score.h
 
 edge_klfm_H = $(edge_H) edge_klfm.h
 lp_solve_interface_H = $(univeral_macros_H) lp_solve_interface.h
 node_H = $(edge_H) $(port_H) node.h
+vcd_lexer_H = $(file_helpers_H) vcd_lexer.h
 xilinx_functional_nodes_H = $(functional_node_H) $(structural_netlist_lexer_H) xilinx_functional_nodes.h
 
 chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
@@ -115,6 +115,7 @@ functional_node_factory_H = $(functional_node_H) $(xilinx_functional_nodes_H)
 gain_bucket_entry_H = $(node_H) $(universal_macros_H) gain_bucket_entry.h
 partitioner_config_H = $(node_H) partitioner_config.h
 partition_engine_H = $(edge_klfm_H) partition_engine.h
+vcd_parser_H = $(file_helpers_H) $(vcd_lexer_H) vcd_parser.h
 
 gain_bucket_interface_H = $(edge_klfm_H) $(gain_bucket_entry_H) gain_bucket_interface.h
 preprocessor_H = $(node_H) $(partitioner_config_H) preprocessor.h

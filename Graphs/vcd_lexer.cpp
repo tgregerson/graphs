@@ -17,8 +17,18 @@
 
 using namespace std;
 
-string VcdLexer::ConsumeVcdDefinitions(
+namespace vcd_lexer {
+
+unique_ptr<char> global_ws_buffer_ =
+    move(unique_ptr<char>(new char[kWsBufferSize]));
+unique_ptr<char> global_value_buffer_ =
+    move(unique_ptr<char>(new char[kValueBufferSize]));
+unique_ptr<char> global_time_buffer_ =
+    move(unique_ptr<char>(new char[kTimeBufferSize]));
+
+string ConsumeVcdDefinitionsString(
     const string& input, string* token) {
+
   string incremental_token;
   string temp_token;
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
@@ -29,7 +39,7 @@ string VcdLexer::ConsumeVcdDefinitions(
       remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(
           remaining, &temp_token);
       incremental_token.append(temp_token);
-      remaining = ConsumeDeclarationCommand(remaining, &temp_token);
+      remaining = ConsumeDeclarationCommandString(remaining, &temp_token);
       incremental_token.append(temp_token);
     } catch (LexingException& e) {
       declarations_done = true;
@@ -42,7 +52,7 @@ string VcdLexer::ConsumeVcdDefinitions(
       remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(
           remaining, &temp_token);
       incremental_token.append(temp_token);
-      remaining = ConsumeSimulationCommand(remaining, &temp_token);
+      remaining = ConsumeSimulationCommandString(remaining, &temp_token);
       incremental_token.append(temp_token);
     } catch (LexingException& e) {
       simulations_done = true;
@@ -55,73 +65,13 @@ string VcdLexer::ConsumeVcdDefinitions(
   return remaining;
 }
 
-bool VcdLexer::ConsumeVcdDefinitionsStream(
-    istream& in, string* token) {
-  string consumed;
-  ConsumeWhitespaceOptionalStream(in);
-
-  int cur_pos = in.tellg();
-  in.seekg(0, ios::end);
-  const int max_pos = in.tellg();
-  in.seekg(cur_pos);
-
-  int last_print_point = 0;
-
-  bool declarations_done = false;
-  while (!declarations_done) {
-    // todo remove
-    cur_pos = in.tellg();
-    if (cur_pos - last_print_point > 1000000) {
-      last_print_point = cur_pos;
-      cout << "Cur pos: " << in.tellg() << " of "
-          << max_pos << endl;
-    }
-    string append_token;
-    ConsumeWhitespaceOptionalStream(in, &append_token);
-    consumed.append(append_token);
-    if (ConsumeDeclarationCommandStream(in, &append_token)) {
-      consumed.append(append_token);
-    } else {
-      declarations_done = true;
-    }
-  }
-
-  cout << "-----------Done Lexing Declarations------------" << endl;
-
-  bool simulations_done = false;
-  while (!simulations_done) {
-    // todo remove
-    cur_pos = in.tellg();
-    if (cur_pos - last_print_point > 1000000) {
-      last_print_point = cur_pos;
-      cout << "Cur pos: " << in.tellg() << " of "
-          << max_pos << endl;
-    }
-    string append_token;
-    ConsumeWhitespaceOptionalStream(in, &append_token);
-    consumed.append(append_token);
-    if (ConsumeSimulationCommandStream(in, &append_token)) {
-      consumed.append(append_token);
-    } else {
-      simulations_done = true;
-    }
-  }
-
-  cout << "-----------Done Lexing Simulations------------" << endl;
-
-  if (token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return true;
-}
-
-string VcdLexer::ConsumeDeclarationCommand(
+string ConsumeDeclarationCommandString(
     const string& input, string* token) {
   string incremental_token;
   string temp_token;
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   try {
-    remaining = ConsumeDeclarationKeyword(remaining, &incremental_token);
+    remaining = ConsumeDeclarationKeywordString(remaining, &incremental_token);
     remaining = ConsumeTextToEnd(remaining, &temp_token);
     incremental_token.append(temp_token);
     if (token != nullptr) {
@@ -133,58 +83,33 @@ string VcdLexer::ConsumeDeclarationCommand(
   }
 }
 
-bool VcdLexer::ConsumeDeclarationCommandStream(
-    istream& in, string* token) {
-  string consumed;
-  bool found = false;
-  if (ConsumeDeclarationKeywordStream(in, &consumed)) {
-    string append_token;
-    if (ConsumeTextToEndStream(in, &append_token)) {
-      consumed.append(append_token);
-      found = true;
-    }
-  }
-  if (found && token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return found;
-}
-
-string VcdLexer::ConsumeSimulationCommand(
+string ConsumeSimulationCommandString(
     const string& input, string* token) {
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   try {
-    return ConsumeValueChange(remaining, token);
+    return ConsumeValueChangeString(remaining, token);
   } catch (LexingException& e) {}
   try {
-    return ConsumeSimulationTime(remaining, token);
+    return ConsumeSimulationTimeString(remaining, token);
   } catch (LexingException& e) {}
   try {
-    ConsumeSimulationValueCommand(remaining, token);
+    ConsumeSimulationValueCommandString(remaining, token);
   } catch (LexingException& e) {}
   try {
-    return ConsumeComment(remaining, token);
+    return ConsumeCommentString(remaining, token);
   } catch (LexingException& e) {
     throw LexingException(string(e.what()) + "ConsumeSimulationCommand: ");
   }
 }
 
-bool VcdLexer::ConsumeSimulationCommandStream(
-    istream& in, string* token) {
-  return ConsumeValueChangeStream(in, token) ||
-         ConsumeSimulationTimeStream(in, token) ||
-         ConsumeSimulationValueCommandStream(in, token) ||
-         ConsumeCommentStream(in, token);
-}
-
-string VcdLexer::ConsumeSimulationValueCommand(
+string ConsumeSimulationValueCommandString(
     const string& input, string* token) {
   string incremental_token;
   string temp_token;
   string ws_temp_token;
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   try {
-    remaining = ConsumeSimulationKeyword(remaining, &temp_token);
+    remaining = ConsumeSimulationKeywordString(remaining, &temp_token);
     incremental_token.append(temp_token);
   } catch (LexingException& e) {
     throw LexingException(string(e.what()) + "ConsumeSimulationValueCommand: ");
@@ -192,7 +117,7 @@ string VcdLexer::ConsumeSimulationValueCommand(
   bool done = false;
   while (!done) {
     try {
-      remaining = ConsumeValueChange(
+      remaining = ConsumeValueChangeString(
           StructuralNetlistLexer::ConsumeWhitespaceIfPresent(
               remaining, &ws_temp_token), &temp_token);
       incremental_token.append(ws_temp_token + temp_token);
@@ -210,41 +135,7 @@ string VcdLexer::ConsumeSimulationValueCommand(
   return remaining;
 }
 
-bool VcdLexer::ConsumeSimulationValueCommandStream(
-    istream& in, string* token) {
-  std::streampos initial_pos = in.tellg();
-  string consumed;
-  bool found = false;
-  stringstream error_msg;
-  if (ConsumeSimulationKeywordStream(in, &consumed)) {
-    bool done_processing_value_changes = false;
-    string append_token;
-    while (!done_processing_value_changes) {
-      if (ConsumeWhitespaceStream(in, &append_token)) {
-        consumed.append(append_token);
-        if (ConsumeValueChangeStream(in, &append_token)) {
-          consumed.append(append_token);
-        } else {
-          done_processing_value_changes = true;
-        }
-      } else {
-        done_processing_value_changes = true;
-      }
-    }
-    if (ConsumeExactStringStream("$end", in)) {
-      consumed.append("$end");
-      found = true;
-    }
-  }
-  if (!found) {
-    in.seekg(initial_pos);
-  } else if (token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return found;
-}
-
-string VcdLexer::ConsumeComment(
+string ConsumeCommentString(
     const string& input, string* token) {
   string incremental_token;
   string temp_token;
@@ -262,28 +153,7 @@ string VcdLexer::ConsumeComment(
   }
 }
 
-bool VcdLexer::ConsumeCommentStream(
-    istream& in, string* token) {
-  std::streampos initial_pos = in.tellg();
-  string consumed;
-  bool found = false;
-  ConsumeWhitespaceOptionalStream(in);
-  if (ConsumeExactStringStream("$comment", in, &consumed)) {
-    string append_token;
-    if (ConsumeTextToEndStream(in, &append_token)) {
-      consumed.append(append_token);
-      found = true;
-    }
-  }
-  if (!found) {
-    in.seekg(initial_pos);
-  } else if (token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return found;
-}
-
-string VcdLexer::ConsumeDeclarationKeyword(
+string ConsumeDeclarationKeywordString(
     const string& input, string* token) {
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   try {
@@ -314,20 +184,7 @@ string VcdLexer::ConsumeDeclarationKeyword(
   }
 }
 
-bool VcdLexer::ConsumeDeclarationKeywordStream(
-    istream& in, string* token) {
-  ConsumeWhitespaceOptionalStream(in);
-  return ConsumeExactStringStream("$var", in, token) ||
-         ConsumeExactStringStream("$comment", in, token) ||
-         ConsumeExactStringStream("$date", in, token) ||
-         ConsumeExactStringStream("$enddefinitions", in, token) ||
-         ConsumeExactStringStream("$scope", in, token) ||
-         ConsumeExactStringStream("$timescale", in, token) ||
-         ConsumeExactStringStream("$upscope", in, token) ||
-         ConsumeExactStringStream("$version", in, token);
-}
-
-string VcdLexer::ConsumeSimulationKeyword(
+string ConsumeSimulationKeywordString(
     const string& input, string* token) {
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   try {
@@ -346,16 +203,7 @@ string VcdLexer::ConsumeSimulationKeyword(
   }
 }
 
-bool VcdLexer::ConsumeSimulationKeywordStream(
-    istream& in, string* token) {
-  ConsumeWhitespaceOptionalStream(in);
-  return ConsumeExactStringStream("$dumpall", in, token) ||
-         ConsumeExactStringStream("$dumpoff", in, token) ||
-         ConsumeExactStringStream("$dumpon", in, token) ||
-         ConsumeExactStringStream("$dumpvars", in, token);
-}
-
-string VcdLexer::ConsumeSimulationTime(
+string ConsumeSimulationTimeString(
     const string& input, string* token) {
   string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   if (remaining.size() < 2 || remaining[0] != '#') {
@@ -375,34 +223,14 @@ string VcdLexer::ConsumeSimulationTime(
   }
 }
 
-bool VcdLexer::ConsumeSimulationTimeStream(
-    istream& in, string* token) {
-  std::streampos initial_pos = in.tellg();
-  string consumed;
-  bool found = false;
-  ConsumeWhitespaceOptionalStream(in);
-  if (!in.eof() && in.peek() == '#') {
-    consumed.push_back(in.get());
-    string append_token;
-    if (ConsumeDecimalNumberStream(in, &append_token)) {
-      consumed.append(append_token);
-      found = true;
-    }
-  }
-  if (!found) {
-    in.seekg(initial_pos);
-  } else if (token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return found;
-}
-
-string VcdLexer::ConsumeValueNoWhitespace(
+string ConsumeValueNoWhitespaceString(
     const string& input, string* token) {
-  if (input.empty() ||
-      !(input[0] == '0' || input[0] == '1' || input[0] == 'x' ||
-        input[0] == 'X' || input[0] == 'z' || input[0] == 'Z')) {
-    throw LexingException("ConsumeValueNoWhitespace: ");
+  if (input.empty()) {
+    throw LexingException("ConsumeValueNoWhitespace: Empty");
+  } else if (!(input[0] == '0' || input[0] == '1' || input[0] == 'x' ||
+               input[0] == 'X' || input[0] == 'z' || input[0] == 'Z')) {
+    throw LexingException("ConsumeValueNoWhitespace: Invalid char: " +
+                          string(&(input[0]), 1));
   } else {
     if (token != nullptr) {
       *token = string(1, input[0]);
@@ -411,42 +239,89 @@ string VcdLexer::ConsumeValueNoWhitespace(
   }
 }
 
-bool VcdLexer::ConsumeValueNoWhitespaceStream(
-    istream& in, string* token) {
+bool ConsumeValueNoWhitespace(istream& in, string* token) {
   if (!in.eof()) {
-    char c = in.peek();
+    char c = (char)in.peek();
     if (c == '0' || c == '1' || c == 'x' ||
         c == 'z' || c == 'X' || c == 'Z') {
         if (token != nullptr) {
           token->clear();
           token->push_back(c);
         }
-        in.get();
+        in.ignore();
         return true;
     }
   }
   return false;
 }
 
-string VcdLexer::ConsumeValueChange(
+bool ConsumeValueNoWhitespace(istream& in, char** buffer_pos) {
+  if (!in.eof()) {
+    char c = (char)in.peek();
+    if (c == '0' || c == '1' || c == 'x' ||
+        c == 'z' || c == 'X' || c == 'Z') {
+      **buffer_pos = c;
+      ++(*buffer_pos);
+      in.ignore();
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConsumeValueNoWhitespace(
+    FILE* in, string* token) {
+  if (token != nullptr) {
+    token->clear();
+  }
+  char c = (char)fgetc(in);
+  if (c == '0' || c == '1' || c == 'x' ||
+      c == 'z' || c == 'X' || c == 'Z') {
+    if (token != nullptr) {
+      token->push_back(c);
+    }
+    return true;
+  }
+  if (c != EOF) {
+    ungetc(c, in);
+  }
+  return false;
+}
+
+// TODO add buffer max as a parameter.
+bool ConsumeValueNoWhitespace(
+    FILE* in, char** buffer_pos) {
+  char c = (char)fgetc(in);
+  if (c == '0' || c == '1' || c == 'x' ||
+      c == 'z' || c == 'X' || c == 'Z') {
+    //assert(*buffer_pos < global_value_buffer_.get() + kValueBufferSize);
+    **buffer_pos = c;
+    ++(*buffer_pos);
+    return true;
+  }
+  if (c != EOF) {
+    ungetc(c, in);
+  }
+  return false;
+}
+
+string ConsumeValueChangeString(
     const string& input, string* token) {
+  string error_msg;
   try {
-    return ConsumeScalarValueChange(input, token);
-  } catch (LexingException& e) {}
-  try {
-    return ConsumeVectorValueChange(input, token);
+    return ConsumeScalarValueChangeString(input, token);
   } catch (LexingException& e) {
-    throw LexingException(string(e.what()) + "ConsumeValueChange: ");
+    error_msg.append(e.what());
+  }
+  try {
+    return ConsumeVectorValueChangeString(input, token);
+  } catch (LexingException& e) {
+    throw LexingException("ConsumeValueChange: " + error_msg +
+                          string(" / ") + e.what());
   }
 }
 
-bool VcdLexer::ConsumeValueChangeStream(
-    istream& in, string* token) {
-  return ConsumeScalarValueChangeStream(in, token) ||
-         ConsumeVectorValueChangeStream(in, token);
-}
-
-string VcdLexer::ConsumeScalarValueChange(
+string ConsumeScalarValueChangeString(
     const string& input, string* token) {
   string remaining;
   string incremental_token;
@@ -454,54 +329,36 @@ string VcdLexer::ConsumeScalarValueChange(
   try {
     remaining =
         StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
-    remaining = ConsumeValueNoWhitespace(remaining, &temp_token);
+    remaining = ConsumeValueNoWhitespaceString(remaining, &temp_token);
     incremental_token.append(temp_token);
-    remaining = ConsumeIdentifierCode(remaining, &temp_token);
+    remaining = ConsumeIdentifierCodeString(remaining, &temp_token);
     incremental_token.append(temp_token);
     if (token != nullptr) {
       *token = incremental_token;
     }
     return remaining;
   } catch (LexingException& e) {
-    throw LexingException(string(e.what()) + "ConsumeScalarValue");
+    throw LexingException("ConsumeScalarValue: " + string(e.what()));
   }
 }
 
-bool VcdLexer::ConsumeScalarValueChangeStream(
-    istream& in, string* token) {
-  string consumed;
-  bool found = false;
-  ConsumeWhitespaceOptionalStream(in);
-  if (!in.eof()) {
-    string append_token;
-    if (ConsumeValueNoWhitespaceStream(in, &consumed) &&
-        ConsumeIdentifierCodeStream(in, &append_token)) {
-      consumed.append(append_token);
-      found = true;
-    }
-  }
-  if (found && token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return found;
-}
-
-string VcdLexer::ConsumeBinaryVectorValueChange(
+string ConsumeBinaryVectorValueChangeString(
     const string& input, string* token) {
   const string fname = "ConsumeBinaryVectorValueChange: ";
   string remaining =
       StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
   if (remaining.empty() ||
       (remaining[0] != 'b' && remaining[0] != 'B')) {
-    throw LexingException(fname);
+    throw LexingException(string(fname) + "Invalid starting char");
   } else {
     bool done = false;
     bool got_at_least_one_value = false;
     string incremental_token = string(1, remaining[0]);
+    remaining = remaining.substr(1, string::npos);
     string append_token;
     while (!done) {
       try {
-        remaining = ConsumeValueNoWhitespace(remaining, &append_token);
+        remaining = ConsumeValueNoWhitespaceString(remaining, &append_token);
         incremental_token.append(append_token);
         got_at_least_one_value = true;
       } catch (LexingException& e) {
@@ -511,11 +368,11 @@ string VcdLexer::ConsumeBinaryVectorValueChange(
     remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(
         remaining, &append_token);
     incremental_token.append(append_token);
-    remaining = ConsumeIdentifierCode(remaining, &append_token);
+    remaining = ConsumeIdentifierCodeString(remaining, &append_token);
     incremental_token.append(append_token);
 
     if (!got_at_least_one_value) {
-      throw LexingException(fname);
+      throw LexingException(string(fname) + "Found no values.");
     } else {
       if (token != nullptr) {
         *token = incremental_token;
@@ -525,78 +382,29 @@ string VcdLexer::ConsumeBinaryVectorValueChange(
   }
 }
 
-bool VcdLexer::ConsumeBinaryVectorValueChangeStream(
-    istream& in, string* token) {
-  std::streampos initial_pos = in.tellg();
-  string consumed;
-  ConsumeWhitespaceOptionalStream(in);
-  bool found = false;
-  if (!in.eof() && (in.peek() == 'b' || in.peek() == 'B')) {
-    consumed.push_back(in.get());
-    string append_token;
-    bool done_getting_values = false;
-    bool found_at_least_one_value = false;
-    while (!done_getting_values) {
-      if (ConsumeValueNoWhitespaceStream(in, &append_token)) {
-        consumed.append(append_token);
-        found_at_least_one_value = true;
-      } else {
-        done_getting_values = true;
-      }
-    }
-    if (found_at_least_one_value) {
-      if (ConsumeWhitespaceStream(in, &append_token)) {
-        consumed.append(append_token);
-        if (ConsumeIdentifierCodeStream(in, &append_token)) {
-          consumed.append(append_token);
-          found = true;
-        }
-      }
-    }
-  }
-  if (!found) {
-    in.seekg(initial_pos);
-  } else if (token != nullptr) {
-    token->assign(std::move(consumed));
-  }
-  return found;
-}
-
-string VcdLexer::ConsumeRealVectorValueChange(
+string ConsumeRealVectorValueChangeString(
     const string& input, string* token) {
   const string fname = "ConsumeRealVectorValueChange: ";
   throw LexingException(fname + "Not yet supported.");
 }
 
-bool VcdLexer::ConsumeRealVectorValueChangeStream(
-    istream& in, string* token) {
-  return false;
-}
-
-string VcdLexer::ConsumeVectorValueChange(
+string ConsumeVectorValueChangeString(
     const string& input, string* token) {
+  string error_msg;
   try {
-    ConsumeBinaryVectorValueChange(input, token);
-  } catch (LexingException& e) {}
+    return ConsumeBinaryVectorValueChangeString(input, token);
+  } catch (LexingException& e) {
+    error_msg.append(e.what());
+  }
   try {
-    ConsumeRealVectorValueChange(input, token);
-  } catch (LexingException& e) {}
-  const string fname = "ConsumeVectorValueChange: ";
-  throw LexingException(fname);
-}
-
-bool VcdLexer::ConsumeVectorValueChangeStream(
-    istream& in, string* token) {
-  std::streampos initial_pos = in.tellg();
-  if(ConsumeBinaryVectorValueChangeStream(in, token)) {
-    return true;
-  } else {
-    in.seekg(initial_pos);
-    return false;
+    return ConsumeRealVectorValueChangeString(input, token);
+  } catch (LexingException& e) {
+    throw LexingException("ConsumeVectorValueChange: " +
+                          error_msg + string(" / ") + e.what());
   }
 }
 
-string VcdLexer::ConsumeIdentifierCode(
+string ConsumeIdentifierCodeString(
     const string& input, string* token) {
   try {
     return ConsumeNonWhitespace(input, token);
@@ -605,13 +413,7 @@ string VcdLexer::ConsumeIdentifierCode(
   }
 }
 
-bool VcdLexer::ConsumeIdentifierCodeStream(
-    istream& in, string* token) {
-  ConsumeWhitespaceOptionalStream(in);
-  return ConsumeNonWhitespaceStream(in, token);
-}
-
-string VcdLexer::ConsumeExactString(
+string ConsumeExactString(
     const string& str, const string& input, string* token) {
   bool failed = false;
   string remaining =
@@ -634,7 +436,7 @@ string VcdLexer::ConsumeExactString(
   }
 }
 
-bool VcdLexer::ConsumeExactStringStream(
+bool ConsumeExactString(
     const string& str, istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   bool found = true;
@@ -643,20 +445,13 @@ bool VcdLexer::ConsumeExactStringStream(
       found = false;
       break;
     }
-    char in_c;
-    in.get(in_c);
+    char in_c = (char)in.get();
     if (in_c != string_c) {
       found = false;
       break;
     }
   }
   if (!found) {
-    /*
-    std::stringstream ss;
-    ss << "ConsumeExactString: \n"
-       << "Looking for string: '" + str + "'\n"
-       << PrintNextStreamLineInfo(in);
-    */
     in.seekg(initial_pos);
   } else if (token != nullptr) {
     token->assign(str);
@@ -664,7 +459,30 @@ bool VcdLexer::ConsumeExactStringStream(
   return found;
 }
 
-string VcdLexer::ConsumeTextToEnd(
+bool ConsumeExactString(
+    const string& str, FILE* in, string* token) {
+  const off_t initial_pos = ftello(in);
+  bool found = true;
+  for (char string_c : str) {
+    if (feof(in)) {
+      found = false;
+      break;
+    }
+    char in_c = (char)fgetc(in);
+    if (in_c != string_c) {
+      found = false;
+      break;
+    }
+  }
+  if (!found) {
+    fseeko(in, initial_pos, SEEK_SET);
+  } else if (token != nullptr) {
+    token->assign(str);
+  }
+  return found;
+}
+
+string ConsumeTextToEnd(
     const string& input, string* token) {
   string incremental_token;
   string temp_token;
@@ -689,16 +507,15 @@ string VcdLexer::ConsumeTextToEnd(
   return "";  // Should never occur; added to silence compiler warning.
 }
 
-bool VcdLexer::ConsumeTextToEndStream(istream& in, string* token) {
+bool ConsumeTextToEnd(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   string consumed;
   bool found = false;
   while (!in.eof()) {
-    char c;
-    in.get(c);
+    char c = (char)in.get();
     consumed.push_back(c);
     if (c == '$') {
-      found = ConsumeExactStringStream("end", in);
+      found = ConsumeExactString("end", in);
       if (found) {
         consumed.append("end");
         break;
@@ -714,7 +531,32 @@ bool VcdLexer::ConsumeTextToEndStream(istream& in, string* token) {
   return found;
 }
 
-string VcdLexer::ConsumeNonWhitespace(
+bool ConsumeTextToEnd(
+    FILE* in, string* token) {
+  const off_t initial_pos = ftello(in);
+  string consumed;
+  bool found = false;
+  while (!feof(in)) {
+    char c = (char)fgetc(in);
+    consumed.push_back(c);
+    if (c == '$') {
+      found = ConsumeExactString("end", in);
+      if (found) {
+        consumed.append("end");
+        break;
+      }
+    }
+  }
+  if (!found) {
+    fseeko(in, initial_pos, SEEK_SET);
+    cout << "WARNING: ConsumeTextToEnd on full stream!\n";
+  } else if (token != nullptr) {
+    token->assign(std::move(consumed));
+  }
+  return found;
+}
+
+string ConsumeNonWhitespace(
     const string& input, string* token) {
   string remaining =
       StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
@@ -731,14 +573,13 @@ string VcdLexer::ConsumeNonWhitespace(
   return remaining.substr(end_pos, string::npos);
 }
 
-bool VcdLexer::ConsumeNonWhitespaceStream(istream& in, string* token) {
+bool ConsumeNonWhitespace(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
     token->clear();
   }
   while (!in.eof() && !isspace(in.peek())) {
-    char c;
-    in.get(c);
+    char c = (char)in.get();
     if (token != nullptr) {
       token->push_back(c);
     }
@@ -746,14 +587,57 @@ bool VcdLexer::ConsumeNonWhitespaceStream(istream& in, string* token) {
   return initial_pos != in.tellg();
 }
 
-bool VcdLexer::ConsumeWhitespaceStream(istream& in, string* token) {
+bool ConsumeNonWhitespace(
+    istream& in, char** buffer_pos) {
+  char* initial_buffer_pos = *buffer_pos;
+  while (!in.eof() && !isspace(in.peek())) {
+    **buffer_pos = (char)in.get();
+    ++(*buffer_pos);
+  }
+  return initial_buffer_pos != *buffer_pos;
+}
+
+bool ConsumeNonWhitespace(
+    FILE* in, string* token) {
+  char c = (char)fgetc(in);
+  string consumed;
+  bool found = false;
+  while (!isspace(c) && c != EOF) {
+    consumed.push_back(c);
+    c = (char)fgetc(in);
+    found = true;
+  }
+  if (isspace(c)) {
+    ungetc(c, in);
+  }
+  if (found && token != nullptr) {
+    token->assign(std::move(consumed));
+  }
+  return found;
+}
+
+bool ConsumeNonWhitespace(
+    FILE* in, char** buffer_pos) {
+  char* initial_buffer_pos = *buffer_pos;
+  char c = (char)fgetc(in);
+  while (!isspace(c) && c != EOF) {
+    **buffer_pos = c;
+    ++(*buffer_pos);
+    c = (char)fgetc(in);
+  }
+  if (isspace(c)) {
+    ungetc(c, in);
+  }
+  return initial_buffer_pos != *buffer_pos;
+}
+
+bool ConsumeWhitespace(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
     token->clear();
   }
   while (!in.eof() && isspace(in.peek())) {
-    char c;
-    in.get(c);
+    char c = (char)in.get();
     if (token != nullptr) {
       token->push_back(c);
     }
@@ -761,25 +645,115 @@ bool VcdLexer::ConsumeWhitespaceStream(istream& in, string* token) {
   return initial_pos != in.tellg();
 }
 
-void VcdLexer::ConsumeWhitespaceOptionalStream(istream& in, string* token) {
+bool ConsumeWhitespace(FILE* in, string* token) {
+  const off_t initial_pos = ftello(in);
   if (token != nullptr) {
     token->clear();
   }
-  while (!in.eof() && isspace(in.peek())) {
-    char c = in.get();
+  char c = (char)fgetc(in);
+  while (isspace(c)) {
     if (token != nullptr) {
       token->push_back(c);
     }
+    c = (char)fgetc(in);
+  }
+  if (!isspace(c) && c != EOF) {
+    ungetc(c, in);
+  }
+  return initial_pos != ftello(in);
+}
+
+bool ConsumeWhitespace(
+    istream& in, char** buffer_pos) {
+  char* initial_buffer_pos = *buffer_pos;
+  while (!in.eof() && isspace(in.peek())) {
+    **buffer_pos = (char)in.get();
+    ++(*buffer_pos);
+  }
+  return initial_buffer_pos != *buffer_pos;
+}
+
+bool ConsumeWhitespace(
+    FILE* in, char** buffer_pos) {
+  char* initial_buffer_pos = *buffer_pos;
+  char c = (char)fgetc(in);
+  while (isspace(c)) {
+    **buffer_pos = c;
+    ++(*buffer_pos);
+    c = (char)fgetc(in);
+  }
+  if (!isspace(c) && c != EOF) {
+    ungetc(c, in);
+  }
+  return initial_buffer_pos != *buffer_pos;
+}
+
+void ConsumeWhitespaceOptional(istream& in) {
+  while (!in.eof() && isspace(in.peek())) {
+    in.get();
   }
 }
 
-bool VcdLexer::ConsumeDecimalNumberStream(istream& in, string* token) {
+void ConsumeWhitespaceOptional(FILE* in) {
+  char c = (char)fgetc(in);
+  while (isspace(c)) {
+    c = (char)fgetc(in);
+  }
+  if (!isspace(c) && c != EOF) {
+    ungetc(c, in);
+  }
+}
+
+void ConsumeWhitespaceOptional(istream& in, string* token) {
+  assert(token != nullptr);
+  token->clear();
+  while (!in.eof() && isspace(in.peek())) {
+    token->push_back((char)in.get());
+  }
+}
+
+void ConsumeWhitespaceOptional(
+    FILE* in, string* token) {
+  assert(token != nullptr);
+  token->clear();
+  char c = (char)fgetc(in);
+  while (isspace(c)) {
+    token->push_back(c);
+    c = (char)fgetc(in);
+  }
+  if (!isspace(c) && c != EOF) {
+    ungetc(c, in);
+  }
+}
+
+void ConsumeWhitespaceOptional(
+    istream& in, char** buffer_pos) {
+  while (!in.eof() && isspace(in.peek())) {
+    **buffer_pos = (char)in.get();
+    ++(*buffer_pos);
+  }
+}
+
+void ConsumeWhitespaceOptional(
+    FILE* in, char** buffer_pos) {
+  char c = (char)fgetc(in);
+  while (isspace(c)) {
+    **buffer_pos = c;
+    ++(*buffer_pos);
+    c = (char)fgetc(in);
+  }
+  if (!isspace(c) && c != EOF) {
+    ungetc(c, in);
+  }
+}
+
+bool ConsumeDecimalNumber(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
     token->clear();
   }
   while (!in.eof() && isdigit(in.peek())) {
-    char c = in.get();
+    char c = (char)in.get();
     if (token != nullptr) {
       token->push_back(c);
     }
@@ -787,27 +761,45 @@ bool VcdLexer::ConsumeDecimalNumberStream(istream& in, string* token) {
   return initial_pos != in.tellg();
 }
 
-string VcdLexer::PeekNextLineFromStream(istream& in) {
-  const int MAX_LINE_CHARS = 1024;
-  char line_buffer[MAX_LINE_CHARS];
-  std::streampos initial_pos = in.tellg();
-  in.getline(line_buffer, MAX_LINE_CHARS);
-  bool buffer_full = in.fail();
-  in.clear();
-  in.seekg(initial_pos);
-  if (buffer_full) {
-    return string(line_buffer, MAX_LINE_CHARS);
-  } else {
-    return string(line_buffer);
+bool ConsumeDecimalNumber(
+    istream& in, char** buffer) {
+  char* initial_buffer_pos = *buffer;
+  while (!in.eof() && isdigit(in.peek())) {
+    **buffer = (char)in.get();
+    ++(*buffer);
   }
+  return initial_buffer_pos != *buffer;
 }
 
-string VcdLexer::PrintNextStreamLineInfo(istream& in) {
-    string stream_line = PeekNextLineFromStream(in);
-
-    std::stringstream ss;
-    ss << "Next stream line of size " << stream_line.size()
-       << " at offset " << in.tellg() << ":\n"
-       << stream_line;
-    return ss.str();
+bool ConsumeDecimalNumber(FILE* in, string* token) {
+  bool found = false;
+  char c = (char)fgetc(in);
+  while (isdigit(c)) {
+    found = true;
+    if (token != nullptr) {
+      token->push_back(c);
+    }
+    c = (char)fgetc(in);
+  }
+  if (!isdigit(c) && c != EOF) {
+    ungetc(c, in);
+  }
+  return found;
 }
+
+bool ConsumeDecimalNumber(
+    FILE* in, char** buffer) {
+  char* initial_buffer_pos = *buffer;
+  char c = (char)fgetc(in);
+  while (isdigit(c)) {
+    **buffer = c;
+    ++(*buffer);
+    c = (char)fgetc(in);
+  }
+  if (!isdigit(c) && c != EOF) {
+    ungetc(c, in);
+  }
+  return initial_buffer_pos != *buffer;
+}
+
+}  // vcd_lexer

@@ -245,8 +245,8 @@ bool ConsumeValueNoWhitespace(istream& in, string* token) {
     if (c == '0' || c == '1' || c == 'x' ||
         c == 'z' || c == 'X' || c == 'Z') {
         if (token != nullptr) {
-          token->clear();
-          token->push_back(c);
+          token->resize(1);
+          token[0] = c;
         }
         in.ignore();
         return true;
@@ -272,13 +272,13 @@ bool ConsumeValueNoWhitespace(istream& in, char** buffer_pos) {
 bool ConsumeValueNoWhitespace(
     FILE* in, string* token) {
   if (token != nullptr) {
-    token->clear();
+    token->resize(1);
   }
   char c = (char)fgetc(in);
   if (c == '0' || c == '1' || c == 'x' ||
       c == 'z' || c == 'X' || c == 'Z') {
     if (token != nullptr) {
-      token->push_back(c);
+      token[0] = c;
     }
     return true;
   }
@@ -511,8 +511,8 @@ bool ConsumeTextToEnd(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   string consumed;
   bool found = false;
-  while (!in.eof()) {
-    char c = (char)in.get();
+  char c = (char)in.get();
+  while (EOF != c) {
     consumed.push_back(c);
     if (c == '$') {
       found = ConsumeExactString("end", in);
@@ -521,6 +521,7 @@ bool ConsumeTextToEnd(istream& in, string* token) {
         break;
       }
     }
+    c = (char)in.get();
   }
   if (!found) {
     in.seekg(initial_pos);
@@ -536,8 +537,8 @@ bool ConsumeTextToEnd(
   const off_t initial_pos = ftello(in);
   string consumed;
   bool found = false;
-  while (!feof(in)) {
-    char c = (char)fgetc(in);
+  char c = (char)fgetc(in);
+  while (EOF != c) {
     consumed.push_back(c);
     if (c == '$') {
       found = ConsumeExactString("end", in);
@@ -546,6 +547,7 @@ bool ConsumeTextToEnd(
         break;
       }
     }
+    c = (char)fgetc(in);
   }
   if (!found) {
     fseeko(in, initial_pos, SEEK_SET);
@@ -576,7 +578,7 @@ string ConsumeNonWhitespace(
 bool ConsumeNonWhitespace(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
-    token->clear();
+    token->resize(0);
   }
   while (!in.eof() && !isspace(in.peek())) {
     char c = (char)in.get();
@@ -634,7 +636,7 @@ bool ConsumeNonWhitespace(
 bool ConsumeWhitespace(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
-    token->clear();
+    token->resize(0);
   }
   while (!in.eof() && isspace(in.peek())) {
     char c = (char)in.get();
@@ -648,7 +650,7 @@ bool ConsumeWhitespace(istream& in, string* token) {
 bool ConsumeWhitespace(FILE* in, string* token) {
   const off_t initial_pos = ftello(in);
   if (token != nullptr) {
-    token->clear();
+    token->resize(0);
   }
   char c = (char)fgetc(in);
   while (isspace(c)) {
@@ -699,14 +701,14 @@ void ConsumeWhitespaceOptional(FILE* in) {
   while (isspace(c)) {
     c = (char)fgetc(in);
   }
-  if (!isspace(c) && c != EOF) {
+  if (c != EOF && !isspace(c)) {
     ungetc(c, in);
   }
 }
 
 void ConsumeWhitespaceOptional(istream& in, string* token) {
   assert(token != nullptr);
-  token->clear();
+  token->resize(0);
   while (!in.eof() && isspace(in.peek())) {
     token->push_back((char)in.get());
   }
@@ -715,13 +717,13 @@ void ConsumeWhitespaceOptional(istream& in, string* token) {
 void ConsumeWhitespaceOptional(
     FILE* in, string* token) {
   assert(token != nullptr);
-  token->clear();
+  token->resize(0);
   char c = (char)fgetc(in);
   while (isspace(c)) {
     token->push_back(c);
     c = (char)fgetc(in);
   }
-  if (!isspace(c) && c != EOF) {
+  if (c != EOF && !isspace(c)) {
     ungetc(c, in);
   }
 }
@@ -742,7 +744,7 @@ void ConsumeWhitespaceOptional(
     ++(*buffer_pos);
     c = (char)fgetc(in);
   }
-  if (!isspace(c) && c != EOF) {
+  if (c != EOF && !isspace(c)) {
     ungetc(c, in);
   }
 }
@@ -750,7 +752,7 @@ void ConsumeWhitespaceOptional(
 bool ConsumeDecimalNumber(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
-    token->clear();
+    token->resize(0);
   }
   while (!in.eof() && isdigit(in.peek())) {
     char c = (char)in.get();

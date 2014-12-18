@@ -394,7 +394,7 @@ bool ConsumeSimulationTime(T& in, std::string* token) {
   const auto initial_pos = fhelp::GetPosition(in);
   std::string consumed;
   bool found = false;
-  if (!fhelp::IsEof(in) && fhelp::PeekChar(in) == '#') {
+  if (fhelp::PeekChar(in) == '#') {
     consumed.push_back(fhelp::GetChar(in));
     std::string append_token;
     if (ConsumeDecimalNumber(in, &append_token)) {
@@ -458,7 +458,7 @@ bool ConsumeScalarValueChange(T& in, std::string* token) {
     found = ConsumeIdentifierCode(in, &append_token);
     if (found) {
       if (token != nullptr) {
-        token->clear();
+        token->resize(0);
         token->push_back(c);
         token->append(append_token);
       }

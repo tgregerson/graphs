@@ -10,6 +10,7 @@
 #include <sstream>
 #include <set>
 
+#include "file_helpers.h"
 #include "vcd_lexer.h"
 #include "universal_macros.h"
 
@@ -25,33 +26,25 @@ int main(int argc, char *argv[]) {
   std::chrono::high_resolution_clock::time_point t_start =
       std::chrono::high_resolution_clock::now();
 
-  //string file_contents;
   //ifstream in_file(argv[1], ios::in | ios::binary);
-  //in_file.seekg(0, ios::end);
   FILE* in_file = fopen(argv[1], "r");
-  assert(in_file != nullptr);
-  //std::streampos end_pos = in_file.tellg();
-  fseeko(in_file, 0, SEEK_END);
-  off_t end_pos = ftello(in_file);
-  fseeko(in_file, 0, SEEK_SET);
+  assert(!fhelp::IsError(in_file));
+  const auto initial_pos = fhelp::GetPosition(in_file);
+  fhelp::SeekToEnd(in_file);
+  const auto end_pos = fhelp::GetPosition(in_file);
+  fhelp::SeekToPosition(in_file, initial_pos);
   /*
   if (end_pos > 1e9) {
     cout << "File size too big: " << end_pos << endl;
     throw std::exception();
   }
   */
-  //file_contents.resize(in_file.tellg());
-  //in_file.seekg(0, ios::beg);
-
-  /*
-  cout << "Start reading" << endl;
-
-  in_file.read(&file_contents[0], file_contents.size());
-
-  cout << "Start Lexing" << endl;
-  */
 
   vcd_parser::vcd_token::VcdDefinitions vd;
+  const long long pre_reserve = end_pos / 5;
+  cout << "Pre-reserving " << pre_reserve << " sim commands" << endl;
+  vd.simulation_commands.reserve(pre_reserve);
+
   //VcdParser::ParseVcdDefinitions(file_contents, &vd, false);
   //vcd_lexer::ConsumeVcdDefinitions(in_file, nullptr);
   vcd_parser::ParseVcdDefinitions(in_file, &vd);

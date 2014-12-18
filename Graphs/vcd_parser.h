@@ -16,6 +16,7 @@
 // Structs for parsing VCD tokens
 namespace vcd_parser {
 namespace vcd_token {
+
   struct IdentifierCode {
     std::string code;
   };
@@ -26,13 +27,13 @@ namespace vcd_token {
       RealNumber,
     };
     RadixType radix{RadixType::BinaryNumber};
-    char radix_char{'b'};
+    char radix_char;
     std::string number_string;
     IdentifierCode identifier_code;
   };
 
   struct Value {
-    char value{'0'};
+    char value;
   };
 
   struct ScalarValueChange {
@@ -51,7 +52,7 @@ namespace vcd_token {
   };
 
   struct SimulationTime {
-    unsigned long long time{0ULL};
+    unsigned long long time;
   };
 
   struct SimulationKeyword {
@@ -315,13 +316,14 @@ bool TryParseValueChangeFromInput(T& in, vcd_token::ValueChange* vc) {
 
 template <typename T>
 bool TryParseSimulationTimeFromInput(T& in, vcd_token::SimulationTime* st) {
-  // TODO Might want to use a buffer here for performance reasons.
   vcd_lexer::ConsumeWhitespaceOptional(in);
+  char* const initial_buffer_pos = vcd_lexer::global_time_buffer_.get();
+  char* buffer_pos = initial_buffer_pos;
   char c = fhelp::GetChar(in);
   if ('#' == c) {
-    std::string time;
-    if (vcd_lexer::ConsumeDecimalNumber(in, &time)) {
-      st->time = strtoull(time.c_str(), nullptr, 10);
+    if (vcd_lexer::ConsumeDecimalNumber(in, &buffer_pos)) {
+      *buffer_pos = '\0';
+      st->time = strtoull(initial_buffer_pos, nullptr, 10);
       return true;
     }
   }
@@ -363,19 +365,19 @@ bool TryParseCommentFromInput(T& in, vcd_token::Comment* comment) {
 
 template <typename T>
 bool TryParseSimulationCommandFromInput(T& in, vcd_token::SimulationCommand* sc) {
-  if (TryParseSimulationValueCommandFromInput(
+  if (TryParseValueChangeFromInput(in, &(sc->value_change))) {
+    sc->type =
+        vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand;
+  } else if (TryParseSimulationTimeFromInput(in, &(sc->simulation_time))) {
+    sc->type =
+        vcd_token::SimulationCommand::SimulationCommandType::TimeCommand;
+  } else if (TryParseSimulationValueCommandFromInput(
       in, &(sc->simulation_value_command))) {
     sc->type =
         vcd_token::SimulationCommand::SimulationCommandType::SimulationValueCommand;
   } else if (TryParseCommentFromInput(in, &(sc->comment))) {
     sc->type =
         vcd_token::SimulationCommand::SimulationCommandType::CommentCommand;
-  } else if (TryParseSimulationTimeFromInput(in, &(sc->simulation_time))) {
-    sc->type =
-        vcd_token::SimulationCommand::SimulationCommandType::TimeCommand;
-  } else if (TryParseValueChangeFromInput(in, &(sc->value_change))) {
-    sc->type =
-        vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand;
   } else {
     return false;
   }
@@ -418,10 +420,9 @@ void ParseVcdDefinitions(T& in, vcd_token::VcdDefinitions* vd) {
     }
   }
   std::cout << "---------------Starting parse sim commands----------------\n";
-  vcd_token::SimulationCommand sc;
   while (!fhelp::IsEof(in)) {
-    TryParseSimulationCommandFromInput(in, &sc);
-    vd->simulation_commands.push_back(sc);
+    vd->simulation_commands.emplace_back();
+    TryParseSimulationCommandFromInput(in, &(vd->simulation_commands.back()));
     ++cur_line;
     if (cur_line - last_print_point > 100000) {
       std::cout << "Parsed  " << fhelp::GetPosition(in) << " of "

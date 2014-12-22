@@ -454,6 +454,48 @@ void ParseDeclarationCommand(
   dc->command_text = ConsumeTextToEnd(remaining, &cur_token);
 }
 
+bool TryParseVarBody(const string& body, vcd_token::Variable* var) {
+  std::string remaining = ConsumeWhitespaceOptional(body);
+  string type_string;
+  remaining = vcd_lexer::ConsumeNonWhitespace(remaining, &type_string);
+  if (type_string == "wire") {
+    var->type = vcd_token::Variable::VariableType::WireType;
+  } else if (type_string == "reg") {
+    var->type = vcd_token::Variable::VariableType::RegType;
+    /*
+  } else if (type_string == "parameter") {
+    var->type = vcd_token::Variable::VariableType::ParameterType;
+  } else if (type_string == "integer") {
+    var->type = vcd_token::Variable::VariableType::IntegerType;
+    */
+  } else {
+    // TODO Remove and add support for other types.
+    var->type = vcd_token::Variable::VariableType::OtherType;
+  }
+  try {
+    remaining = ConsumeWhitespaceOptional(remaining);
+    string width_string;
+    remaining = ConsumeDecimalNumber(remaining, &width_string);
+    var->width = strtoull(width_string.c_str(), nullptr, 10);
+    remaining = ConsumeWhitespaceOptional(remaining);
+    remaining = ConsumeNonWhitespace(remaining, &(var->code_name));
+    remaining = ConsumeWhitespaceOptional(remaining);
+    if (var->width <= 1) {
+      ConsumeNonWhitespace(remaining, &(var->orig_name));
+    } else {
+      size_t range_end_pos = remaining.rfind(']');
+      if (range_end_pos == string::npos) {
+        cout << body << endl;
+        assert(false);
+      }
+      var->orig_name.assign(remaining.substr(0, range_end_pos + 1));
+    }
+    return true;
+  } catch (std::exception& e) {
+    return false;
+  }
+}
+
 void ParseVcdDefinitions(
     const string& token,
     vcd_token::VcdDefinitions* vd,

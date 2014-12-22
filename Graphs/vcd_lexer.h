@@ -194,6 +194,7 @@ bool ConsumeWhitespace(
 bool ConsumeWhitespace(
     FILE* in, char** buffer_pos);
 
+std::string ConsumeWhitespaceOptional(const std::string& input);
 void ConsumeWhitespaceOptional(std::istream& in);
 void ConsumeWhitespaceOptional(std::istream& in, std::string* token);
 void ConsumeWhitespaceOptional(std::istream& in, char** buffer_pos);
@@ -201,6 +202,8 @@ void ConsumeWhitespaceOptional(FILE* in);
 void ConsumeWhitespaceOptional(FILE* in, std::string* token);
 void ConsumeWhitespaceOptional(FILE* in, char** buffer_pos);
 
+std::string ConsumeDecimalNumber(
+    const std::string& in, std::string* token = nullptr);
 bool ConsumeDecimalNumber(
     std::istream& in, std::string* token = nullptr);
 bool ConsumeDecimalNumber(

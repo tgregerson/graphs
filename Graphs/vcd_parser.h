@@ -15,86 +15,197 @@
 
 // Structs for parsing VCD tokens
 namespace vcd_parser {
+
+// TODO Move entropy related stuff into separate class once mature.
+enum class FourValueLogic {
+  ZERO,
+  ONE,
+  X,
+  Z,
+};
+
+struct BitEntropyInfo {
+  void Update(char value_char, long long time_since_last_update) {
+    switch (cur_val) {
+      case FourValueLogic::ZERO:
+        num_0 += time_since_last_update;
+        break;
+      case FourValueLogic::ONE:
+        num_1 += time_since_last_update;
+        break;
+      case FourValueLogic::X:
+        num_x += time_since_last_update;
+        break;
+      case FourValueLogic::Z:
+        num_z += time_since_last_update;
+        break;
+      default: assert(false);
+    }
+    switch (value_char) {
+      case '0':
+        cur_val = FourValueLogic::ZERO;
+        break;
+      case '1':
+        cur_val = FourValueLogic::ONE;
+        break;
+      case 'x':
+      case 'X':
+        cur_val = FourValueLogic::X;
+        break;
+      case 'z':
+      case 'Z':
+        cur_val = FourValueLogic::Z;
+        break;
+      default: assert(false);
+    }
+  }
+
+  double p_0() const {
+    long long total = total_time();
+    if (total == 0) {
+      return 0.0;
+    } else {
+      return double(num_0) / double(total);
+    }
+  }
+  double p_1() const {
+    long long total = total_time();
+    if (total == 0) {
+      return 0.0;
+    } else {
+      return double(num_1) / double(total);
+    }
+  }
+  double p_x() const {
+    long long total = total_time();
+    if (total == 0) {
+      return 0.0;
+    } else {
+      return double(num_x) / double(total);
+    }
+  }
+  double p_z() const {
+    long long total = total_time();
+    if (total == 0) {
+      return 0.0;
+    } else {
+      return double(num_z) / double(total);
+    }
+  }
+
+  long long int total_time() const {
+    return num_0 + num_1 + num_x + num_z;
+  }
+
+  FourValueLogic cur_val{FourValueLogic::X};
+  long long int num_0{0};
+  long long int num_1{0};
+  long long int num_x{0};
+  long long int num_z{0};
+};
+
+struct SignalEntropyInfo {
+  long long last_update_time{0};
+  unsigned long long width;
+  std::string orig_name;
+  std::vector<BitEntropyInfo> bit_info;
+};
+
 namespace vcd_token {
 
-  struct IdentifierCode {
-    std::string code;
-  };
+struct IdentifierCode {
+  std::string code;
+};
 
-  struct VectorValueChange {
-    enum class RadixType {
-      BinaryNumber,
-      RealNumber,
-    };
-    RadixType radix{RadixType::BinaryNumber};
-    char radix_char;
-    std::string number_string;
-    IdentifierCode identifier_code;
+struct VectorValueChange {
+  enum class RadixType {
+    BinaryNumber,
+    RealNumber,
   };
+  RadixType radix;
+  char radix_char;
+  std::string number_string;
+  IdentifierCode identifier_code;
+};
 
-  struct Value {
-    char value;
-  };
+struct Value {
+  char value;
+};
 
-  struct ScalarValueChange {
-    Value value;
-    IdentifierCode identifier_code;
-  };
+struct ScalarValueChange {
+  Value value;
+  IdentifierCode identifier_code;
+};
 
-  struct ValueChange {
-    enum class ValueChangeType {
-      ScalarValueChange,
-      VectorValueChange
-    };
-    ValueChangeType type;
-    ScalarValueChange scalar_value_change;
-    VectorValueChange vector_value_change;
+struct ValueChange {
+  enum class ValueChangeType {
+    ScalarValueChange,
+    VectorValueChange
   };
+  ValueChangeType type;
+  ScalarValueChange scalar_value_change;
+  VectorValueChange vector_value_change;
+};
 
-  struct SimulationTime {
-    unsigned long long time;
-  };
+struct SimulationTime {
+  unsigned long long time;
+};
 
-  struct SimulationKeyword {
-    std::string keyword;
-  };
+struct SimulationKeyword {
+  std::string keyword;
+};
 
-  struct DeclarationKeyword {
-    std::string keyword;
-  };
+struct DeclarationKeyword {
+  std::string keyword;
+};
 
-  struct SimulationValueCommand {
-    std::string simulation_keyword;
-    std::vector<ValueChange> value_changes;
-  };
+struct SimulationValueCommand {
+  std::string simulation_keyword;
+  std::vector<ValueChange> value_changes;
+};
 
-  struct Comment {
-    std::string comment_text;
-  };
+struct Comment {
+  std::string comment_text;
+};
 
-  struct SimulationCommand {
-    enum class SimulationCommandType {
-      SimulationValueCommand,
-      CommentCommand,
-      TimeCommand,
-      ValueChangeCommand
-    };
-    SimulationCommandType type;
-    SimulationValueCommand simulation_value_command;
-    Comment comment;
-    SimulationTime simulation_time;
-    ValueChange value_change;
+struct SimulationCommand {
+  enum class SimulationCommandType {
+    SimulationValueCommand,
+    CommentCommand,
+    TimeCommand,
+    ValueChangeCommand
   };
+  SimulationCommandType type;
+  SimulationValueCommand simulation_value_command;
+  Comment comment;
+  SimulationTime simulation_time;
+  ValueChange value_change;
+};
 
-  struct DeclarationCommand {
-    DeclarationKeyword declaration_keyword;
-    std::string command_text;
+struct Variable {
+  enum class VariableType {
+    WireType,
+    RegType,
+    ParameterType,
+    IntegerType,
+    // TODO Remove and add specific support for other types
+    OtherType,
   };
+  VariableType type;
+  unsigned long long int width;
+  std::string orig_name;
+  std::string code_name;
+};
 
-  struct VcdDefinitions {
-    std::vector<DeclarationCommand> declaration_commands;
-    std::vector<SimulationCommand> simulation_commands;
-  };
+struct DeclarationCommand {
+  DeclarationKeyword declaration_keyword;
+  std::string command_text;
+};
+
+struct VcdDefinitions {
+  std::vector<DeclarationCommand> declaration_commands;
+  std::vector<SimulationCommand> simulation_commands;
+};
 }  // namespace vcd_token
 
 class VcdParser {
@@ -242,6 +353,8 @@ template <typename T>
 bool TryParseDeclarationCommandFromInput(
     T& in, vcd_token::DeclarationCommand* dc);
 
+bool TryParseVarBody(const std::string& body, vcd_token::Variable* var);
+
 template <typename T>
 void ParseVcdDefinitions(T& in, vcd_token::VcdDefinitions* vd);
 
@@ -351,7 +464,11 @@ bool TryParseSimulationValueCommandFromInput(
       svc->value_changes.push_back(vc);
     }
     vcd_lexer::ConsumeWhitespaceOptional(in);
-    assert(vcd_lexer::ConsumeExactString("$end", in));
+    if (!vcd_lexer::ConsumeExactString("$end", in) && !fhelp::IsEof(in)) {
+      std::cout << svc->simulation_keyword << std::endl;
+      std::cout << fhelp::PeekNextLine(in) << std::endl;
+      assert(false);
+    }
     return true;
   } else {
     return false;
@@ -432,6 +549,160 @@ void ParseVcdDefinitions(T& in, vcd_token::VcdDefinitions* vd) {
     vcd_lexer::ConsumeWhitespaceOptional(in);
   }
   std::cout << "---------------Done parsing----------------\n";
+}
+
+inline void ProcessValueChange(
+    const vcd_token::ValueChange& vc, long long cur_time,
+    std::unordered_map<std::string, SignalEntropyInfo>& entropy_data) {
+  if (vc.type ==
+      vcd_token::ValueChange::ValueChangeType::ScalarValueChange) {
+    SignalEntropyInfo& sig_info = entropy_data.at(
+        vc.scalar_value_change.identifier_code.code);
+    long long time_diff = cur_time - sig_info.last_update_time;
+    sig_info.last_update_time = cur_time;
+    // todo
+    if (sig_info.width == 0) {
+      return;
+    }
+    assert(sig_info.width == 1);
+    sig_info.bit_info.at(0).Update(
+        vc.scalar_value_change.value.value, time_diff);
+  } else if (vc.type ==
+              vcd_token::ValueChange::ValueChangeType::VectorValueChange){
+    const vcd_token::VectorValueChange& vvc = vc.vector_value_change;
+    assert(vvc.radix ==
+            vcd_token::VectorValueChange::RadixType::BinaryNumber);
+    SignalEntropyInfo& sig_info =
+        entropy_data.at(vvc.identifier_code.code);
+    long long time_diff = cur_time - sig_info.last_update_time;
+    sig_info.last_update_time = cur_time;
+    assert(sig_info.width > 1);
+    // According to VCD spec, extend with 0 unless X or Z.
+    char extend_char;
+    switch (vvc.number_string.at(0)) {
+      case 'x':
+      case 'X':
+        extend_char = 'X';
+        break;
+      case 'z':
+      case 'Z':
+        extend_char = 'Z';
+        break;
+      default:
+        extend_char = '0';
+        break;
+    }
+    // Need to index in reverse order since char 0 of string is msb.
+    for (size_t i = 0; i < vvc.number_string.length(); ++i) {
+      sig_info.bit_info.at(i).Update(
+          vvc.number_string.at(vvc.number_string.length() - i - 1),
+          time_diff);
+    }
+    for (size_t i = vvc.number_string.length(); i < sig_info.width; ++i) {
+      sig_info.bit_info.at(i).Update(extend_char, time_diff);
+    }
+  }
+}
+
+template <typename T>
+void EntropyFromVcdDefinitions(T& in) {
+  const auto initial_pos = fhelp::GetPosition(in);
+  fhelp::SeekToEnd(in);
+  const auto end_pos = fhelp::GetPosition(in);
+  fhelp::SeekToPosition(in, initial_pos);
+
+  std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
+
+  long long last_print_point = 0;
+  long long cur_line = 0;
+  bool definitions_done = false;
+  std::cout << "---------------Starting parse definitions--------------\n";
+  vcd_token::DeclarationCommand dc;
+  vcd_token::Variable var;
+  while (!fhelp::IsEof(in) && !definitions_done) {
+    assert(TryParseDeclarationCommandFromInput(in, &dc));
+    if (dc.declaration_keyword.keyword == "$enddefinitions") {
+      definitions_done = true;
+    } else if (dc.declaration_keyword.keyword == "$var") {
+      if (!TryParseVarBody(dc.command_text, &var)) {
+        std::cout << dc.declaration_keyword.keyword << std::endl;
+        std::cout << dc.command_text << std::endl;
+        assert(false);
+      }
+      // todo
+      /*
+      if (var.type == vcd_token::Variable::VariableType::WireType ||
+          var.type == vcd_token::Variable::VariableType::RegType) {
+          */
+      if (true) {
+        SignalEntropyInfo e_info;
+        e_info.orig_name = var.orig_name;
+        e_info.width = var.width;
+        e_info.bit_info.resize(e_info.width);
+        entropy_data.insert(make_pair(var.code_name, e_info));
+      }
+    }
+    ++cur_line;
+    if (cur_line - last_print_point > 100000) {
+      std::cout << "Parsed  " << fhelp::GetPosition(in) << " of "
+                << end_pos << " bytes." << std::endl;
+      last_print_point = cur_line;
+    }
+  }
+  std::cout << "Tracking entropy for " << entropy_data.size() << " signals\n";
+  std::cout << "---------------Starting parse sim commands----------------\n";
+  vcd_token::SimulationCommand sc;
+  long long cur_time = 0;
+  while (!fhelp::IsEof(in)) {
+    TryParseSimulationCommandFromInput(in, &sc);
+    switch (sc.type) {
+      case vcd_token::SimulationCommand::SimulationCommandType::TimeCommand:
+        cur_time = sc.simulation_time.time;
+        break;
+      case vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand:
+        ProcessValueChange(sc.value_change, cur_time, entropy_data);
+        break;
+      case vcd_token::SimulationCommand::SimulationCommandType::SimulationValueCommand:
+        for (const vcd_token::ValueChange& vc :
+             sc.simulation_value_command.value_changes) {
+          ProcessValueChange(vc, cur_time, entropy_data);
+        }
+        break;
+      default: break;
+    }
+    ++cur_line;
+    if (cur_line - last_print_point > 100000) {
+      std::cout << "Parsed  " << fhelp::GetPosition(in) << " of "
+                << end_pos << " bytes." << std::endl;
+      last_print_point = cur_line;
+    }
+    vcd_lexer::ConsumeWhitespaceOptional(in);
+  }
+
+  // Update all signals with last value.
+  for (auto entropy_pair : entropy_data) {
+    long long time_diff = cur_time - entropy_pair.second.last_update_time;
+    for (int i = 0; i < entropy_pair.second.width; ++i) {
+      entropy_pair.second.bit_info.at(i).Update('0', time_diff);
+    }
+  }
+
+  std::cout << "---------------Done parsing----------------\n";
+  std::cout << "End time: " << cur_time << std::endl;
+  for (auto entropy_pair : entropy_data) {
+    SignalEntropyInfo& sig_info = entropy_pair.second;
+    for (int i = 0; i < sig_info.width; ++i) {
+      BitEntropyInfo& bit_info = sig_info.bit_info.at(i);
+      std::cout << sig_info.orig_name << "[" << i << "] "
+                << bit_info.p_0() << " "
+                << bit_info.p_1() << " "
+                << bit_info.p_x() << " "
+                << bit_info.p_z() << " "
+                << "(" << bit_info.total_time() << ") "
+                << std::endl;
+
+    }
+  }
 }
 
 }  // namespace vcd_parser

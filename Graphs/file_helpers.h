@@ -78,7 +78,10 @@ inline void GetLine(std::istream& in, char* buffer, int length) {
   in.getline(buffer, length);
 }
 inline void GetLine(FILE* in, char* buffer, int length) {
-  fgets(buffer, length, in);
+  char* res = fgets(buffer, length, in);
+  if (res == nullptr) {
+    buffer[0] = '\0';
+  }
 }
 
 template <typename T>

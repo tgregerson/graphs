@@ -31,7 +31,7 @@ string ConsumeVcdDefinitionsString(
 
   string incremental_token;
   string temp_token;
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
 
   bool declarations_done = false;
   while (!declarations_done) {
@@ -69,7 +69,7 @@ string ConsumeDeclarationCommandString(
     const string& input, string* token) {
   string incremental_token;
   string temp_token;
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   try {
     remaining = ConsumeDeclarationKeywordString(remaining, &incremental_token);
     remaining = ConsumeTextToEnd(remaining, &temp_token);
@@ -85,7 +85,7 @@ string ConsumeDeclarationCommandString(
 
 string ConsumeSimulationCommandString(
     const string& input, string* token) {
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   try {
     return ConsumeValueChangeString(remaining, token);
   } catch (LexingException& e) {}
@@ -107,7 +107,7 @@ string ConsumeSimulationValueCommandString(
   string incremental_token;
   string temp_token;
   string ws_temp_token;
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   try {
     remaining = ConsumeSimulationKeywordString(remaining, &temp_token);
     incremental_token.append(temp_token);
@@ -139,7 +139,7 @@ string ConsumeCommentString(
     const string& input, string* token) {
   string incremental_token;
   string temp_token;
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   try {
     remaining = ConsumeExactString("$comment", remaining, &temp_token);
     remaining = ConsumeTextToEnd(remaining, &temp_token);
@@ -155,7 +155,7 @@ string ConsumeCommentString(
 
 string ConsumeDeclarationKeywordString(
     const string& input, string* token) {
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   try {
     return ConsumeExactString("$var", remaining, token);
   } catch (LexingException& e) {}
@@ -186,7 +186,7 @@ string ConsumeDeclarationKeywordString(
 
 string ConsumeSimulationKeywordString(
     const string& input, string* token) {
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   try {
     return ConsumeExactString("$dumpall", remaining, token);
   } catch (LexingException& e) {}
@@ -205,7 +205,7 @@ string ConsumeSimulationKeywordString(
 
 string ConsumeSimulationTimeString(
     const string& input, string* token) {
-  string remaining = StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   if (remaining.size() < 2 || remaining[0] != '#') {
     throw LexingException("ConsumeSimulationTime: ");
   } else {
@@ -327,8 +327,7 @@ string ConsumeScalarValueChangeString(
   string incremental_token;
   string temp_token;
   try {
-    remaining =
-        StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+    string remaining = ConsumeWhitespaceOptional(input);
     remaining = ConsumeValueNoWhitespaceString(remaining, &temp_token);
     incremental_token.append(temp_token);
     remaining = ConsumeIdentifierCodeString(remaining, &temp_token);
@@ -345,8 +344,7 @@ string ConsumeScalarValueChangeString(
 string ConsumeBinaryVectorValueChangeString(
     const string& input, string* token) {
   const string fname = "ConsumeBinaryVectorValueChange: ";
-  string remaining =
-      StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   if (remaining.empty() ||
       (remaining[0] != 'b' && remaining[0] != 'B')) {
     throw LexingException(string(fname) + "Invalid starting char");
@@ -416,8 +414,7 @@ string ConsumeIdentifierCodeString(
 string ConsumeExactString(
     const string& str, const string& input, string* token) {
   bool failed = false;
-  string remaining =
-      StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   if (str.length() > input.length()) {
     failed = true;
   } else {
@@ -560,8 +557,7 @@ bool ConsumeTextToEnd(
 
 string ConsumeNonWhitespace(
     const string& input, string* token) {
-  string remaining =
-      StructuralNetlistLexer::ConsumeWhitespaceIfPresent(input);
+  string remaining = ConsumeWhitespaceOptional(input);
   if (remaining.empty()) {
     throw LexingException("ConsumeNonWhitespace");
   }
@@ -690,6 +686,16 @@ bool ConsumeWhitespace(
   return initial_buffer_pos != *buffer_pos;
 }
 
+string ConsumeWhitespaceOptional(const string& input) {
+  size_t i;
+  for (i = 0; i < input.size(); ++i) {
+    if (!isspace(input[i])) {
+      break;
+    }
+  }
+  return input.substr(i, string::npos);
+}
+
 void ConsumeWhitespaceOptional(istream& in) {
   while (!in.eof() && isspace(in.peek())) {
     in.get();
@@ -747,6 +753,19 @@ void ConsumeWhitespaceOptional(
   if (c != EOF && !isspace(c)) {
     ungetc(c, in);
   }
+}
+
+string ConsumeDecimalNumber(const string& in, string* token) {
+  size_t i;
+  for (i = 0; i < in.size(); ++i) {
+    if (!isdigit(in[i])) {
+      break;
+    }
+  }
+  if (i < in.size() && token != nullptr) {
+    token->assign(in.substr(0, i));
+  }
+  return in.substr(i, string::npos);
 }
 
 bool ConsumeDecimalNumber(istream& in, string* token) {

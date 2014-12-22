@@ -41,13 +41,16 @@ int main(int argc, char *argv[]) {
   */
 
   vcd_parser::vcd_token::VcdDefinitions vd;
+  /*
   const long long pre_reserve = end_pos / 5;
   cout << "Pre-reserving " << pre_reserve << " sim commands" << endl;
   vd.simulation_commands.reserve(pre_reserve);
+  */
 
   //VcdParser::ParseVcdDefinitions(file_contents, &vd, false);
   //vcd_lexer::ConsumeVcdDefinitions(in_file, nullptr);
-  vcd_parser::ParseVcdDefinitions(in_file, &vd);
+  //vcd_parser::ParseVcdDefinitions(in_file, &vd);
+  vcd_parser::EntropyFromVcdDefinitions(in_file);
 
   cout << "Done processing " << argv[1] << ". Bye!" << endl;
 

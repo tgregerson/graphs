@@ -18,8 +18,8 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
 
-  if (argc != 2) {
-    cout << "Usage: vcd_parser vcd_file" << endl;
+  if (argc != 2 && argc != 3) {
+    cout << "Usage: vcd_parser vcd_file [output_file]" << endl;
     exit(1);
   }
 
@@ -29,6 +29,15 @@ int main(int argc, char *argv[]) {
   //ifstream in_file(argv[1], ios::in | ios::binary);
   FILE* in_file = fopen(argv[1], "r");
   assert(!fhelp::IsError(in_file));
+
+  std::ofstream outfile;
+  if (argc == 3) {
+    outfile.open(argv[2]);
+    assert(outfile.is_open());
+  }
+
+  std::ostream& os = (outfile.is_open()) ? outfile : std::cout;
+
   const auto initial_pos = fhelp::GetPosition(in_file);
   fhelp::SeekToEnd(in_file);
   const auto end_pos = fhelp::GetPosition(in_file);
@@ -50,7 +59,7 @@ int main(int argc, char *argv[]) {
   //VcdParser::ParseVcdDefinitions(file_contents, &vd, false);
   //vcd_lexer::ConsumeVcdDefinitions(in_file, nullptr);
   //vcd_parser::ParseVcdDefinitions(in_file, &vd);
-  vcd_parser::EntropyFromVcdDefinitions(in_file);
+  vcd_parser::EntropyFromVcdDefinitions(in_file, os);
 
   cout << "Done processing " << argv[1] << ". Bye!" << endl;
 

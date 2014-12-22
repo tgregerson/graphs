@@ -4,6 +4,7 @@
 #include <istream>
 #include <fstream>
 #include <map>
+#include <ostream>
 #include <set>
 #include <string>
 #include <utility>
@@ -184,12 +185,23 @@ struct SimulationCommand {
 
 struct Variable {
   enum class VariableType {
-    WireType,
-    RegType,
-    ParameterType,
+    EventType,
     IntegerType,
-    // TODO Remove and add specific support for other types
-    OtherType,
+    ParameterType,
+    RealType,
+    RegType,
+    Supply0Type,
+    Supply1Type,
+    TimeType,
+    TriType,
+    TriandType,
+    TriorType,
+    TriregType,
+    Tri0Type,
+    Tri1Type,
+    WandType,
+    WireType,
+    WorType,
   };
   VariableType type;
   unsigned long long int width;
@@ -207,72 +219,6 @@ struct VcdDefinitions {
   std::vector<SimulationCommand> simulation_commands;
 };
 }  // namespace vcd_token
-
-class VcdParser {
- public:
-  VcdParser(const std::string& vcd_filename,
-            const std::set<std::string>& signals)
-    : vcd_filename_(vcd_filename), raw_monitored_signals_(signals) {
-    for (const std::string& signal : raw_monitored_signals_) {
-      name_fixed_monitored_signals_.insert(ConvertToVcdSignalName(signal));
-    }
-  }
-
-
-  // Parses input VCD file. Parses nets in 'signals'. Writes status messages
-  // to cout if 'echo_status'.
-  void Parse(bool echo_status);
-
-  static void WriteDumpVars(const std::string& signal_filename,
-                            const std::string& output_filename,
-                            const std::string& scope);
-
- private:
-  void SkipToEndToken(std::ifstream& input_file);
-
-  void ParseScope(std::ifstream& input_file,
-                  const std::string& parent_scope);
-
-  void ParseVar(std::ifstream& input_file);
-
-  long long ParseDumpAll(std::ifstream& input_file);
-
-  void PrintStats();
-
-  void CheckSignalsExistOrDie();
-
-  // Converts a signal name to the format used by the VCD file. Bit selects are
-  // removed and stored in the second part of the pair. If the signal name was
-  // escaped, removes the leading '\\' and the trailing space.
-  std::pair<std::string, int> ConvertToVcdSignalName(
-      const std::string& raw_signal_name);
-
-  // Removes the leading '\' character that is present in signal names, but
-  // not printed in var names by ModelSim.
-  static std::string StripLeadingEscapeChar(const std::string& str);
-
-  const std::string vcd_filename_;
-
-  bool echo_status_;
-  std::map<std::pair<std::string, int>, std::string>
-      modified_signal_name_to_identifier_code_;
-  std::unordered_map<std::string, std::vector<char>> identifier_code_to_values_;
-
-  // These are the signals that were requested for monitoring using their raw
-  // names from the parsed verilog file. VCD does not properly support escaped
-  // variable names, so these names may need to be modified to match the
-  // identifiers used in the VCD.
-  std::set<std::string> raw_monitored_signals_;
-
-  // Contains the monitored signals, with escaped signal names modified to
-  // match the requirements of the VCD format. Bit selects are removed from
-  // the name and included in the second element of the pair.
-  std::set<std::pair<std::string, int>> name_fixed_monitored_signals_;
-
-  std::set<std::string> monitored_identifier_codes_;
-
-  std::set<std::pair<std::string, int>> all_vcd_identifier_names_;
-};
 
 void ParseIdentifierCode(const std::string& token,
                          vcd_token::IdentifierCode* identifier_code,
@@ -553,22 +499,27 @@ void ParseVcdDefinitions(T& in, vcd_token::VcdDefinitions* vd) {
 
 inline void ProcessValueChange(
     const vcd_token::ValueChange& vc, long long cur_time,
-    std::unordered_map<std::string, SignalEntropyInfo>& entropy_data) {
+    std::unordered_map<std::string, SignalEntropyInfo>& entropy_data,
+    const std::unordered_set<std::string>& ignored_codes) {
   if (vc.type ==
       vcd_token::ValueChange::ValueChangeType::ScalarValueChange) {
+    if (ignored_codes.find(vc.scalar_value_change.identifier_code.code) !=
+        ignored_codes.end()) {
+      return;
+    }
     SignalEntropyInfo& sig_info = entropy_data.at(
         vc.scalar_value_change.identifier_code.code);
     long long time_diff = cur_time - sig_info.last_update_time;
     sig_info.last_update_time = cur_time;
-    // todo
-    if (sig_info.width == 0) {
-      return;
-    }
     assert(sig_info.width == 1);
     sig_info.bit_info.at(0).Update(
         vc.scalar_value_change.value.value, time_diff);
   } else if (vc.type ==
               vcd_token::ValueChange::ValueChangeType::VectorValueChange){
+    if (ignored_codes.find(vc.vector_value_change.identifier_code.code) !=
+        ignored_codes.end()) {
+      return;
+    }
     const vcd_token::VectorValueChange& vvc = vc.vector_value_change;
     assert(vvc.radix ==
             vcd_token::VectorValueChange::RadixType::BinaryNumber);
@@ -605,13 +556,14 @@ inline void ProcessValueChange(
 }
 
 template <typename T>
-void EntropyFromVcdDefinitions(T& in) {
+void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
   const auto initial_pos = fhelp::GetPosition(in);
   fhelp::SeekToEnd(in);
   const auto end_pos = fhelp::GetPosition(in);
   fhelp::SeekToPosition(in, initial_pos);
 
   std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
+  std::unordered_set<std::string> ignored_codes;
 
   long long last_print_point = 0;
   long long cur_line = 0;
@@ -629,23 +581,44 @@ void EntropyFromVcdDefinitions(T& in) {
         std::cout << dc.command_text << std::endl;
         assert(false);
       }
-      // todo
-      /*
-      if (var.type == vcd_token::Variable::VariableType::WireType ||
-          var.type == vcd_token::Variable::VariableType::RegType) {
-          */
-      if (true) {
-        SignalEntropyInfo e_info;
-        e_info.orig_name = var.orig_name;
-        e_info.width = var.width;
-        e_info.bit_info.resize(e_info.width);
-        entropy_data.insert(make_pair(var.code_name, e_info));
+      SignalEntropyInfo e_info;
+      switch (var.type) {
+        // Net types
+        case vcd_token::Variable::VariableType::WireType:
+        case vcd_token::Variable::VariableType::RegType:
+        case vcd_token::Variable::VariableType::Supply0Type:
+        case vcd_token::Variable::VariableType::Supply1Type:
+        case vcd_token::Variable::VariableType::TriType:
+        case vcd_token::Variable::VariableType::Tri0Type:
+        case vcd_token::Variable::VariableType::Tri1Type:
+        case vcd_token::Variable::VariableType::TriandType:
+        case vcd_token::Variable::VariableType::TriorType:
+        case vcd_token::Variable::VariableType::TriregType:
+        case vcd_token::Variable::VariableType::WandType:
+        case vcd_token::Variable::VariableType::WorType:
+          e_info.orig_name = var.orig_name;
+          e_info.width = var.width;
+          e_info.bit_info.resize(e_info.width);
+          entropy_data.insert(make_pair(var.code_name, e_info));
+          break;
+        // Non-net recognized types
+        case vcd_token::Variable::VariableType::EventType:
+        case vcd_token::Variable::VariableType::IntegerType:
+        case vcd_token::Variable::VariableType::ParameterType:
+        case vcd_token::Variable::VariableType::RealType:
+        case vcd_token::Variable::VariableType::TimeType:
+          ignored_codes.insert(var.code_name);
+          break;
+        default:
+          assert(false);
+          break;
       }
     }
     ++cur_line;
     if (cur_line - last_print_point > 100000) {
-      std::cout << "Parsed  " << fhelp::GetPosition(in) << " of "
-                << end_pos << " bytes." << std::endl;
+      std::cout << "Parsed  "
+                << (fhelp::GetPosition(in) >> 20) << " of "
+                << (end_pos >> 20) << " MB." << std::endl;
       last_print_point = cur_line;
     }
   }
@@ -654,26 +627,31 @@ void EntropyFromVcdDefinitions(T& in) {
   vcd_token::SimulationCommand sc;
   long long cur_time = 0;
   while (!fhelp::IsEof(in)) {
-    TryParseSimulationCommandFromInput(in, &sc);
+    if (!TryParseSimulationCommandFromInput(in, &sc)) {
+      std::cout << "Done processing simulations" << std::endl;
+      std::cout << fhelp::PeekNextLine(in);
+      break;
+    }
     switch (sc.type) {
       case vcd_token::SimulationCommand::SimulationCommandType::TimeCommand:
         cur_time = sc.simulation_time.time;
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand:
-        ProcessValueChange(sc.value_change, cur_time, entropy_data);
+        ProcessValueChange(sc.value_change, cur_time, entropy_data, ignored_codes);
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::SimulationValueCommand:
         for (const vcd_token::ValueChange& vc :
              sc.simulation_value_command.value_changes) {
-          ProcessValueChange(vc, cur_time, entropy_data);
+          ProcessValueChange(vc, cur_time, entropy_data, ignored_codes);
         }
         break;
       default: break;
     }
     ++cur_line;
-    if (cur_line - last_print_point > 100000) {
-      std::cout << "Parsed  " << fhelp::GetPosition(in) << " of "
-                << end_pos << " bytes." << std::endl;
+    if (cur_line - last_print_point > 10000000ULL) {
+      std::cout << "Parsed  "
+                << (fhelp::GetPosition(in) >> 20) << " of "
+                << (end_pos >> 20) << " MB." << std::endl;
       last_print_point = cur_line;
     }
     vcd_lexer::ConsumeWhitespaceOptional(in);
@@ -693,14 +671,13 @@ void EntropyFromVcdDefinitions(T& in) {
     SignalEntropyInfo& sig_info = entropy_pair.second;
     for (int i = 0; i < sig_info.width; ++i) {
       BitEntropyInfo& bit_info = sig_info.bit_info.at(i);
-      std::cout << sig_info.orig_name << "[" << i << "] "
-                << bit_info.p_0() << " "
-                << bit_info.p_1() << " "
-                << bit_info.p_x() << " "
-                << bit_info.p_z() << " "
-                << "(" << bit_info.total_time() << ") "
-                << std::endl;
-
+      os << sig_info.orig_name << "[" << i << "] "
+         << bit_info.p_0() << " "
+         << bit_info.p_1() << " "
+         << bit_info.p_x() << " "
+         << bit_info.p_z() << " "
+         << "(" << bit_info.total_time() << ") "
+         << std::endl;
     }
   }
 }

@@ -55,7 +55,7 @@ class FunctionalNode {
         named_output_connections.at(output_name).connection_bit_names;
     for (size_t i = 0; i < bit_names.size(); ++i) {
       if (bit_names[i] == wire_name) {
-        return ComputeProbabilityOne(output_name, i, wires, nodes);
+        return ComputeProbabilityOne(output_name, (int)i, wires, nodes);
       }
     }
     throw std::exception();

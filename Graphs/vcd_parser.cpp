@@ -179,42 +179,42 @@ void ParseDeclarationCommand(
   dc->command_text = ConsumeTextToEnd(remaining, &cur_token);
 }
 
-bool TryParseVarBody(const string& body, vcd_token::Variable* var) {
+bool TryParseVarBody(const string& body, vcd_token::VariableDeclaration* var) {
   std::string remaining = ConsumeWhitespaceOptional(body);
   string type_string;
   remaining = vcd_lexer::ConsumeNonWhitespace(remaining, &type_string);
   if (type_string == "wire") {
-    var->type = vcd_token::Variable::VariableType::WireType;
+    var->type = vcd_token::VariableDeclaration::VariableType::WireType;
   } else if (type_string == "reg") {
-    var->type = vcd_token::Variable::VariableType::RegType;
+    var->type = vcd_token::VariableDeclaration::VariableType::RegType;
   } else if (type_string == "event") {
-    var->type = vcd_token::Variable::VariableType::EventType;
+    var->type = vcd_token::VariableDeclaration::VariableType::EventType;
   } else if (type_string == "integer") {
-    var->type = vcd_token::Variable::VariableType::IntegerType;
+    var->type = vcd_token::VariableDeclaration::VariableType::IntegerType;
   } else if (type_string == "parameter") {
-    var->type = vcd_token::Variable::VariableType::ParameterType;
+    var->type = vcd_token::VariableDeclaration::VariableType::ParameterType;
   } else if (type_string == "real") {
-    var->type = vcd_token::Variable::VariableType::RealType;
+    var->type = vcd_token::VariableDeclaration::VariableType::RealType;
   } else if (type_string == "supply0") {
-    var->type = vcd_token::Variable::VariableType::Supply0Type;
+    var->type = vcd_token::VariableDeclaration::VariableType::Supply0Type;
   } else if (type_string == "supply1") {
-    var->type = vcd_token::Variable::VariableType::Supply1Type;
+    var->type = vcd_token::VariableDeclaration::VariableType::Supply1Type;
   } else if (type_string == "time") {
-    var->type = vcd_token::Variable::VariableType::TimeType;
+    var->type = vcd_token::VariableDeclaration::VariableType::TimeType;
   } else if (type_string == "tri") {
-    var->type = vcd_token::Variable::VariableType::TriType;
+    var->type = vcd_token::VariableDeclaration::VariableType::TriType;
   } else if (type_string == "triand") {
-    var->type = vcd_token::Variable::VariableType::TriandType;
+    var->type = vcd_token::VariableDeclaration::VariableType::TriandType;
   } else if (type_string == "trior") {
-    var->type = vcd_token::Variable::VariableType::TriorType;
+    var->type = vcd_token::VariableDeclaration::VariableType::TriorType;
   } else if (type_string == "tri0") {
-    var->type = vcd_token::Variable::VariableType::Tri0Type;
+    var->type = vcd_token::VariableDeclaration::VariableType::Tri0Type;
   } else if (type_string == "tri1") {
-    var->type = vcd_token::Variable::VariableType::Tri1Type;
+    var->type = vcd_token::VariableDeclaration::VariableType::Tri1Type;
   } else if (type_string == "wand") {
-    var->type = vcd_token::Variable::VariableType::WandType;
+    var->type = vcd_token::VariableDeclaration::VariableType::WandType;
   } else if (type_string == "wor") {
-    var->type = vcd_token::Variable::VariableType::WorType;
+    var->type = vcd_token::VariableDeclaration::VariableType::WorType;
   } else {
     cout << type_string << endl;
     assert(false);
@@ -228,6 +228,10 @@ bool TryParseVarBody(const string& body, vcd_token::Variable* var) {
     remaining = ConsumeNonWhitespace(remaining, &(var->code_name));
     remaining = ConsumeWhitespaceOptional(remaining);
     remaining = ConsumeNonWhitespace(remaining, &(var->orig_name));
+    if (var->orig_name.at(0) == '\\') {
+      // Escaped identifier must end in a space.
+      var->orig_name.push_back(' ');
+    }
     remaining = ConsumeWhitespaceOptional(remaining);
     try {
       ConsumeExactString("$end", remaining);
@@ -235,7 +239,19 @@ bool TryParseVarBody(const string& body, vcd_token::Variable* var) {
     } catch (std::exception& e) {
       string bit_range;
       remaining = ConsumeNonWhitespace(remaining, &bit_range);
-      var->orig_name.append(bit_range);
+
+      size_t range_pre = bit_range.find(':');
+      if (range_pre == string::npos) {
+        range_pre = bit_range.find('[');
+      }
+      if (range_pre == string::npos) {
+        cout << bit_range << endl;
+        assert(false);
+      }
+      string bit_low;
+      ConsumeDecimalNumber(
+          bit_range.substr(range_pre + 1, string::npos), &bit_low);
+      var->bit_low = strtoull(bit_low.c_str(), nullptr, 10);
       remaining = ConsumeWhitespaceOptional(remaining);
     }
     ConsumeExactString("$end", remaining);
@@ -243,6 +259,29 @@ bool TryParseVarBody(const string& body, vcd_token::Variable* var) {
   } catch (std::exception& e) {
     return false;
   }
+}
+
+bool TryParseScopeBody(
+    const std::string& body, vcd_token::ScopeDeclaration* sd) {
+  string remaining = ConsumeWhitespaceOptional(body);
+  string type_str;
+  remaining = ConsumeNonWhitespace(remaining, &type_str);
+  if (type_str == "begin") {
+    sd->type = vcd_token::ScopeDeclaration::ScopeType::BeginType;
+  } else if (type_str == "fork") {
+    sd->type = vcd_token::ScopeDeclaration::ScopeType::ForkType;
+  } else if (type_str == "function") {
+    sd->type = vcd_token::ScopeDeclaration::ScopeType::FunctionType;
+  } else if (type_str == "module") {
+    sd->type = vcd_token::ScopeDeclaration::ScopeType::ModuleType;
+  } else if (type_str == "task") {
+    sd->type = vcd_token::ScopeDeclaration::ScopeType::TaskType;
+  } else {
+    return false;
+  }
+  remaining = ConsumeWhitespaceOptional(remaining);
+  ConsumeNonWhitespace(remaining, &(sd->identifier));
+  return true;
 }
 
 void ParseVcdDefinitions(

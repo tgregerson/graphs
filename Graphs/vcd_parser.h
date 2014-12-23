@@ -106,8 +106,9 @@ struct BitEntropyInfo {
 };
 
 struct SignalEntropyInfo {
-  long long last_update_time{0};
+  unsigned long long last_update_time{0};
   unsigned long long width;
+  unsigned long long bit_low{0};
   std::string orig_name;
   std::vector<BitEntropyInfo> bit_info;
 };
@@ -183,7 +184,19 @@ struct SimulationCommand {
   ValueChange value_change;
 };
 
-struct Variable {
+struct ScopeDeclaration {
+  enum class ScopeType {
+    BeginType,
+    ForkType,
+    FunctionType,
+    ModuleType,
+    TaskType,
+  };
+  ScopeType type;
+  std::string identifier;
+};
+
+struct VariableDeclaration {
   enum class VariableType {
     EventType,
     IntegerType,
@@ -205,6 +218,7 @@ struct Variable {
   };
   VariableType type;
   unsigned long long int width;
+  unsigned long long int bit_low{0};
   std::string orig_name;
   std::string code_name;
 };
@@ -299,7 +313,11 @@ template <typename T>
 bool TryParseDeclarationCommandFromInput(
     T& in, vcd_token::DeclarationCommand* dc);
 
-bool TryParseVarBody(const std::string& body, vcd_token::Variable* var);
+bool TryParseVarBody(
+    const std::string& body, vcd_token::VariableDeclaration* var);
+
+bool TryParseScopeBody(
+    const std::string& body, vcd_token::ScopeDeclaration* sd);
 
 template <typename T>
 void ParseVcdDefinitions(T& in, vcd_token::VcdDefinitions* vd);
@@ -555,12 +573,28 @@ inline void ProcessValueChange(
   }
 }
 
+inline void UpdateDownScope(std::vector<std::string>& cur_scope,
+                            const std::string& new_scope) {
+  cur_scope.push_back(new_scope);
+}
+
+inline void UpdateUpScope(std::vector<std::string>& cur_scope) {
+  assert(!cur_scope.empty());
+  cur_scope.pop_back();
+}
+
 template <typename T>
 void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
   const auto initial_pos = fhelp::GetPosition(in);
   fhelp::SeekToEnd(in);
   const auto end_pos = fhelp::GetPosition(in);
+  const auto end_pos_mb = end_pos >> 20;
   fhelp::SeekToPosition(in, initial_pos);
+
+  // todo parameter
+  const long long max_mb = -1;
+  const size_t omit_scope_levels = 2;
+  const size_t max_depth = -1;
 
   std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
   std::unordered_set<std::string> ignored_codes;
@@ -570,7 +604,8 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
   bool definitions_done = false;
   std::cout << "---------------Starting parse definitions--------------\n";
   vcd_token::DeclarationCommand dc;
-  vcd_token::Variable var;
+  vcd_token::VariableDeclaration var;
+  std::vector<std::string> cur_scope;
   while (!fhelp::IsEof(in) && !definitions_done) {
     assert(TryParseDeclarationCommandFromInput(in, &dc));
     if (dc.declaration_keyword.keyword == "$enddefinitions") {
@@ -584,41 +619,57 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
       SignalEntropyInfo e_info;
       switch (var.type) {
         // Net types
-        case vcd_token::Variable::VariableType::WireType:
-        case vcd_token::Variable::VariableType::RegType:
-        case vcd_token::Variable::VariableType::Supply0Type:
-        case vcd_token::Variable::VariableType::Supply1Type:
-        case vcd_token::Variable::VariableType::TriType:
-        case vcd_token::Variable::VariableType::Tri0Type:
-        case vcd_token::Variable::VariableType::Tri1Type:
-        case vcd_token::Variable::VariableType::TriandType:
-        case vcd_token::Variable::VariableType::TriorType:
-        case vcd_token::Variable::VariableType::TriregType:
-        case vcd_token::Variable::VariableType::WandType:
-        case vcd_token::Variable::VariableType::WorType:
-          e_info.orig_name = var.orig_name;
-          e_info.width = var.width;
-          e_info.bit_info.resize(e_info.width);
-          entropy_data.insert(make_pair(var.code_name, e_info));
-          break;
+        case vcd_token::VariableDeclaration::VariableType::WireType:
+        case vcd_token::VariableDeclaration::VariableType::RegType:
+        case vcd_token::VariableDeclaration::VariableType::Supply0Type:
+        case vcd_token::VariableDeclaration::VariableType::Supply1Type:
+        case vcd_token::VariableDeclaration::VariableType::TriType:
+        case vcd_token::VariableDeclaration::VariableType::Tri0Type:
+        case vcd_token::VariableDeclaration::VariableType::Tri1Type:
+        case vcd_token::VariableDeclaration::VariableType::TriandType:
+        case vcd_token::VariableDeclaration::VariableType::TriorType:
+        case vcd_token::VariableDeclaration::VariableType::TriregType:
+        case vcd_token::VariableDeclaration::VariableType::WandType:
+        case vcd_token::VariableDeclaration::VariableType::WorType:
+          // Do not track entropy for signals exceeding max depth.
+          if (max_depth < 0 || cur_scope.size() <= max_depth) {
+            e_info.orig_name.clear();
+            for (size_t scope_level = omit_scope_levels;
+                scope_level < cur_scope.size(); ++scope_level) {
+              e_info.orig_name.append(cur_scope[scope_level] + ".");
+            }
+            e_info.orig_name.append(var.orig_name);
+            e_info.width = var.width;
+            e_info.bit_low = var.bit_low;
+            e_info.bit_info.resize(e_info.width);
+            entropy_data.insert(make_pair(var.code_name, e_info));
+            break;
+          }
+        // Fall-through intended
         // Non-net recognized types
-        case vcd_token::Variable::VariableType::EventType:
-        case vcd_token::Variable::VariableType::IntegerType:
-        case vcd_token::Variable::VariableType::ParameterType:
-        case vcd_token::Variable::VariableType::RealType:
-        case vcd_token::Variable::VariableType::TimeType:
+        case vcd_token::VariableDeclaration::VariableType::EventType:
+        case vcd_token::VariableDeclaration::VariableType::IntegerType:
+        case vcd_token::VariableDeclaration::VariableType::ParameterType:
+        case vcd_token::VariableDeclaration::VariableType::RealType:
+        case vcd_token::VariableDeclaration::VariableType::TimeType:
           ignored_codes.insert(var.code_name);
           break;
         default:
           assert(false);
           break;
       }
+    } else if (dc.declaration_keyword.keyword == "$scope") {
+      vcd_token::ScopeDeclaration sd;
+      assert(TryParseScopeBody(dc.command_text, &sd));
+      UpdateDownScope(cur_scope, sd.identifier);
+    } else if (dc.declaration_keyword.keyword == "$upscope") {
+      UpdateUpScope(cur_scope);
     }
     ++cur_line;
     if (cur_line - last_print_point > 100000) {
       std::cout << "Parsed  "
                 << (fhelp::GetPosition(in) >> 20) << " of "
-                << (end_pos >> 20) << " MB." << std::endl;
+                << end_pos_mb << " MB." << std::endl;
       last_print_point = cur_line;
     }
   }
@@ -649,34 +700,42 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
     }
     ++cur_line;
     if (cur_line - last_print_point > 10000000ULL) {
-      std::cout << "Parsed  "
-                << (fhelp::GetPosition(in) >> 20) << " of "
-                << (end_pos >> 20) << " MB." << std::endl;
+      long long pos_mb = fhelp::GetPosition(in) >> 20;
+      std::cout << "Parsed  " << pos_mb << " of "
+                << end_pos_mb << " MB." << std::endl;
       last_print_point = cur_line;
+      if (max_mb > 0 && pos_mb >= max_mb) {
+        std::cout << "Finishing early due to file size\n";
+        break;
+      }
     }
     vcd_lexer::ConsumeWhitespaceOptional(in);
   }
 
+  std::cout << "---------------Done parsing----------------\n";
+  std::cout << "End time: " << cur_time << std::endl;
+
   // Update all signals with last value.
-  for (auto entropy_pair : entropy_data) {
+  for (auto& entropy_pair : entropy_data) {
     long long time_diff = cur_time - entropy_pair.second.last_update_time;
     for (int i = 0; i < entropy_pair.second.width; ++i) {
       entropy_pair.second.bit_info.at(i).Update('0', time_diff);
     }
+    entropy_pair.second.last_update_time = cur_time;
+    assert(entropy_pair.second.last_update_time != 0);
   }
 
-  std::cout << "---------------Done parsing----------------\n";
-  std::cout << "End time: " << cur_time << std::endl;
   for (auto entropy_pair : entropy_data) {
+    assert(entropy_pair.second.last_update_time != 0);
     SignalEntropyInfo& sig_info = entropy_pair.second;
     for (int i = 0; i < sig_info.width; ++i) {
       BitEntropyInfo& bit_info = sig_info.bit_info.at(i);
-      os << sig_info.orig_name << "[" << i << "] "
-         << bit_info.p_0() << " "
-         << bit_info.p_1() << " "
-         << bit_info.p_x() << " "
-         << bit_info.p_z() << " "
-         << "(" << bit_info.total_time() << ") "
+      os << sig_info.orig_name << "[" << (i + sig_info.bit_low) << "] "
+         << bit_info.num_0 << " "
+         << bit_info.num_1 << " "
+         << bit_info.num_x << " "
+         << bit_info.num_z << " "
+         //<< "(" << bit_info.total_time() << ") "
          << std::endl;
     }
   }

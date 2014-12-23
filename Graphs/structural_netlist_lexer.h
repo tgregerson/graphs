@@ -120,10 +120,9 @@ class StructuralNetlistLexer {
   static std::string ConsumeStringLiteral(const std::string& input,
                                           std::string* token);
 
-  // BitRange = \[UnbasedImmediate:UnbasedImmediate\]
+  // BitRange = \[UnbasedImmediate\] || \[UnbasedImmediate:UnbasedImmediate\]
   static std::string ConsumeBitRange(const std::string& input,
                                      std::string* token);
-
 
   // Char = any non-whitespace character
   static std::string ConsumeChar(const std::string& input,

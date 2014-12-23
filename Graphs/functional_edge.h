@@ -18,7 +18,7 @@ class FunctionalEdge {
  public:
   struct NodePortDescriptor {
     NodePortDescriptor(const std::string& inst, const std::string& port,
-                       int bh, int bl)
+                       unsigned int bh, unsigned int bl)
         : node_instance_name(inst), node_port_name(port), bit_high(bh),
           bit_low(bl) {}
     std::string node_instance_name;

@@ -526,7 +526,7 @@ void StructuralNetlistParser::PopulateFunctionalEdgePorts(
     FunctionalNode* node = node_pair.second;
     for (const auto& connection : node->named_input_connections) {
       const vector<string>& connected_bits = connection.second.connection_bit_names;
-      for (size_t bit = 0; bit < connected_bits.size(); ++bit) {
+      for (unsigned int bit = 0; bit < connected_bits.size(); ++bit) {
         FunctionalEdge* connected_wire = wires->at(connected_bits[bit]);
         FunctionalEdge* connected_edge = edges->at(connected_wire->BaseName());
         connected_wire->AddSinkPort(
@@ -539,7 +539,7 @@ void StructuralNetlistParser::PopulateFunctionalEdgePorts(
     }
     for (const auto& connection : node->named_output_connections) {
       const vector<string>& connected_bits = connection.second.connection_bit_names;
-      for (size_t bit = 0; bit < connected_bits.size(); ++bit) {
+      for (unsigned int bit = 0; bit < connected_bits.size(); ++bit) {
         FunctionalEdge* connected_wire = wires->at(connected_bits[bit]);
         FunctionalEdge* connected_edge = edges->at(connected_wire->BaseName());
         connected_wire->AddSourcePort(
@@ -557,17 +557,65 @@ void StructuralNetlistParser::PrePopulateProbabilityOnes(
     ifstream& p1_file, map<string, FunctionalEdge*>* wires) {
   string cur_line;
   string wire_name;
+  string wire_bit_select;
   double wire_p1;
+
+  unsigned long long wires_processed = 0ULL;
+  unsigned long long errors_found = 0ULL;
 
   getline(p1_file, cur_line);
   do {
     string remainder =
         StructuralNetlistLexer::ConsumeIdentifier(cur_line, &wire_name);
-    wire_p1 = stod(remainder);
-    FunctionalEdge* wire = wires->at(wire_name);
-    wire->SetProbabilityOne(wire_p1);
+    remainder =
+        StructuralNetlistLexer::ConsumeBitRange(remainder, &wire_bit_select);
+    wire_name.append(wire_bit_select);
+    string number_dec;
+    unsigned long long num_0, num_1, num_x, num_z;
+    try {
+      remainder =
+          StructuralNetlistLexer::ConsumeUnbasedImmediate(remainder, &number_dec);
+      num_0 = strtoull(number_dec.c_str(), nullptr, 10);
+      remainder =
+          StructuralNetlistLexer::ConsumeUnbasedImmediate(remainder, &number_dec);
+      num_1 = strtoull(number_dec.c_str(), nullptr, 10);
+      remainder =
+          StructuralNetlistLexer::ConsumeUnbasedImmediate(remainder, &number_dec);
+      num_x = strtoull(number_dec.c_str(), nullptr, 10);
+      remainder =
+          StructuralNetlistLexer::ConsumeUnbasedImmediate(remainder, &number_dec);
+      num_z = strtoull(number_dec.c_str(), nullptr, 10);
+    } catch (StructuralNetlistLexer::LexingException& e) {
+      string error_msg =
+          "PrePopulateProbabilityOnes: Failed to consume entropy line: " +
+          cur_line +".\nReceived exception: " + string(e.what());
+      throw StructuralNetlistLexer::LexingException(error_msg);
+    }
+    unsigned long long total = num_0 + num_1 + num_x + num_z;
+    unsigned long long adj_num_1 =
+        ((double)num_1 > (1.1 * (double)num_0)) ? num_1 + num_x + num_z : num_1;
+    wire_p1 = (double)adj_num_1 / (double)total;
+
+    try {
+      FunctionalEdge* wire = wires->at(wire_name);
+      wire->SetProbabilityOne(wire_p1);
+      ++wires_processed;
+    } catch (std::exception& e) {
+      /*
+      for (auto& wire_pair : *wires) {
+        cout << wire_pair.first << endl;
+      }
+      */
+      ++errors_found;
+      //cout << "Failed to find wire: " << wire_name << endl;
+      //cout << e.what() << endl;
+      //throw std::exception();
+    }
     getline(p1_file, cur_line);
   } while (!p1_file.eof());
+  cout << "Successfully set entropy for " << wires_processed << " of "
+       << wires->size() << " wires in netlist. Encountered "
+       << errors_found << " unrecognized wire names.\n";
 }
 
 void StructuralNetlistParser::PrintModule(const VlogModule& module) {

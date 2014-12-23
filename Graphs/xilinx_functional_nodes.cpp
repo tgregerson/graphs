@@ -434,17 +434,17 @@ double XilinxLutNode::ComputeProbabilityOne(
     }
   }
 
-  int num_addr_bits = addr_wire_p1s.size();
-  int num_addresses = 1 << num_addr_bits;
+  size_t num_addr_bits = addr_wire_p1s.size();
+  size_t num_addresses = 1 << num_addr_bits;
   double p1 = 0.0;
 
-  for (int addr = 0; addr < num_addresses; ++addr) {
+  for (size_t addr = 0; addr < num_addresses; ++addr) {
     uint64_t lut_mask = 1ULL << addr;
     if (lut_mask & init_val.second) {
       // We have a one entry in the LUT. Compute the probability that this
       // address is selected.
       double addr_p1 = 1.0;
-      for (int addr_bit = 0; addr_bit < num_addr_bits; ++addr_bit) {
+      for (size_t addr_bit = 0; addr_bit < num_addr_bits; ++addr_bit) {
         int addr_mask = 1 << addr_bit;
         double addr_bit_p1 = addr_wire_p1s.at(addr_bit);
         if (addr & addr_mask) {

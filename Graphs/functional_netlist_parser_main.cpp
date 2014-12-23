@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
   ostream& output_stream = out_file.is_open() ? out_file : cout;
 
   // Parsed lines will contain a line that terminates with a ';'.
+  cout << "-----------------Parsing Netlist--------------------\n";
   list<string> parsed_lines;
   while (v_file.good()) {
     string line;
@@ -88,6 +89,7 @@ int main(int argc, char *argv[]) {
   parsed_lines =
       parser.RawLinesToSemicolonTerminated(parsed_lines);
 
+  cout << "-----------------Populating Edges--------------------\n";
   parser.PopulateFunctionalEdges(&functional_edges, parsed_lines);
   for (auto f_edge_pair : functional_edges) {
     FunctionalEdge* edge = f_edge_pair.second;
@@ -96,9 +98,11 @@ int main(int argc, char *argv[]) {
       functional_wires.insert(make_pair(wire->IndexedName(), wire));
     }
   }
+  cout << "-----------------Populating Nodes--------------------\n";
   parser.PopulateFunctionalNodes(
       functional_edges, functional_wires, &functional_nodes, parsed_lines);
 
+  cout << "-----------------Pre-Populating Entropies--------------------\n";
   FunctionalEdge* const0 = functional_edges.at("\\<const0> ");
   const0->SetProbabilityOne(0.0);
   FunctionalEdge* const0w = functional_wires.at("\\<const0> [0]");
@@ -114,11 +118,13 @@ int main(int argc, char *argv[]) {
   parser.PopulateFunctionalEdgePorts(
       functional_nodes, &functional_edges, &functional_wires);
 
+  cout << "-----------------Computing Entropies--------------------\n";
   for (const auto& wire_pair : functional_wires) {
     FunctionalEdge* wire = wire_pair.second;
     wire->Entropy(&functional_wires, &functional_nodes);
   }
 
+  cout << "-----------------Pruning Graph--------------------\n";
   // Remove synthesis-tool-specific nets that should not be included in graph.
   set<string> blacklisted_global_nets = {
     "CLK_IBUF_BUFG[0]",
@@ -204,6 +210,7 @@ int main(int argc, char *argv[]) {
        << "% " << bin_count[BIN8_MIN] << endl;
        */
 
+  cout << "-----------------Writing NTL--------------------\n";
   // Write output in NTL format.
   for (const auto& node_pair : functional_nodes) {
     parser.PrintFunctionalNodeXNtlFormat(

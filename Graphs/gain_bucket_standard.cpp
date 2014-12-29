@@ -18,17 +18,24 @@ void GainBucketStandard::Add(GainBucketEntry entry) {
   }
 
   buckets_[bucket_index].push_front(entry);
+  /*
   assert(node_id_to_current_gain_index_.find(entry.Id()) ==
          node_id_to_current_gain_index_.end());
+         */
+  BucketContents::iterator bucket_iterator = buckets_.at(bucket_index).begin();
+  node_id_to_data_.insert(
+      make_pair(entry.Id(), NodeTrackingData(bucket_iterator, entry.GainIndex())));
+  /*
   node_id_to_current_gain_index_.insert(
       make_pair(entry.Id(), entry.GainIndex()));
-  BucketContents::iterator bucket_iterator = buckets_.at(bucket_index).begin();
   node_id_to_bucket_iterator_.insert(make_pair(entry.Id(), bucket_iterator));
+  */
 
   // Update iterator affected by insertion into bucket.
   bucket_iterator++;
   if (bucket_iterator != buckets_.at(bucket_index).end()) {
-    node_id_to_bucket_iterator_.at(bucket_iterator->Id()) = bucket_iterator;
+    //node_id_to_bucket_iterator_.at(bucket_iterator->Id()) = bucket_iterator;
+    node_id_to_data_.at(bucket_iterator->Id()).bucket_iterator = bucket_iterator;
   }
   num_entries_++;
 }
@@ -64,18 +71,18 @@ void GainBucketStandard::UpdateGains(
 }
 
 bool GainBucketStandard::HasNode(int node_id) {
-  return node_id_to_current_gain_index_.find(node_id) !=
-         node_id_to_current_gain_index_.end();
+  return node_id_to_data_.find(node_id) != node_id_to_data_.end();
 }
 
 GainBucketEntry GainBucketStandard::RemoveByNodeId(int node_id) {
-  int gain_index = node_id_to_current_gain_index_.at(node_id);
+  NodeTrackingData& ntd = node_id_to_data_.at(node_id);
+  int gain_index = ntd.current_gain_index;
   int bucket_index = gain_index + MAX_GAIN;
   BucketContents& bucket = buckets_.at(bucket_index);
   assert(!bucket.empty());
 
-  BucketContents::iterator erase_iter = node_id_to_bucket_iterator_.at(node_id);
-  GainBucketEntry entry = *erase_iter;
+  BucketContents::iterator erase_iter = ntd.bucket_iterator;
+  GainBucketEntry entry = std::move(*erase_iter);
   assert(entry.Id() == node_id);
 
   // Erase returns the new iterator for the element that follows the erased one.
@@ -83,33 +90,35 @@ GainBucketEntry GainBucketStandard::RemoveByNodeId(int node_id) {
   if (bucket.empty()) {
     occupied_buckets_by_index_.erase(bucket_index);
   }
-  node_id_to_current_gain_index_.erase(node_id);
-  node_id_to_bucket_iterator_.erase(node_id);
-  assert(node_id_to_bucket_iterator_.count(node_id) == 0);
+  node_id_to_data_.erase(node_id);
+  //assert(node_id_to_bucket_iterator_.count(node_id) == 0);
   num_entries_--;
 
   // Update the iterators before and after the erased element.
   if (next_iter != bucket.end()) {
     assert(next_iter->Id() != node_id);
-    node_id_to_bucket_iterator_.at(next_iter->Id()) = next_iter;
+    node_id_to_data_.at(next_iter->Id()).bucket_iterator = next_iter;
   }
   if (next_iter != bucket.begin()) {
     next_iter--;
     assert(next_iter->Id() != node_id);
-    node_id_to_bucket_iterator_.at(next_iter->Id()) = next_iter;
+    node_id_to_data_.at(next_iter->Id()).bucket_iterator = next_iter;
   }
 
   return entry;
 }
 
 GainBucketEntry& GainBucketStandard::GbeRefByNodeId(int node_id) {
-  int gain_index = node_id_to_current_gain_index_.at(node_id);
+  NodeTrackingData& ntd = node_id_to_data_.at(node_id);
+  /*
+  int gain_index = ntd.current_gain_index;
   int bucket_index = gain_index + MAX_GAIN;
   BucketContents& bucket = buckets_.at(bucket_index);
   assert(!bucket.empty());
 
   BucketContents::iterator iter = node_id_to_bucket_iterator_.at(node_id);
-  return *iter;
+  */
+  return *(ntd.bucket_iterator);
 }
 
 void GainBucketStandard::Print(bool condensed) const {

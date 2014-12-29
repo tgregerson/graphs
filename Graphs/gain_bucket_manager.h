@@ -14,7 +14,7 @@ class GainBucketManager {
   virtual ~GainBucketManager() {};
 
   // Selects the next node to move from the two gain buckets by returning the
-  // entry with the highest gain that does not violate balance contraints.
+  // entry with the highest gain that does not violate balance constraints.
   virtual GainBucketEntry GetNextGainBucketEntry(
       const std::vector<int>& current_balance,
       const std::vector<int>& total_weight) = 0;

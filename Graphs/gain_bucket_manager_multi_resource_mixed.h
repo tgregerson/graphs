@@ -34,6 +34,8 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
     }
     gain_bucket_a_master_ = new GainBucketStandard();
     gain_bucket_b_master_ = new GainBucketStandard();
+    temp_nodes_to_increase_gain_by_resource_.resize(num_resources_per_node_);
+    temp_nodes_to_decrease_gain_by_resource_.resize(num_resources_per_node_);
   }
 
   virtual ~GainBucketManagerMultiResourceMixed() {
@@ -149,6 +151,12 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
   std::vector<int> resource_ratio_weights_;
   std::unordered_multimap<int, int> node_id_to_resource_index_;
   std::default_random_engine random_engine_;
+
+  // Reuse data structure for performance.
+  std::vector<std::vector<int>> temp_nodes_to_increase_gain_by_resource_;
+  std::vector<std::vector<int>> temp_nodes_to_decrease_gain_by_resource_;
+  std::vector<int> temp_adjusted_weight_;
+  std::vector<int> temp_adjusted_total_weight_;
 };
 
 #endif // GAIN_BUCKET_MANAGER_MULTI_RESOURCE_MIXED_H

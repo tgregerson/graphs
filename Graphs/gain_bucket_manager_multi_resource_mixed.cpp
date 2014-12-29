@@ -505,37 +505,39 @@ int GainBucketManagerMultiResourceMixed::DetermineResourceAffinity(
 void GainBucketManagerMultiResourceMixed::UpdateGains(
     double gain_modifier, const vector<int>& nodes_to_increase_gain,
     const vector<int>& nodes_to_decrease_gain, bool moved_from_part_a) {
-  vector<vector<int>> inc;  
-  inc.resize(num_resources_per_node_);
-  vector<vector<int>> dec;  
-  dec.resize(num_resources_per_node_);
+  for (auto& v : temp_nodes_to_decrease_gain_by_resource_) {
+    v.resize(0);
+  }
+  for (auto& v : temp_nodes_to_increase_gain_by_resource_) {
+    v.resize(0);
+  }
   for (auto id : nodes_to_increase_gain) {
-    assert(node_id_to_resource_index_.count(id) != 0);
+    //assert(node_id_to_resource_index_.count(id) != 0);
     auto it_pair = node_id_to_resource_index_.equal_range(id);
     for (auto it = it_pair.first; it != it_pair.second; it++) {
-      inc[it->second].push_back(id);
+      temp_nodes_to_increase_gain_by_resource_[it->second].push_back(id);
     }
   }
   for (auto id : nodes_to_decrease_gain) {
-    assert(node_id_to_resource_index_.count(id) != 0);
+    //assert(node_id_to_resource_index_.count(id) != 0);
     auto it_pair = node_id_to_resource_index_.equal_range(id);
     for (auto it = it_pair.first; it != it_pair.second; it++) {
-      dec[it->second].push_back(id);
+      temp_nodes_to_decrease_gain_by_resource_[it->second].push_back(id);
     }
   }
   for (size_t i = 0; i < num_resources_per_node_; i++) {
-    if (!inc[i].empty()) {
+    if (!temp_nodes_to_increase_gain_by_resource_[i].empty()) {
       if (moved_from_part_a) {
-        gain_buckets_a_[i]->UpdateGains(gain_modifier, inc[i]);
+        gain_buckets_a_[i]->UpdateGains(gain_modifier, temp_nodes_to_increase_gain_by_resource_[i]);
       } else {
-        gain_buckets_b_[i]->UpdateGains(gain_modifier, inc[i]);
+        gain_buckets_b_[i]->UpdateGains(gain_modifier, temp_nodes_to_increase_gain_by_resource_[i]);
       }
     }
-    if (!dec[i].empty()) {
+    if (!temp_nodes_to_decrease_gain_by_resource_[i].empty()) {
       if (moved_from_part_a) {
-        gain_buckets_b_[i]->UpdateGains(-gain_modifier, dec[i]);
+        gain_buckets_b_[i]->UpdateGains(-gain_modifier, temp_nodes_to_decrease_gain_by_resource_[i]);
       } else {
-        gain_buckets_a_[i]->UpdateGains(-gain_modifier, dec[i]);
+        gain_buckets_a_[i]->UpdateGains(-gain_modifier, temp_nodes_to_decrease_gain_by_resource_[i]);
       }
     }
   }
@@ -587,25 +589,33 @@ void GainBucketManagerMultiResourceMixed::Print(bool condensed) const {
 double GainBucketManagerMultiResourceMixed::ImbalancePowerIfMoved(
     const vector<int>& node_weight, const vector<int>& balance,
     const vector<int>& total_weight, bool from_part_a, bool use_violator) {
-  assert(node_weight.size() == balance.size());
-  vector<int> adjusted_weight;
-  vector<int> adjusted_total_weight;
+  //assert(node_weight.size() == balance.size());
   for (size_t i = 0; i < node_weight.size(); i++) {
     int change = 2 * node_weight[i];
     if (from_part_a) {
+      /*
       adjusted_weight.push_back(balance[i] - change);
       adjusted_total_weight.push_back(total_weight[i] - change);
+      */
+      temp_adjusted_weight_[i] = balance[i] - change;
+      temp_adjusted_total_weight_[i] = total_weight[i] - change;
     } else {
+      /*
       adjusted_weight.push_back(balance[i] + change);
       adjusted_total_weight.push_back(total_weight[i] + change);
+      */
+      temp_adjusted_weight_[i] = balance[i] + change;
+      temp_adjusted_total_weight_[i] = total_weight[i] + change;
     }
   }
+  temp_adjusted_weight_.resize(node_weight.size());
+  temp_adjusted_total_weight_.resize(node_weight.size());
   if (use_violator) {
-    return ViolatorImbalancePower(adjusted_weight, adjusted_total_weight);
+    return ViolatorImbalancePower(temp_adjusted_weight_, temp_adjusted_total_weight_);
   } else {
     vector<int> max_weight_imbalance = 
         GetMaxImbalance(max_imbalance_fraction_, total_weight);
-    return ImbalancePower(adjusted_weight, max_weight_imbalance);
+    return ImbalancePower(temp_adjusted_weight_, max_weight_imbalance);
   }
 }
 

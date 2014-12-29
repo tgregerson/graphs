@@ -269,7 +269,7 @@ void PartitionEngineKlfm::ExecuteRun(
   }
 
   DLOG(DEBUG_OPT_TRACE, 1) << "Coarsening graph." << endl;
-  options_.cap_passes = true;
+  options_.cap_passes = false;
   options_.max_passes = 30;
   //CoarsenSimple(4);
   //CoarsenMaxNodeDegree(4);
@@ -596,6 +596,7 @@ void PartitionEngineKlfm::ExecutePass(
     vector<int> best_cost_balance = current_partition_balance;
     double best_cost_br_power =
         ImbalancePower(current_partition_balance, max_weight_imbalance_);
+    double pre_best_cost_br_power = best_cost_br_power;
     if (options_.use_ratio_in_partition_quality) {
       best_cost_br_power += RatioPower(options_.resource_ratio_weights,
                                        total_weight_);
@@ -628,11 +629,12 @@ void PartitionEngineKlfm::ExecutePass(
       }
     }
 
-    if (pre_best_cost <= best_cost && (nodes_moved_since_best_result.empty() ||
-        nodes_moved_since_best_result.size() ==
-            (current_partition.first.size() +
-             current_partition.second.size()))) {
-      partition_changed = false;
+    if (pre_best_cost - best_cost < (1e-10 * best_cost)) {
+      if (pre_best_cost_br_power < best_cost_br_power) {
+        partition_changed = false;
+      } else {
+        partition_changed = true;
+      }
     } else {
       partition_changed = true;
     }
@@ -1956,7 +1958,16 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
   assert(neighbor_limit >= 0);
   assert(max_nodes_per_supernode > 0);
 
-  map<int,int> node_id_to_current_supernode_index;
+  vector<int> node_id_to_current_supernode_index_v;
+  int max_id = -1;
+  for (auto node_pair : internal_node_map_) {
+    if (node_pair.first > max_id) {
+      max_id = node_pair.first;
+    }
+  }
+  node_id_to_current_supernode_index_v.resize(max_id + 1);
+
+  //map<int,int> node_id_to_current_supernode_index;
   vector<set<int>> supernode_id_sets;
 
   // The vector acts as a dynamic bitset and is used to improve the run-time
@@ -1969,8 +1980,11 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
   int insert_index = 0;
   for (auto node_pair : internal_node_map_) {
     supernode_id_sets.at(insert_index).insert(node_pair.first);
+    /*
     node_id_to_current_supernode_index.insert(
         make_pair(node_pair.first, insert_index));
+        */
+    node_id_to_current_supernode_index_v[node_pair.first] = insert_index;
     insert_index++;
   }
   supernode_indices_is_finalized.assign(supernode_id_sets.size(), false);
@@ -1984,14 +1998,14 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
   auto scanning_it = non_finalized_supernode_indices.begin();
   while (!non_finalized_supernode_indices.empty()) {
     int sn_index = *scanning_it;
-    set<int> viable_neighbor_indices;
+    unordered_set<int> viable_neighbor_indices;
     for (auto node_id : supernode_id_sets.at(sn_index)) {
       Node* seed_node = internal_node_map_.at(node_id);
       for (auto& port_pair : seed_node->ports()) {
         Edge* edge = internal_edge_map_.at(port_pair.second.external_edge_id);
         for (auto neighbor_node_id : edge->connection_ids()) {
           int neighbor_sn_index =
-              node_id_to_current_supernode_index.at(neighbor_node_id);
+              node_id_to_current_supernode_index_v.at(neighbor_node_id);
           if (neighbor_sn_index != sn_index) {
             if (!supernode_indices_is_finalized.at(neighbor_sn_index)) {
               int potential_size = supernode_id_sets.at(sn_index).size() +
@@ -2033,7 +2047,7 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
                 internal_edge_map_.at(port_pair.second.external_edge_id);
             for (auto connected_node_id : edge->connection_ids()) {
               int connected_index =
-                  node_id_to_current_supernode_index.at(connected_node_id);
+                  node_id_to_current_supernode_index_v.at(connected_node_id);
               if (connected_index == sn_index) {
                 supernode_connectivity_weight += edge->Weight();
               } else {
@@ -2467,6 +2481,11 @@ void PartitionEngineKlfm::SummarizeResults(
   SummarizeResultMetric(costs, "COST", true);
   SummarizeResultMetric(spans, "SPAN", true);
   SummarizeResultMetric(entropies, "ENTROPY", true);
+  vector<double> cost_span_ratios;
+  for (size_t i = 0; i < costs.size(); ++i) {
+    cost_span_ratios.push_back(costs.at(i) / spans.at(i));
+  }
+  SummarizeResultMetric(cost_span_ratios, "COST/SPAN", true);
 }
 
 void PartitionEngineKlfm::SummarizeResultMetric(

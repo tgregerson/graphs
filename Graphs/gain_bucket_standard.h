@@ -54,16 +54,24 @@ class GainBucketStandard : public GainBucketInterface {
   virtual int num_entries() const { return num_entries_; }
 
  private:
+  struct NodeTrackingData {
+    NodeTrackingData(BucketContents::iterator& bi, int cgi) :
+      bucket_iterator(bi), current_gain_index(cgi) {}
+    BucketContents::iterator bucket_iterator;
+    int current_gain_index;
+  };
   // Use greater to make the set sort in descending value.
   std::set<int, std::greater<int>> occupied_buckets_by_index_;
   std::vector<BucketContents> buckets_;
   // Note: gain, NOT gain offset!
-  std::unordered_map<int, int> node_id_to_current_gain_index_;
+  //std::unordered_map<int, int> node_id_to_current_gain_index_;
   // This data structure is used to accelerate finding items in a bucket.
   // Care must be taken to update it any time any operation may change or
   // invalidate an iterator to BucketContents.
-  std::unordered_map<int, BucketContents::iterator>
-      node_id_to_bucket_iterator_;
+  //std::unordered_map<int, BucketContents::iterator>
+  //    node_id_to_bucket_iterator_;
+
+  std::unordered_map<int, NodeTrackingData> node_id_to_data_;
   int num_entries_;
 
 };

@@ -48,7 +48,7 @@ bool ChacoParser::Parse(Node* top_level_graph, const char* filename) {
     cur_line.clear();
 
     // Check that the number of entries is consistent with the mode.
-    int temp_entries = line_ints.size();
+    size_t temp_entries = line_ints.size();
     if (node_weight_mode_ == USER_SPECIFIED_WEIGHT_MODE) {
       temp_entries--;
     }
@@ -113,12 +113,12 @@ bool ChacoParser::Parse(Node* top_level_graph, const char* filename) {
   // Check that the number of nodes and edges processed matches what was in the
   // header line.
   if (num_nodes_ != parsed_nodes_.size()) {
-    printf("Error: Graph file header line specified %lu nodes, but found %lu",
+    printf("Error: Graph file header line specified %u nodes, but found %lu",
            num_nodes_, parsed_nodes_.size());
     return Finish(false);
   }
   if (num_edges_ != parsed_edges_.size()) {
-    printf("Error: Graph file header line specified %lu edges, but found %lu",
+    printf("Error: Graph file header line specified %u edges, but found %lu",
            num_edges_, parsed_edges_.size());
     return Finish(false);
   }
@@ -262,11 +262,11 @@ bool ChacoParser::ParseExternalWeightFile() {
   }
   assert(!weight_file_.eof());
 
-  size_t node_num = 1;
+  unsigned int node_num = 1;
   getline(weight_file_, cur_line);
   while (!weight_file_.eof()) {
     if ((node_num % 50000) == 0) {
-      printf("Processed %lu weights\n", node_num);
+      printf("Processed %u weights\n", node_num);
     }
     if (weight_file_.bad()) {
       printf("Error while reading %s\n", weight_filename.c_str());

@@ -285,7 +285,7 @@ void RepartitionKway(int num_ways, int cur_lev, Node* graph,
     graph_copy.internal_edges().erase(edge_id);
   }
 
-  // Bipartiion all starting partitions.
+  // Bipartition all starting partitions.
   vector<PartitionSummary> all_summaries;
   for (size_t part_num = 0; part_num < starting_partitions.size(); part_num++) {
     Node* starting_graph = new Node(-1, "");
@@ -473,6 +473,7 @@ void print_usage_and_exit() {
        << "--sol-scip-format                          (default: true*)" << endl
        << "                                            *If no other sol format" << endl
        << "--sol-gurobi-format                        (default: false)" << endl
+       << "--use_entropy                              (default: false)" << endl
        << endl;
   exit(1);
 }

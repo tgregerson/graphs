@@ -270,7 +270,7 @@ void PartitionEngineKlfm::ExecuteRun(
 
   DLOG(DEBUG_OPT_TRACE, 1) << "Coarsening graph." << endl;
   options_.cap_passes = true;
-  options_.max_passes = 30;
+  options_.max_passes = 50;
   //CoarsenSimple(4);
   //CoarsenMaxNodeDegree(4);
   // TODO Make a parameter for this.

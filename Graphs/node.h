@@ -129,11 +129,11 @@ class Node {
   }
 
   int num_resources() const {
-    return SelectedWeightVector().size();
+    return (int)(SelectedWeightVector().size());
   }
 
   int num_personalities() const {
-    return weight_vectors_.size();
+    return (int)(weight_vectors_.size());
   }
 
   // 'SetSelectedWeightVector' only changes the weight vector. The previous

@@ -146,6 +146,24 @@ GainBucketEntry& GainBucketManagerSingleResource::GbeRefByNodeId(int node_id) {
   }
 }
 
+GainBucketEntry* GainBucketManagerSingleResource::GbePtrByNodeId(int node_id) {
+  if (gain_bucket_a_->HasNode(node_id)) {
+    return gain_bucket_a_->GbePtrByNodeId(node_id);
+  } else {
+    return gain_bucket_b_->GbePtrByNodeId(node_id);
+  }
+}
+
 bool GainBucketManagerSingleResource::HasNode(int node_id) {
   return gain_bucket_a_->HasNode(node_id) || gain_bucket_b_->HasNode(node_id);
+}
+
+void GainBucketManagerSingleResource::TouchNodes(const vector<int>& node_ids) {
+  for (int id : node_ids) {
+    if (gain_bucket_a_->HasNode(id)) {
+      gain_bucket_a_->Touch(id);
+    } else {
+      gain_bucket_b_->Touch(id);
+    }
+  }
 }

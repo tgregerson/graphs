@@ -4,7 +4,7 @@
 
 using namespace std;
 
-void GainBucketStandard::Add(GainBucketEntry entry) {
+void GainBucketStandard::Add(const GainBucketEntry& entry) {
   // Quantize floating point gain values into an integer
   int bucket_index = entry.GainIndex() + MAX_GAIN;
   assert_b(bucket_index >= 0) {
@@ -40,12 +40,35 @@ void GainBucketStandard::Add(GainBucketEntry entry) {
   num_entries_++;
 }
 
-GainBucketEntry GainBucketStandard::Top() const {
+GainBucketEntry& GainBucketStandard::Top() {
   assert(!occupied_buckets_by_index_.empty());
   auto top_bucket_iter = occupied_buckets_by_index_.begin();
   int gain_index = *top_bucket_iter;
-  const BucketContents& bucket = buckets_.at(gain_index);
+  BucketContents& bucket = buckets_.at(gain_index);
   return bucket.front();
+}
+
+GainBucketEntry& GainBucketStandard::Peek(int offset) {
+  GainBucketEntry* peek_ptr = PeekPtr(offset);
+  assert(peek_ptr != nullptr);
+  return *peek_ptr;
+}
+
+GainBucketEntry* GainBucketStandard::PeekPtr(int offset) {
+  int cur_offset = 0;
+  if (offset > num_entries_ - 1) {
+    return nullptr;
+  }
+  for (int valid_index : occupied_buckets_by_index_) {
+    BucketContents& bucket = buckets_.at(valid_index);
+    for (auto& gbe : bucket) {
+      if (cur_offset == offset) {
+        return &gbe;
+      }
+      ++cur_offset;
+    }
+  }
+  return nullptr;
 }
 
 void GainBucketStandard::Pop() {
@@ -55,6 +78,7 @@ void GainBucketStandard::Pop() {
   assert(!bucket.empty());
   RemoveByNodeId(bucket.front().Id());
 }
+
 
 bool GainBucketStandard::Empty() const {
   return (num_entries_ == 0);
@@ -72,6 +96,19 @@ void GainBucketStandard::UpdateGains(
 
 bool GainBucketStandard::HasNode(int node_id) {
   return node_id_to_data_.find(node_id) != node_id_to_data_.end();
+}
+
+void GainBucketStandard::Touch(int node_id) {
+  NodeTrackingData& new_front_ntd = node_id_to_data_.at(node_id);
+  int gain_index = new_front_ntd.current_gain_index;
+  int bucket_index = gain_index + MAX_GAIN;
+  BucketContents& bucket = buckets_.at(bucket_index);
+  if (new_front_ntd.bucket_iterator == bucket.begin()) {
+    return;
+  }
+  bucket.push_front(std::move(*new_front_ntd.bucket_iterator));
+  bucket.erase(new_front_ntd.bucket_iterator);
+  new_front_ntd.bucket_iterator = bucket.begin();
 }
 
 GainBucketEntry GainBucketStandard::RemoveByNodeId(int node_id) {
@@ -119,6 +156,14 @@ GainBucketEntry& GainBucketStandard::GbeRefByNodeId(int node_id) {
   BucketContents::iterator iter = node_id_to_bucket_iterator_.at(node_id);
   */
   return *(ntd.bucket_iterator);
+}
+
+GainBucketEntry* GainBucketStandard::GbePtrByNodeId(int node_id) {
+  if (node_id > (int)node_id_to_data_.size()) {
+    return nullptr;
+  }
+  NodeTrackingData& ntd = node_id_to_data_.at(node_id);
+  return &(*(ntd.bucket_iterator));
 }
 
 void GainBucketStandard::Print(bool condensed) const {

@@ -970,8 +970,15 @@ void PartitionEngineKlfm::UpdateMovedNodeEdgesAndNodeGains(
     // moved from and the gains to be decreased are in the partition it
     // was moved to.
     double gain_modifier = connected_edge->Weight();
-    gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
-                                      nodes_to_decrease_gain, from_part_a);
+    if (gain_modifier != 0.0) {
+      gain_bucket_manager_->UpdateGains(gain_modifier, nodes_to_increase_gain,
+                                        nodes_to_decrease_gain, from_part_a);
+    } else {
+      /*
+      gain_bucket_manager_->TouchNodes(nodes_to_increase_gain);
+      gain_bucket_manager_->TouchNodes(nodes_to_decrease_gain);
+      */
+    }
   }
 }
 
@@ -2045,15 +2052,17 @@ void PartitionEngineKlfm::CoarsenHierarchalInterconnection(
           for (auto& port_pair : neighbor_node->ports()) {
             Edge* edge =
                 internal_edge_map_.at(port_pair.second.external_edge_id);
-            for (auto connected_node_id : edge->connection_ids()) {
-              int connected_index =
-                  node_id_to_current_supernode_index_v.at(connected_node_id);
-              if (connected_index == sn_index) {
-                supernode_connectivity_weight += edge->Weight();
-              } else {
-                auto nb_it = viable_neighbor_indices.find(connected_index);
-                if (nb_it != viable_neighbor_indices.end()) {
-                  supernode_neighbors_connectivity_weight += edge->Weight();
+            if (edge->degree() < coarsen_edge_degree_max_) {
+              for (auto connected_node_id : edge->connection_ids()) {
+                int connected_index =
+                    node_id_to_current_supernode_index_v.at(connected_node_id);
+                if (connected_index == sn_index) {
+                  supernode_connectivity_weight += edge->Weight();
+                } else {
+                  auto nb_it = viable_neighbor_indices.find(connected_index);
+                  if (nb_it != viable_neighbor_indices.end()) {
+                    supernode_neighbors_connectivity_weight += edge->Weight();
+                  }
                 }
               }
             }

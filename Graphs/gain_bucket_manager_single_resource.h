@@ -53,8 +53,11 @@ class GainBucketManagerSingleResource : public GainBucketManager {
   }
 
   virtual GainBucketEntry& GbeRefByNodeId(int node_id);
+  virtual GainBucketEntry* GbePtrByNodeId(int node_id);
 
   virtual bool HasNode(int node_id);
+
+  virtual void TouchNodes(const std::vector<int>& node_ids);
  
  private:
   virtual void AddEntry(const GainBucketEntry& entry, bool in_part_a);

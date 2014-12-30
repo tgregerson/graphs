@@ -23,10 +23,16 @@ class GainBucketStandard : public GainBucketInterface {
 
   virtual ~GainBucketStandard() {}
 
-  virtual void Add(GainBucketEntry entry);
+  virtual void Add(const GainBucketEntry& entry);
 
   // Returns the entry of the highest gain element.
-  virtual GainBucketEntry Top() const;
+  virtual GainBucketEntry& Top();
+
+  // Returns a reference to the entry with the offset from the top.
+  // Peek(0) is the same as Top(). It is unsafe to call this function
+  // with offset > num_entries - 1.
+  virtual GainBucketEntry& Peek(int offset);
+  virtual GainBucketEntry* PeekPtr(int offset);
 
   // Removes the entry corresponding to Top() from the gain bucket.
   virtual void Pop();
@@ -38,6 +44,9 @@ class GainBucketStandard : public GainBucketInterface {
   virtual void UpdateGains(double gain_modifier,
                            const EdgeKlfm::NodeIdVector& nodes_to_update);
 
+  // Moves the node to the front of its gain queue.
+  virtual void Touch(int node_id);
+
   // Returns true if the node with 'node_id' is in the bucket.
   virtual bool HasNode(int node_id);
 
@@ -46,6 +55,7 @@ class GainBucketStandard : public GainBucketInterface {
 
   // Returns a reference to the gain bucket entry with 'node_id'.
   virtual GainBucketEntry& GbeRefByNodeId(int node_id);
+  virtual GainBucketEntry* GbePtrByNodeId(int node_id);
 
   // Print debug information.
   virtual void Print(bool condensed) const;
@@ -55,10 +65,12 @@ class GainBucketStandard : public GainBucketInterface {
 
  private:
   struct NodeTrackingData {
+    NodeTrackingData() : valid(false) {}
     NodeTrackingData(BucketContents::iterator& bi, int cgi) :
-      bucket_iterator(bi), current_gain_index(cgi) {}
+      bucket_iterator(bi), current_gain_index(cgi), valid(true) {}
     BucketContents::iterator bucket_iterator;
     int current_gain_index;
+    bool valid;
   };
   // Use greater to make the set sort in descending value.
   std::set<int, std::greater<int>> occupied_buckets_by_index_;

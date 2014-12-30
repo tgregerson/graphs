@@ -51,8 +51,12 @@ class GainBucketManager {
       PartitionerConfig::GainBucketSelectionPolicy selection_policy) = 0;
 
   virtual GainBucketEntry& GbeRefByNodeId(int node_id) = 0;
+  virtual GainBucketEntry* GbePtrByNodeId(int node_id) = 0;
 
   virtual bool HasNode(int node_id) = 0;
+
+  // Touches nodes in vector order.
+  virtual void TouchNodes(const std::vector<int>& node_ids) = 0;
 
  protected:
   virtual std::vector<int> GetMaxImbalance(
@@ -64,6 +68,18 @@ class GainBucketManager {
     }
     return imb;
   }
+
+  virtual const std::vector<int>& GetMaxImbalanceRef(
+      const std::vector<double> frac, const std::vector<int> total_weight) {
+    reusable_imb_.resize(frac.size());
+    for (size_t i = 0; i < frac.size(); i++) {
+      int res_imb = frac[i] * total_weight[i];
+      reusable_imb_[i] = res_imb > 0 ? res_imb : 1;
+    }
+    return reusable_imb_;
+  }
+
+  std::vector<int> reusable_imb_;
 };
 
 #endif // GAIN_BUCKET_MANAGER_H

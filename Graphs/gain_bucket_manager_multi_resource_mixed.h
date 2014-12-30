@@ -74,8 +74,11 @@ class GainBucketManagerMultiResourceMixed : public GainBucketManager {
       PartitionerConfig::GainBucketSelectionPolicy selection_policy);
 
   virtual GainBucketEntry& GbeRefByNodeId(int node_id);
+  virtual GainBucketEntry* GbePtrByNodeId(int node_id);
  
   virtual bool HasNode(int node_id);
+
+  virtual void TouchNodes(const std::vector<int>& node_ids);
 
  private:
   virtual void AddEntry(

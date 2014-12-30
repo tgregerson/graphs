@@ -620,6 +620,21 @@ GainBucketEntry& GainBucketManagerMultiResourceExclusive::GbeRefByNodeId(
   return gain_buckets_a_.at(0)->GbeRefByNodeId(node_id);
 }
 
+GainBucketEntry* GainBucketManagerMultiResourceExclusive::GbePtrByNodeId(
+    int node_id) {
+  for (auto& gb : gain_buckets_a_) {
+    if (gb->HasNode(node_id)) {
+      return gb->GbePtrByNodeId(node_id);
+    }
+  }
+  for (auto& gb : gain_buckets_b_) {
+    if (gb->HasNode(node_id)) {
+      return gb->GbePtrByNodeId(node_id);
+    }
+  }
+  return nullptr;
+}
+
 bool GainBucketManagerMultiResourceExclusive::HasNode(int node_id) {
   for (auto& gb : gain_buckets_a_) {
     if (gb->HasNode(node_id)) {
@@ -632,4 +647,19 @@ bool GainBucketManagerMultiResourceExclusive::HasNode(int node_id) {
     }
   }
   return false;
+}
+
+void GainBucketManagerMultiResourceExclusive::TouchNodes(const vector<int>& node_ids) {
+  for (int node_id : node_ids) {
+    for (auto& gb : gain_buckets_a_) {
+      if (gb->HasNode(node_id)) {
+        gb->Touch(node_id);
+      }
+    }
+    for (auto& gb : gain_buckets_b_) {
+      if (gb->HasNode(node_id)) {
+        gb->Touch(node_id);
+      }
+    }
+  }
 }

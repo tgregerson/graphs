@@ -1,9 +1,11 @@
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+
+#include <algorithm>
+#include <chrono>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -160,6 +162,9 @@ int main(int argc, char *argv[]) {
   }
   ls << endl;
 
+  std::chrono::high_resolution_clock::time_point t_start =
+      std::chrono::high_resolution_clock::now();
+
   bool k_way = run_config.num_ways > 2;
   ls << "Create partitioner" << endl;
   vector<PartitionSummary> summaries;
@@ -175,6 +180,14 @@ int main(int argc, char *argv[]) {
   }
   ls << "Partitioning Complete" << endl;
   PrintPreamble(rs, run_config.graph_filename);
+
+  std::chrono::high_resolution_clock::time_point t_end =
+      std::chrono::high_resolution_clock::now();
+
+  std::chrono::duration<double> duration_s =
+      std::chrono::duration_cast<std::chrono::duration<double>>(t_end - t_start);
+
+  std::cout << "Duration: " << duration_s.count() << std::endl;
 
   if (k_way) {
     vector<vector<int>> costs_by_run;

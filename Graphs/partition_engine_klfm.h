@@ -586,6 +586,9 @@ class PartitionEngineKlfm : public PartitionEngine {
   unsigned int rebalances_this_run_;
   unsigned int rebalances_this_pass_;
 
+  // Todo make a parameter.
+  const int coarsen_edge_degree_max_ = 50;
+
   // Used for profiling run-time of methods in this class.
   //uint64_t start_time_;
   uint64_t gbe_start_time_;

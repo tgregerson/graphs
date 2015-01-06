@@ -58,12 +58,17 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxRamb36e1Node();
     } else if (str == "RAM64M") {
       node = new vivado::XilinxRam64mNode();
+    } else if (str == "RAM64X1D") {
+      node = new vivado::XilinxRam64x1dNode();
     } else if (str == "SRL16E") {
       node = new vivado::XilinxSrl16eNode();
+    } else if (str == "SRLC32E") {
+      node = new vivado::XilinxSrlc32eNode();
     } else if (str == "VCC") {
       node = new vivado::XilinxVccNode();
     } else {
-      throw std::exception();
+      const std::string error_msg = "Unidentified module name: " + str;
+      throw std::invalid_argument(error_msg.c_str());
     }
     node->type_name = str;
     return node;

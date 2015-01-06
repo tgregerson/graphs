@@ -720,6 +720,56 @@ double XilinxRam64mNode::ComputeProbabilityOne(
   return 0.5;
 }
 
+void XilinxRam64x1dNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "SPO" ||
+      port_name == "DPO") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (port_name == "WE" ||
+             port_name == "D" ||
+             port_name == "WCLK" ||
+             port_name == "A0" ||
+             port_name == "A1" ||
+             port_name == "A2" ||
+             port_name == "A3" ||
+             port_name == "A4" ||
+             port_name == "A5" ||
+             port_name == "DPRA0" ||
+             port_name == "DPRA1" ||
+             port_name == "DPRA2" ||
+             port_name == "DPRA3" ||
+             port_name == "DPRA4" ||
+             port_name == "DPRA5") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxRam64x1dNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  return ComputeEntropy(output_name, wires, nodes, 0, 0);
+}
+
+double XilinxRam64x1dNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "SPO" ||
+      output_name == "DPO") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxRam64x1dNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  // Currently, we don't try to predict output values for RAM.
+  return 0.5;
+}
+
 void XilinxSrl16eNode::AddConnection(const ConnectionDescriptor& connection) {
   const string& port_name = connection.port_name;
   if (port_name == "Q") {
@@ -728,16 +778,6 @@ void XilinxSrl16eNode::AddConnection(const ConnectionDescriptor& connection) {
              port_name == "A3" || port_name == "CE" || port_name == "CLK" ||
              port_name == "D") {
     named_input_connections.insert(make_pair(connection.port_name, connection));
-  } else {
-    cout << "Unexpected port name: " << connection.port_name << endl;
-    throw std::exception();
-  }
-}
-
-void XilinxVccNode::AddConnection(const ConnectionDescriptor& connection) {
-  const string& port_name = connection.port_name;
-  if (port_name == "P") {
-    named_output_connections.insert(make_pair(connection.port_name, connection));
   } else {
     cout << "Unexpected port name: " << connection.port_name << endl;
     throw std::exception();
@@ -769,6 +809,58 @@ double XilinxSrl16eNode::ComputeProbabilityOne(
          named_input_connections.at("D").connection_bit_names.front();
      FunctionalEdge* input_edge = wires->at(input_edge_name);
      return input_edge->ProbabilityOne(wires, nodes);
+  }
+}
+
+void XilinxSrlc32eNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "Q" ||
+      port_name == "Q31") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (port_name == "A" || port_name == "CE" ||
+             port_name == "CLK" || port_name == "D") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxSrlc32eNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  return ComputeEntropy(output_name, wires, nodes, 0, 0);
+}
+
+double XilinxSrlc32eNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (bit_high != bit_low) {
+    throw std::exception();
+  }
+  return ComputeShannonEntropy(output_name, bit_high, wires, nodes);
+}
+
+double XilinxSrlc32eNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  if (output_name != "Q" && output_name != "Q31" && output_name != "") {
+    std::cout << "Unexpected output name: " << output_name << "\n";
+    throw std::exception();
+  } else {
+     string input_edge_name =
+         named_input_connections.at("D").connection_bit_names.front();
+     FunctionalEdge* input_edge = wires->at(input_edge_name);
+     return input_edge->ProbabilityOne(wires, nodes);
+  }
+}
+
+void XilinxVccNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "P") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
   }
 }
 

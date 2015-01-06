@@ -31,6 +31,22 @@ string StructuralNetlistLexer::ConsumeWhitespaceIfPresent(
   return new_input;
 }
 
+bool StructuralNetlistLexer::ConsumeWhitespaceStream(
+    istream& input, string* token) {
+  if (!isspace(input.peek())) {
+    return false;
+  }
+  if (token != nullptr) {
+    token->clear();
+  }
+  while (isspace(input.peek())) {
+    if (token != nullptr) {
+      token->push_back((char)input.get());
+    }
+  }
+  return true;
+}
+
 // Identifier = SimpleIdentifier || EscapedIdentifier
 string StructuralNetlistLexer::ConsumeIdentifier(
     const string& input, std::string* token) {
@@ -53,6 +69,20 @@ string StructuralNetlistLexer::ConsumeIdentifier(
     throw LexingException(error_msg);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeIdentifierStream(
+    istream& input, std::string* token) {
+  ConsumeWhitespaceStream(input);
+  if (!input.eof()) {
+    if (input.peek() == '\\') {
+      return ConsumeEscapedIdentifierStream(input, token);
+    } else {
+      return ConsumeSimpleIdentifierStream(input, token);
+    }
+  } else {
+    return false;
+  }
 }
 
 // IdentifierList = Identifier[, Identifier]*
@@ -84,6 +114,30 @@ string StructuralNetlistLexer::ConsumeIdentifierList(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeIdentifierListStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = true;
+    valid &= ConsumeIdentifierStream(input, token);
+    ConsumeWhitespaceStream(input);
+    while (valid && ConsumeCharStream(input, nullptr, ',')) {
+      string identifier;
+      valid &= ConsumeIdentifierStream(input, &identifier);
+      if (nullptr != token) {
+        token->append(", " + identifier);
+      }
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
+}
+
 // SimpleIdentifier = (_ || a-z)(_ || a-z || 0-9 || $)*
 string StructuralNetlistLexer::ConsumeSimpleIdentifier(
     const string& input, std::string* token) {
@@ -108,6 +162,27 @@ string StructuralNetlistLexer::ConsumeSimpleIdentifier(
     token->assign(my_token);
   }
   return ConsumeWhitespaceIfPresent(new_input, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeSimpleIdentifierStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  char c = input.peek();
+  if (EOF == 'c' || '_' == c || !isalpha(c)) {
+    return false;
+  } else {
+    if (nullptr != token) {
+      token->clear();
+    }
+    while (!isalpha(c) || EOF == c || '_' == c || '$' == c) {
+      if (nullptr != token) {
+        token->push_back(c);
+      }
+      input.ignore();
+      c = input.peek();
+    }
+    return true;
+  }
 }
 
 // EscapedIdentifier = \\.*<single whitespace char>
@@ -138,6 +213,27 @@ string StructuralNetlistLexer::ConsumeEscapedIdentifier(
     token->assign(my_token);
   }
   return ConsumeWhitespaceIfPresent(new_input, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeEscapedIdentifierStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if ('\\' != input.peek()) {
+    return false;
+  } else {
+    if (nullptr != token) {
+      token->clear();
+    }
+    char c = input.peek();
+    while (' ' != c && EOF != c) {
+      if (nullptr != token) {
+        token->push_back(c);
+      }
+      input.ignore();
+      input.peek();
+    }
+    return true;
+  }
 }
 
 // Connection = ConnectedElement || .Identifier(ConnectedElement)
@@ -174,6 +270,88 @@ string StructuralNetlistLexer::ConsumeConnection(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeConnectionStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    if ('.' == input.peek()) {
+      // Connection by name.
+      bool valid = true;
+      std::streampos initial_pos = input.tellg();
+      input.ignore();
+      string identifier;
+      valid &= ConsumeIdentifierStream(input, &identifier);
+      string wrapped_connected_element;
+      valid &= ConsumeWrappedElementStream(
+          input, &wrapped_connected_element, &ConsumeConnectedElementStream,
+          '(', ')');
+      if (valid) {
+        if (nullptr != token) {
+          token->assign("." + identifier + wrapped_connected_element);
+        }
+      } else {
+        input.seekg(initial_pos);
+      }
+      return valid;
+    } else {
+      // Connection by position.
+      return ConsumeConnectedElementStream(input, token);
+    }
+  }
+}
+
+// ConnectionList = Connection[, Connection]*
+string StructuralNetlistLexer::ConsumeConnectionList(
+    const string& input, std::string* token) {
+  const string error_msg =
+    "Failed to consume ConnectionList from: " + input + "\n";
+  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+  string incremental_token;
+  if (remaining.empty()) {
+    throw LexingException(error_msg);
+  } else {
+    try {
+      remaining = ConsumeConnection(remaining, &incremental_token);
+      while (!remaining.empty() && remaining[0] == ',') {
+        string identifier;
+        remaining = ConsumeChar(remaining, nullptr, ',');
+        remaining = ConsumeConnection(remaining, &identifier);
+        incremental_token += ", ";
+        incremental_token += identifier;
+      }
+    } catch (LexingException& e) {
+      throw LexingException(e.what() + error_msg);
+    }
+  }
+  if (token != nullptr) {
+    token->assign(incremental_token);
+  }
+  return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeConnectionListStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+
+  std::streampos initial_pos = input.tellg();
+  bool valid = ConsumeConnectionStream(input, token);
+  ConsumeWhitespaceStream(input);
+  string connection;
+  while (valid && ConsumeCharStream(input, nullptr, ',')) {
+    valid &= ConsumeConnectionStream(input, &connection);
+    ConsumeWhitespaceStream(input);
+    if (nullptr != token) {
+      token->append(", " + connection);
+    }
+  }
+  if (!valid) {
+    input.seekg(initial_pos);
+  }
+  return valid;
 }
 
 // ConnectedElement = (Identifier[BitRange]) || {ConnectedElementList} || Immediate
@@ -219,6 +397,34 @@ string StructuralNetlistLexer::ConsumeConnectedElement(
   return remaining;
 }
 
+bool StructuralNetlistLexer::ConsumeConnectedElementStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    char c = input.peek();
+    if ('{' == c) {
+      // {ConnectionList}
+      return ConsumeWrappedElementStream(
+          input, token, &ConsumeConnectedElementListStream, '{', '}');
+    } else if ('"' == c || isdigit(c)) {
+      // Immediate value
+      return ConsumeImmediateStream(input, token);
+    } else {
+      // Identifier
+      bool valid = ConsumeIdentifierStream(input, token);
+      if (valid) {
+        string bit_range;
+        if (ConsumeBitRangeStream(input, &bit_range) && nullptr != token) {
+          token->append(bit_range);
+        }
+      }
+      return valid;
+    }
+  }
+}
+
 // ConnectedElementList = ConnectedElement[, ConnectedElement]*
 string StructuralNetlistLexer::ConsumeConnectedElementList(
     const string& input, string* token) {
@@ -248,6 +454,29 @@ string StructuralNetlistLexer::ConsumeConnectedElementList(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeConnectedElementListStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeConnectedElementStream(input, token);
+    ConsumeWhitespaceStream(input);
+    string identifier;
+    while (valid && ConsumeCharStream(input, nullptr, ',')) {
+      valid &= ConsumeConnectedElementStream(input, &identifier);
+      if (nullptr != token) {
+        token->append(", " + identifier);
+      }
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
+}
+
 // ParameterConnectedElement = Identifier || Immediate
 string StructuralNetlistLexer::ConsumeParameterConnectedElement(
     const string& input, string* token) {
@@ -275,6 +504,18 @@ string StructuralNetlistLexer::ConsumeParameterConnectedElement(
     token->assign(incremental_token);
   }
   return remaining;
+}
+
+bool StructuralNetlistLexer::ConsumeParameterConnectedElementStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+
+  char c = input.peek();
+  if (isdigit(c) || '"' == c) {
+    return ConsumeImmediateStream(input, token);
+  } else {
+    return ConsumeIdentifierStream(input, token);
+  }
 }
 
 // ParameterConnection = ParameterConnectedElement ||
@@ -316,6 +557,37 @@ string StructuralNetlistLexer::ConsumeParameterConnection(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeParameterConnectionStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    if ('.' == input.peek()) {
+      // Connection by name
+      std::streampos initial_pos = input.tellg();
+      input.ignore();
+      string identifier;
+      string wrapped_connected_element;
+      bool valid = ConsumeIdentifierStream(input, &identifier);
+      valid &= ConsumeWrappedElementStream(
+          input, &wrapped_connected_element,
+          &ConsumeParameterConnectedElementStream, '(', ')');
+      if (valid) {
+        if (nullptr != token) {
+          token->assign("." + identifier + wrapped_connected_element);
+        }
+      } else {
+        input.seekg(initial_pos);
+      }
+      return valid;
+    } else {
+      // Connection by position
+      return ConsumeParameterConnectedElementStream(input, token);
+    }
+  }
+}
+
 // ParameterList = ParameterConnection[, ParameterConnection]*
 string StructuralNetlistLexer::ConsumeParameterList(
     const string& input, string* token) {
@@ -345,6 +617,30 @@ string StructuralNetlistLexer::ConsumeParameterList(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeParameterListStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeParameterConnectionStream(input, token);
+    ConsumeWhitespaceStream(input);
+    string identifier;
+    while (valid && ConsumeCharStream(input, nullptr, ',')) {
+      valid &= ConsumeParameterConnectionStream(input, &identifier);
+      ConsumeWhitespaceStream(input);
+      if (nullptr != token) {
+        token->append(", " + identifier);
+      }
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
+}
+
 // ModuleParameters = #(ParameterList)
 string StructuralNetlistLexer::ConsumeModuleParameters(
     const string& input, string* token) {
@@ -370,6 +666,28 @@ string StructuralNetlistLexer::ConsumeModuleParameters(
     token->assign(incremental_token);
   }
   return remaining;
+}
+
+bool StructuralNetlistLexer::ConsumeModuleParametersStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if ('#' != input.peek()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    input.ignore();
+    string wrapped_parameter_list;
+    bool valid = ConsumeWrappedElementStream(
+        input, &wrapped_parameter_list, &ConsumeParameterListStream, '(', ')');
+    if (valid) {
+      if (nullptr != token) {
+        token->assign("#" + wrapped_parameter_list);
+      }
+    } else {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
 }
 
 // Immediate = BinaryImmediate || DecimalImmediate || HexImmediate ||
@@ -425,6 +743,42 @@ string StructuralNetlistLexer::ConsumeImmediate(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  char c = input.peek();
+  if ('"' == c) {
+    // String literal
+    return ConsumeStringLiteralStream(input, token);
+  } else if (isdigit(c)) {
+    // Value
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeUnbasedImmediateStream(input, token);
+    if (valid && '\'' == input.peek()) {
+      input.ignore();
+      char base = input.peek();
+      // The unbased immediate we consumed earlier was the bitwidth for the
+      // based number. Restore it to the stream.
+      input.seekg(initial_pos);
+      switch (base) {
+        case 'b':
+          return ConsumeBinaryImmediateStream(input, token);
+        case 'o':
+          return ConsumeOctalImmediateStream(input, token);
+        case 'd':
+          return ConsumeDecimalImmediateStream(input, token);
+        case 'h':
+          return ConsumeHexImmediateStream(input, token);
+        default:
+          return false;
+      }
+    }
+    return valid;
+  } else {
+    return false;
+  }
+}
+
 // BinaryImmediate = (UnbasedImmedate)'b(0-1)+
 string StructuralNetlistLexer::ConsumeBinaryImmediate(
     const string& input, string* token) {
@@ -460,6 +814,38 @@ string StructuralNetlistLexer::ConsumeBinaryImmediate(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeBinaryImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeUnbasedImmediateStream(input, token);
+    if ('\'' == input.get() && 'b' == input.get()) {
+      if (nullptr != token) {
+        token->append("\'b");
+      }
+      valid = false; // Make sure at least one bit is found.
+      char c = input.peek();
+      while ('0' == c || '1' == c) {
+        valid = true;
+        input.ignore();
+        if (nullptr != token) {
+          token->push_back(c);
+        }
+        c = input.peek();
+      }
+    } else {
+      valid = false;
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
 }
 
 // OctalImmediate = (UnbasedImmediate)'o(0-7)+
@@ -499,6 +885,38 @@ string StructuralNetlistLexer::ConsumeOctalImmediate(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeOctalImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeUnbasedImmediateStream(input, token);
+    if ('\'' == input.get() && 'o' == input.get()) {
+      if (nullptr != token) {
+        token->append("\'o");
+      }
+      valid = false; // Make sure at least one bit is found.
+      char c = input.peek();
+      while ('0' <= c && '7' >= c) {
+        valid = true;
+        input.ignore();
+        if (nullptr != token) {
+          token->push_back(c);
+        }
+        c = input.peek();
+      }
+    } else {
+      valid = false;
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
+}
+
 // DecimalImmediate = (UnbasedImmediate)'d(0-9)+
 string StructuralNetlistLexer::ConsumeDecimalImmediate(
     const string& input, string* token) {
@@ -534,6 +952,38 @@ string StructuralNetlistLexer::ConsumeDecimalImmediate(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeDecimalImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeUnbasedImmediateStream(input, token);
+    if ('\'' == input.get() && 'd' == input.get()) {
+      if (nullptr != token) {
+        token->append("\'d");
+      }
+      valid = false; // Make sure at least one bit is found.
+      char c = input.peek();
+      while ('0' <= c && '9' >= c) {
+        valid = true;
+        input.ignore();
+        if (nullptr != token) {
+          token->push_back(c);
+        }
+        c = input.peek();
+      }
+    } else {
+      valid = false;
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
 }
 
 // HexImmediate = (UnbasedImmediate)'h(0-9 || a-f || A-F)+
@@ -575,6 +1025,40 @@ string StructuralNetlistLexer::ConsumeHexImmediate(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
+bool StructuralNetlistLexer::ConsumeHexImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (input.eof()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeUnbasedImmediateStream(input, token);
+    if ('\'' == input.get() && 'h' == input.get()) {
+      if (nullptr != token) {
+        token->append("\'h");
+      }
+      valid = false; // Make sure at least one bit is found.
+      char c = input.peek();
+      while (('0' <= c && '9' >= c) ||
+             ('a' <= c && 'f' >= c) ||
+             ('A' <= c && 'F' >= c)) {
+        valid = true;
+        input.ignore();
+        if (nullptr != token) {
+          token->push_back(c);
+        }
+        c = input.peek();
+      }
+    } else {
+      valid = false;
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
+}
+
 // UnbasedImmediate = (0-9)+
 string StructuralNetlistLexer::ConsumeUnbasedImmediate(
     const string& input, string* token) {
@@ -600,6 +1084,23 @@ string StructuralNetlistLexer::ConsumeUnbasedImmediate(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeUnbasedImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  bool valid = false;
+  if (nullptr != token) {
+    token->clear();
+  }
+  char c = input.peek();
+  while (isdigit(c)) {
+    valid = true;
+    if (nullptr != token) {
+      token->push_back(c);
+    }
+  }
+  return valid;
 }
 
 // StringLiteral = ".*"
@@ -628,6 +1129,33 @@ string StructuralNetlistLexer::ConsumeStringLiteral(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeStringLiteralStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if ('"' != input.peek()) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    input.ignore();
+    if (nullptr != token) {
+      *token = "\"";
+    }
+    char c;
+    do {
+      c = input.get();
+      if (nullptr != token) {
+        token->push_back(c);
+      }
+    } while (EOF != c && '"' != c);
+    if ('"' == c) {
+      return true;
+    } else {
+      input.seekg(initial_pos);
+      return false;
+    }
+  }
 }
 
 // BitRange = \[UnbasedImmediate\] || \[UnbasedImmediate:UnbasedImmediate\]
@@ -668,33 +1196,34 @@ string StructuralNetlistLexer::ConsumeBitRange(
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
-// ConnectionList = Connection[, Connection]*
-string StructuralNetlistLexer::ConsumeConnectionList(
-    const string& input, std::string* token) {
-  const string error_msg =
-    "Failed to consume ConnectionList from: " + input + "\n";
-  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
-  string incremental_token;
-  if (remaining.empty()) {
-    throw LexingException(error_msg);
-  } else {
-    try {
-      remaining = ConsumeConnection(remaining, &incremental_token);
-      while (!remaining.empty() && remaining[0] == ',') {
-        string identifier;
-        remaining = ConsumeChar(remaining, nullptr, ',');
-        remaining = ConsumeConnection(remaining, &identifier);
-        incremental_token += ", ";
-        incremental_token += identifier;
-      }
-    } catch (LexingException& e) {
-      throw LexingException(e.what() + error_msg);
+bool StructuralNetlistLexer::ConsumeBitRangeStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if ('[' == input.peek()) {
+    std::streampos initial_pos = input.tellg();
+    input.ignore();
+    string first_bit_num, second_bit_num;
+    bool valid = ConsumeUnbasedImmediateStream(input, &first_bit_num);
+    if (ConsumeCharStream(input, nullptr, ':')) {
+      // Range
+      valid &= ConsumeUnbasedImmediateStream(input, &second_bit_num);
     }
+    valid &= ConsumeCharStream(input, nullptr, ']');
+    if (valid) {
+      if (nullptr != token) {
+        token->assign("[" + first_bit_num);
+        if (!second_bit_num.empty()) {
+          token->append(":" + second_bit_num);
+        }
+        token->push_back(']');
+      }
+    } else {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  } else {
+    return false;
   }
-  if (token != nullptr) {
-    token->assign(incremental_token);
-  }
-  return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
 
 string StructuralNetlistLexer::ConsumeChar(
@@ -712,6 +1241,21 @@ string StructuralNetlistLexer::ConsumeChar(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining.substr(1, string::npos), nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeCharStream(
+    istream& input, string* token, char c) {
+  ConsumeWhitespaceStream(input);
+  if (c == (char)input.peek()) {
+    if (nullptr != token) {
+      token->clear();
+      token->push_back(c);
+    }
+    input.ignore();
+    return true;
+  } else {
+    return false;
+  }
 }
 
 string StructuralNetlistLexer::ConsumeWrappedElement(
@@ -754,6 +1298,43 @@ string StructuralNetlistLexer::ConsumeWrappedElement(
     token->assign(incremental_token);
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeWrappedElementStream(
+    istream& input, string* token, bool (*consumer)(istream&, string*),
+    char open, char close) {
+  ConsumeWhitespaceStream(input);
+  if (input.peek() != open) {
+    return false;
+  } else {
+    std::streampos initial_pos = input.tellg();
+    if (nullptr != token) {
+      token->clear();
+    }
+    size_t num_wraps = 0;
+    char c = input.peek();
+    while (c == open) {
+      input.ignore();
+      ++num_wraps;
+      if (nullptr != token) {
+        token->push_back(open);
+      }
+      c = input.peek();
+    }
+    string identifier_list;
+    bool valid = consumer(input, &identifier_list);
+    while (valid && num_wraps > 0 && input.peek() == close) {
+      input.ignore();
+      if (nullptr != token) {
+        token->push_back(close);
+      }
+    }
+    valid &= num_wraps == 0;
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
 }
 
 pair<string, string> StructuralNetlistLexer::ExtractConnectionFromConnection(

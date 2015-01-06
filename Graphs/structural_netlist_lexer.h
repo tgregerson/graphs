@@ -37,96 +37,132 @@ class StructuralNetlistLexer {
   // DOES NOT THROW EXCEPTION IF NOTHING CAN BE CONSUMED.
   static std::string ConsumeWhitespaceIfPresent(const std::string& input,
                                                 std::string* token = nullptr);
+  static bool ConsumeWhitespaceStream(std::istream& input,
+                                      std::string* token = nullptr);
 
   // Identifier = SimpleIdentifier || EscapedIdentifier
   static std::string ConsumeIdentifier(const std::string& input,
                                        std::string* token);
+  static bool ConsumeIdentifierStream(std::istream& input, std::string* token);
 
   // IdentifierList = Identifier[, Identifier]*
   static std::string ConsumeIdentifierList(const std::string& input,
                                            std::string* token);
+  static bool ConsumeIdentifierListStream(std::istream& input, std::string* token);
 
   // SimpleIdentifier = (_ || a-z)(_ || a-z || 0-9 || $)*
   static std::string ConsumeSimpleIdentifier(const std::string& input,
                                              std::string* token);
+  static bool ConsumeSimpleIdentifierStream(std::istream& input, std::string* token);
 
   // EscapedIdentifier = \\.+<single whitespace character>
   static std::string ConsumeEscapedIdentifier(const std::string& input,
                                               std::string* token);
+  static bool ConsumeEscapedIdentifierStream(std::istream& input, std::string* token);
 
   // Connection = ConnectedElement || .Identifier(ConnectedElement)
   static std::string ConsumeConnection(
       const std::string& input,
       std::string* token);
+  static bool ConsumeConnectionStream(std::istream& input, std::string* token);
 
   // ConnectionList = Connection[, Connection]*
   static std::string ConsumeConnectionList(
       const std::string& input,
       std::string* token);
+  static bool ConsumeConnectionListStream(std::istream& input, std::string* token);
 
   // ConnectedElement = Immediate || (Identifier[BitRange] ||
   //                    {ConnectedElementList}
   static std::string ConsumeConnectedElement(const std::string& input,
                                              std::string* token);
+  static bool ConsumeConnectedElementStream(std::istream& input,
+                                            std::string* token);
 
   // ConnectedElementList = ConnectedElement[, ConnectedElement]*
   static std::string ConsumeConnectedElementList(
       const std::string& input,
       std::string* token);
+  static bool ConsumeConnectedElementListStream(
+      std::istream& input, std::string* token);
 
   // ParameterConnectedElement = Immediate || Identifier
   static std::string ConsumeParameterConnectedElement(const std::string& input,
                                                       std::string* token);
+  static bool ConsumeParameterConnectedElementStream(
+      std::istream& input, std::string* token);
 
   // ParameterConnection = ParameterConnectedElement ||
   //                       .Identifier(ParameterConnectedElement)
   static std::string ConsumeParameterConnection(const std::string& input,
                                                 std::string* token);
+  static bool ConsumeParameterConnectionStream(
+      std::istream& input, std::string* token);
 
   // ParameterList = ParameterConnection[, ParameterConnection]*
   static std::string ConsumeParameterList(const std::string& input,
                                           std::string* token);
+  static bool ConsumeParameterListStream(
+      std::istream& input, std::string* token);
 
   // ModuleParameters = #(ParameterList)
   static std::string ConsumeModuleParameters(const std::string& input,
                                              std::string* token);
+  static bool ConsumeModuleParametersStream(
+      std::istream& input, std::string* token);
 
   // Immediate = BinaryImmediate || DecimalImmediate || HexImmediate ||
   //             OctalImmediate || StringLiteral
   static std::string ConsumeImmediate(const std::string& input,
                                       std::string* token);
+  static bool ConsumeImmediateStream(std::istream& input, std::string* token);
 
   // BinaryImmediate = (UnbasedImmedate)'b(0-1)+
   static std::string ConsumeBinaryImmediate(const std::string& input,
                                             std::string* token);
+  static bool ConsumeBinaryImmediateStream(
+      std::istream& input, std::string* token);
 
   // OctalImmediate = (UnbasedImmediate)'o(0-7)+
   static std::string ConsumeOctalImmediate(const std::string& input,
                                            std::string* token);
+  static bool ConsumeOctalImmediateStream(
+      std::istream& input, std::string* token);
 
   // DecimalImmediate = UnbasedImmediate'd(0-9)+
   static std::string ConsumeDecimalImmediate(const std::string& input,
                                              std::string* token);
+  static bool ConsumeDecimalImmediateStream(
+      std::istream& input, std::string* token);
 
   // HexImmediate = (UnbasedImmediate)'h(0-9 || a-f || A-F)+
   static std::string ConsumeHexImmediate(const std::string& input,
                                          std::string* token);
+  static bool ConsumeHexImmediateStream(
+      std::istream& input, std::string* token);
 
   // UnbasedImmediate = (0-9)+
   static std::string ConsumeUnbasedImmediate(const std::string& input,
                                              std::string* token);
+  static bool ConsumeUnbasedImmediateStream(
+      std::istream& input, std::string* token);
 
   // StringLiteral = ".*"
   static std::string ConsumeStringLiteral(const std::string& input,
                                           std::string* token);
+  static bool ConsumeStringLiteralStream(
+      std::istream& input, std::string* token);
 
   // BitRange = \[UnbasedImmediate\] || \[UnbasedImmediate:UnbasedImmediate\]
   static std::string ConsumeBitRange(const std::string& input,
                                      std::string* token);
+  static bool ConsumeBitRangeStream(std::istream& input, std::string* token);
 
   // Char = any non-whitespace character
   static std::string ConsumeChar(const std::string& input,
                                  std::string* token, char c);
+  static bool ConsumeCharStream(
+      std::istream& input, std::string* token, char c);
 
   // Consumes an element wrapped by 'open' and 'close' using 'consumer' to
   // consume the inner token. The string that is returned contains only
@@ -135,6 +171,11 @@ class StructuralNetlistLexer {
       const std::string& input,
       std::string* token,
       std::string (*consumer)(const std::string&, std::string*),
+      char open, char close);
+  static bool ConsumeWrappedElementStream(
+      std::istream& input,
+      std::string* token,
+      bool (*consumer)(std::istream&, std::string*),
       char open, char close);
 
   // Connection is extracted as a pair of strings, where the first element is

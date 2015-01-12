@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
   ifstream v_file;
   ifstream p1_file;
-  ofstream out_file;
+  ofstream xntl_file;
 
   // Open file.
   v_file.open(verilog_input_file_flag.getValue());
@@ -59,8 +59,8 @@ int main(int argc, char *argv[]) {
     }
   }
   if (xntl_output_file_flag.isSet()) {
-    out_file.open(xntl_output_file_flag.getValue());
-    if (!out_file.is_open()) {
+    xntl_file.open(xntl_output_file_flag.getValue());
+    if (!xntl_file.is_open()) {
       cout << "Can't open output file "
            << xntl_output_file_flag.getValue() << endl;
       exit(1);
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
   map<string, FunctionalNode*> functional_nodes;
 
   // If no output file, redirect to cout.
-  ostream& output_stream = out_file.is_open() ? out_file : cout;
+  ostream& output_stream = xntl_file.is_open() ? xntl_file : cout;
 
   // Parsed lines will contain a line that terminates with a ';'.
   cout << "-----------------Parsing Netlist--------------------\n";
@@ -232,17 +232,18 @@ int main(int argc, char *argv[]) {
        << "% " << bin_count[BIN8_MIN] << endl;
        */
 
-  cout << "-----------------Writing NTL--------------------\n";
-  // Write output in NTL format.
-  for (const auto& node_pair : functional_nodes) {
-    parser.PrintFunctionalNodeXNtlFormat(
-        node_pair.second, &functional_edges, &functional_wires,
-        &functional_nodes, output_stream);
-    output_stream << endl;
-  }
-
-  if (out_file.is_open()) {
-    out_file.close();
+  if (xntl_file.is_open()) {
+    cout << "-----------------Writing XNTL to "
+         << xntl_output_file_flag.getValue()
+         << "--------------------\n";
+    // Write output in XNTL format.
+    for (const auto& node_pair : functional_nodes) {
+      parser.PrintFunctionalNodeXNtlFormat(
+          node_pair.second, &functional_edges, &functional_wires,
+          &functional_nodes, output_stream);
+      output_stream << endl;
+    }
+    xntl_file.close();
   }
 
   return 0;

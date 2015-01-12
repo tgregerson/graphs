@@ -35,18 +35,20 @@ PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_confi
 
 FNP_BIN_O = $(OBJDIR)/functional_netlist_parser_main.o \
             $(SNP_BASE_O)
+FNPD_BIN_O = $(OBJDIR)/functional_netlist_parser_debug_main.o \
+            $(SNP_BASE_O)
 NFC_BIN_O = $(OBJDIR)/ntl_format_converter.o
 PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
 SNP_BIN_O = $(OBJDIR)/structural_netlist_parser_main.o \
             $(SNP_BASE_O)
-VDG_BIN_O = $(OBJDIR)/vcd_dumpvars_generator_main.o \
+#VDG_BIN_O = $(OBJDIR)/vcd_dumpvars_generator_main.o \
             $(VP_BASE_O)
 VP_BIN_O = $(VP_BASE_O) $(OBJDIR)/vcd_parser_main.o
 WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \
            $(GRAPH_BASE_O)
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main functional_netlist_parser lp_solve_interface ntl_format_converter structural_netlist_parser vcd_dumpvars_generator vcd_parser weight_generator)
+BINARIES = $(addprefix $(BINDIR)/,partition_main functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter structural_netlist_parser vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -63,6 +65,9 @@ $(BINDIR)/partition_main: $(PM_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/functional_netlist_parser: $(FNP_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/functional_netlist_parser_debug: $(FNPD_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/lp_solve_interface: $(LPSI_BIN_O)
@@ -153,6 +158,9 @@ $(OBJDIR)/functional_edge.o: $(functional_node_H) $(functional_edge_H) functiona
 
 $(OBJDIR)/functional_netlist_parser_main.o: $(functional_edge_H) $(functional_node_H) $(structural_netlist_parser_H) functional_netlist_parser_main.cpp
 	$(CXX) -c $(CXXFLAGS) functional_netlist_parser_main.cpp -o $(OBJDIR)/functional_netlist_parser_main.o
+
+$(OBJDIR)/functional_netlist_parser_debug_main.o: $(functional_edge_H) $(functional_node_H) $(structural_netlist_parser_H) functional_netlist_parser_debug_main.cpp
+	$(CXX) -c $(CXXFLAGS) functional_netlist_parser_debug_main.cpp -o $(OBJDIR)/functional_netlist_parser_debug_main.o
 
 $(OBJDIR)/gain_bucket_manager_single_resource.o: $(gain_bucket_manager_single_resource_H) gain_bucket_manager_single_resource.cpp
 	$(CXX) -c gain_bucket_manager_single_resource.cpp $(CXXFLAGS) -o $@

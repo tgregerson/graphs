@@ -183,29 +183,58 @@ class StructuralNetlistLexer {
   // element.
   static std::pair<std::string,std::string> ExtractConnectionFromConnection(
       const std::string& connection);
+  static std::pair<std::string,std::string> ExtractConnectionFromConnectionStream(
+      const std::string& connection);
 
-  static std::pair<std::string,std::string> ExtractParameterConnectionFromParameterConnection(
+  static std::pair<std::string,std::string>
+  ExtractParameterConnectionFromParameterConnection(
+      const std::string& connection);
+  static std::pair<std::string,std::string>
+  ExtractParameterConnectionFromParameterConnectionStream(
       const std::string& connection);
 
   static std::vector<std::string> ExtractIdentifiersFromIdentifierList(
       const std::string& identifier_list);
+  static std::vector<std::string> ExtractIdentifiersFromIdentifierListStream(
+      const std::string& identifier_list);
 
-  static std::vector<std::pair<std::string,std::string>> ExtractConnectionsFromConnectionList(
+  static std::vector<std::pair<std::string,std::string>>
+  ExtractConnectionsFromConnectionList(
+      const std::string& connection_list);
+  static std::vector<std::pair<std::string,std::string>>
+  ExtractConnectionsFromConnectionListStream(
       const std::string& connection_list);
 
-  static std::vector<std::string> ExtractConnectedElementsFromConnectedElementList(
+  static std::vector<std::string>
+  ExtractConnectedElementsFromConnectedElementList(
+      const std::string& connected_element_list);
+  static std::vector<std::string>
+  ExtractConnectedElementsFromConnectedElementListStream(
       const std::string& connected_element_list);
 
   static std::vector<std::string> ExtractConnectedElementsFromConnectedElement(
       const std::string& connected_element);
+  static std::vector<std::string>
+  ExtractConnectedElementsFromConnectedElementStream(
+      const std::string& connected_element);
 
-  static std::vector<std::pair<std::string,std::string>> ExtractParameterConnectionsFromParameterList(
+  static std::vector<std::pair<std::string,std::string>>
+  ExtractParameterConnectionsFromParameterList(
+      const std::string& plist);
+  static std::vector<std::pair<std::string,std::string>>
+  ExtractParameterConnectionsFromParameterListStream(
       const std::string& plist);
 
-  static std::vector<std::pair<std::string,std::string>> ExtractParameterConnectionsFromModuleParameters(
+  static std::vector<std::pair<std::string,std::string>>
+  ExtractParameterConnectionsFromModuleParameters(
+      const std::string& module_parameters);
+  static std::vector<std::pair<std::string,std::string>>
+  ExtractParameterConnectionsFromModuleParametersStream(
       const std::string& module_parameters);
 
   static std::pair<int, int> ExtractBitRange(const std::string& bit_range);
+  static std::pair<int, int> ExtractBitRangeStream(
+      const std::string& bit_range);
 
   // Trims the first and last char from 'input' and any additional leading
   // whitespace.

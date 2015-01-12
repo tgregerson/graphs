@@ -9,6 +9,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class FunctionalEdge;
@@ -80,6 +81,11 @@ class StructuralNetlistParser {
       const std::map<std::string, FunctionalEdge*>& wires,
       std::map<std::string, FunctionalNode*>* nodes,
       const std::list<std::string>& lines);
+  void PopulateFunctionalNodesDebug(
+      const std::map<std::string, FunctionalEdge*>& edges,
+      const std::map<std::string, FunctionalEdge*>& wires,
+      std::map<std::string, FunctionalNode*>* nodes,
+      const std::list<std::string>& lines);
 
   // Populates a map, net name -> VlogNet, from a list of lines. Determines
   // if the line contains a net declaration if it starts with a net
@@ -87,6 +93,8 @@ class StructuralNetlistParser {
   void PopulateNets(std::map<std::string, VlogNet>* nets,
                     const std::list<std::string>& lines);
   void PopulateFunctionalEdges(std::map<std::string, FunctionalEdge*>* edges,
+                    const std::list<std::string>& lines);
+  void PopulateFunctionalEdgesDebug(std::map<std::string, FunctionalEdge*>* edges,
                     const std::list<std::string>& lines);
 
   // Adds ports to 'edges' based on the connections in 'nodes'.
@@ -193,6 +201,8 @@ class StructuralNetlistParser {
   // of the strings in 'any_of'.
   bool StartsWith(const std::string& src,
                   const std::vector<std::string>& any_of);
+  bool StartsWith(const std::string& src,
+                  const std::unordered_set<std::string>& any_of);
 
   // Returns the largest possible substring surrounded by '(' and ')'.
   std::string GetParenWrappedSubstring(const std::string& str);
@@ -223,12 +233,18 @@ class StructuralNetlistParser {
       const std::map<std::string, FunctionalEdge*>& edges,
       const std::map<std::string, FunctionalEdge*>& wires,
       const std::string& str);
+  FunctionalNode* FunctionalNodeFromLineStream(
+      const std::map<std::string, FunctionalEdge*>& edges,
+      const std::map<std::string, FunctionalEdge*>& wires,
+      const std::string& str);
 
   // Parses a string 'str' containing one or more net declarations, and returns
   // them as a vector of VlogNets.
   std::vector<VlogNet> VlogNetsFromLine(const std::string& str);
   // Caller takes ownership of pointers.
   std::vector<FunctionalEdge*> FunctionalEdgesFromLine(const std::string& str);
+  std::vector<FunctionalEdge*> FunctionalEdgesFromLineStream(
+      const std::string& str);
 
   // Scans through the map of nets and returns the names of those that have
   // a width > 1.

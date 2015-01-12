@@ -34,7 +34,7 @@
 // 3: Happens O(n) times per major algorithm pass
 
 #ifndef VERBOSITY
-#define VERBOSITY 2
+#define VERBOSITY 1
 #endif
 
 // Set to non-zero to enable debugging mode.

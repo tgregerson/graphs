@@ -1,7 +1,7 @@
 /*
- * functional_netlist_parser_main.cpp
+ * functional_netlist_parser_debug_main.cpp
  *
- *  Created on: Sep 9, 2014
+ *  Created on: Jan 8, 2015
  *      Author: gregerso
  */
 
@@ -14,7 +14,6 @@
 
 #include "functional_edge.h"
 #include "functional_node.h"
-#include "tclap/CmdLine.h"
 #include "xilinx_functional_nodes.h"
 #include "structural_netlist_parser.h"
 
@@ -103,7 +102,7 @@ int main(int argc, char *argv[]) {
       parser.RawLinesToSemicolonTerminated(parsed_lines);
 
   cout << "-----------------Populating Edges--------------------\n";
-  parser.PopulateFunctionalEdges(&functional_edges, parsed_lines);
+  parser.PopulateFunctionalEdgesDebug(&functional_edges, parsed_lines);
 
   // Add Xilinx constant edges. We use these in place of connections to
   // ground or VCC.
@@ -127,9 +126,10 @@ int main(int argc, char *argv[]) {
     }
   }
   cout << "-----------------Populating Nodes--------------------\n";
-  parser.PopulateFunctionalNodes(
+  parser.PopulateFunctionalNodesDebug(
       functional_edges, functional_wires, &functional_nodes, parsed_lines);
 
+  cout << "-----------------Pre-Populating Entropies--------------------\n";
   FunctionalEdge* const0 = functional_edges.at("\\<const0> ");
   const0->SetProbabilityOne(0.0);
   FunctionalEdge* const0w = functional_wires.at("\\<const0> [0]");
@@ -139,7 +139,6 @@ int main(int argc, char *argv[]) {
   FunctionalEdge* const1w = functional_wires.at("\\<const1> [0]");
   const1w->SetProbabilityOne(1.0);
   if (p1_file.is_open()) {
-    cout << "-----------------Pre-Populating Entropies--------------------\n";
     parser.PrePopulateProbabilityOnes(p1_file, &functional_wires);
   }
 
@@ -177,7 +176,15 @@ int main(int argc, char *argv[]) {
 
   parser.RemoveUnconnectedNodes(&functional_nodes);
 
-  /*
+  cout << "-----------------Writing NTL--------------------\n";
+  // Write output in NTL format.
+  for (const auto& node_pair : functional_nodes) {
+    parser.PrintFunctionalNodeXNtlFormat(
+        node_pair.second, &functional_edges, &functional_wires,
+        &functional_nodes, output_stream);
+    output_stream << endl;
+  }
+
   const double BIN1_MIN = 0.999;
   const double BIN2_MIN = 0.95;
   const double BIN3_MIN = 0.90;
@@ -236,16 +243,6 @@ int main(int argc, char *argv[]) {
   output_stream << "[" << BIN7_MIN << ":" << BIN8_MIN << "] "
        << (100.0 * bin_count[BIN8_MIN] / functional_wires.size())
        << "% " << bin_count[BIN8_MIN] << endl;
-       */
-
-  cout << "-----------------Writing NTL--------------------\n";
-  // Write output in NTL format.
-  for (const auto& node_pair : functional_nodes) {
-    parser.PrintFunctionalNodeXNtlFormat(
-        node_pair.second, &functional_edges, &functional_wires,
-        &functional_nodes, output_stream);
-    output_stream << endl;
-  }
 
   if (out_file.is_open()) {
     out_file.close();
@@ -253,6 +250,7 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
 
 
 

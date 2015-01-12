@@ -7,6 +7,7 @@
 #include <fstream>
 #include <initializer_list>
 #include <iostream>
+#include <sstream>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -126,11 +127,11 @@ vector<string> StructuralNetlistParser::StringTokens(
 }
 
 string StructuralNetlistParser::FirstStringToken(const string& str) {
-  vector<string> tokens = StringTokens(str);
-  assert_b(!tokens.empty()) {
-    cout << "Found no token in line: " << str << endl;
-  }
-  return tokens.front();
+  stringstream ss(str);
+  string first;
+  ss >> first;
+  assert(!first.empty());
+  return first;
 }
 
 
@@ -141,6 +142,12 @@ bool StructuralNetlistParser::StartsWith(
     if (any == first_token) return true;
   }
   return false;
+}
+
+bool StructuralNetlistParser::StartsWith(
+    const string& src, const unordered_set<string>& any_of) {
+  const string first_token = FirstStringToken(src);
+  return any_of.find(first_token) != any_of.end();
 }
 
 VlogModule StructuralNetlistParser::VlogModuleFromLine(const string& str) {
@@ -157,7 +164,6 @@ VlogModule StructuralNetlistParser::VlogModuleFromLine(const string& str) {
     module_parameters =
         StructuralNetlistLexer::ExtractParameterConnectionsFromModuleParameters(
             module_parameters_str);
-    cout << "SUCCESSFULLY PARSED:\n" << module_parameters_str << "\n";
     for (const auto& parameter : module_parameters) {
       cout << parameter.first << " : " << parameter.second << "\n";
     }
@@ -269,7 +275,16 @@ FunctionalNode* StructuralNetlistParser::FunctionalNodeFromLine(
     assert(!port_connections.first.empty());
     ConnectionDescriptor desc(port_connections.first);
 
-    for (const string& element : port_connections.second) {
+    for (string element : port_connections.second) {
+      // TODO this is not great design, as it relies on the const edges to be
+      // inserted elsewhere. Should be considered a temporary hack. Would be
+
+      // If connection is a 1'b0 or 1'b1, rename to corresponding const edge.
+      if ("1'b0" == element) {
+        element = "\\<const0> ";
+      } else if ("1'b1" == element) {
+        element = "\\<const1> ";
+      }
       auto edge_it = edges.find(element);
       if (edge_it != edges.end()) {
         // Full edge connection without indexing.
@@ -294,6 +309,119 @@ FunctionalNode* StructuralNetlistParser::FunctionalNodeFromLine(
           assert(remainder.empty());
           pair<int, int> bit_range =
               StructuralNetlistLexer::ExtractBitRange(range);
+          FunctionalEdge* edge = edges.at(base_name);
+          const vector<string> single_bits = edge->GetBitNames();
+          for (int bit = bit_range.second; bit <= bit_range.first; ++bit) {
+            // Some edges are defined with non-zero starting bits.
+            int index = bit - edge->BitLow();
+            assert(wires.find(single_bits.at(index)) != wires.end());
+            desc.AddBitConnection(single_bits[index]);
+          }
+        }
+      }
+    }
+    node->AddConnection(desc);
+  }
+
+  for (const auto& parameter : module_parameters) {
+    if (!parameter.first.empty()) {
+      node->named_parameters.insert(parameter);
+    }
+  }
+  return node;
+}
+
+FunctionalNode* StructuralNetlistParser::FunctionalNodeFromLineStream(
+    const map<string, FunctionalEdge*>& edges,
+    const map<string, FunctionalEdge*>& wires,
+    const string& str) {
+  stringstream ss(str);
+
+  string module_type_name;
+  StructuralNetlistLexer::ConsumeIdentifierStream(ss, &module_type_name);
+
+  vector<pair<string,string>> module_parameters;
+
+  string module_parameters_str;
+  if (StructuralNetlistLexer::ConsumeModuleParametersStream(
+      ss, &module_parameters_str)) {
+    module_parameters =
+        StructuralNetlistLexer::ExtractParameterConnectionsFromModuleParametersStream(
+            module_parameters_str);
+  }
+
+  string module_instance_name;
+  assert(StructuralNetlistLexer::ConsumeIdentifierStream(
+      ss, &module_instance_name));
+
+  string wrapped_connection_list;
+  assert(StructuralNetlistLexer::ConsumeWrappedElementStream(
+      ss, &wrapped_connection_list,
+      &StructuralNetlistLexer::ConsumeConnectionListStream, '(', ')'));
+  // Remove wrapping ()
+  string connection_list = StructuralNetlistLexer::ExtractInner(
+      wrapped_connection_list);
+
+  assert(StructuralNetlistLexer::ConsumeCharStream(ss, nullptr, ';'));
+  StructuralNetlistLexer::ConsumeWhitespaceStream(ss);
+  assert(EOF == ss.peek());
+
+  vector<pair<string,string>> connections =
+      StructuralNetlistLexer::ExtractConnectionsFromConnectionListStream(
+          connection_list);
+
+  map<string, vector<string>> port_connection_map;
+  for (const pair<string, string>& connection : connections) {
+    // NOTE: This process reverses the connection order for the port.
+    // Since Verilog uses descending ordering for concatenated nets,
+    // this reversal puts the connections in ascending order, matching
+    // the index ordering of the vector. This will be important when
+    // calling AddBitConnections later.
+    port_connection_map[connection.first].push_back(connection.second);
+  }
+
+  FunctionalNode* node =
+      FunctionalNodeFactory::CreateFunctionalNode(module_type_name);
+  node->instance_name = module_instance_name;
+  for (const pair<string, vector<string>>& port_connections : port_connection_map) {
+    assert(!port_connections.first.empty());
+    ConnectionDescriptor desc(port_connections.first);
+
+    for (string element : port_connections.second) {
+      // TODO this is not great design, as it relies on the const edges to be
+      // inserted elsewhere. Should be considered a temporary hack. Would be
+
+      // If connection is a 1'b0 or 1'b1, rename to corresponding const edge.
+      if ("1'b0" == element) {
+        element = "\\<const0> ";
+      } else if ("1'b1" == element) {
+        element = "\\<const1> ";
+      }
+      auto edge_it = edges.find(element);
+      if (edge_it != edges.end()) {
+        // Full edge connection without indexing.
+        vector<string> single_bits = edge_it->second->GetBitNames();
+        for (const string& single_bit : single_bits) {
+          assert(wires.find(single_bit) != wires.end());
+          desc.AddBitConnection(single_bit);
+        }
+      } else {
+        auto wire_it = wires.find(element);
+        if (wire_it != wires.end()) {
+          // Single-bit wire connection.
+          desc.AddBitConnection(wire_it->second->IndexedName());
+        } else {
+          // Could also be a ranged portion of a bus.
+          stringstream ss(element);
+          string base_name;
+          assert(StructuralNetlistLexer::ConsumeIdentifierStream(
+              ss, &base_name));
+          string range;
+          assert(StructuralNetlistLexer::ConsumeBitRangeStream(
+              ss, &range));
+          assert(EOF == ss.peek());
+          pair<int, int> bit_range =
+              StructuralNetlistLexer::ExtractBitRangeStream(range);
           FunctionalEdge* edge = edges.at(base_name);
           const vector<string> single_bits = edge->GetBitNames();
           for (int bit = bit_range.second; bit <= bit_range.first; ++bit) {
@@ -425,6 +553,56 @@ vector<FunctionalEdge*> StructuralNetlistParser::FunctionalEdgesFromLine(
   return edges;
 }
 
+vector<FunctionalEdge*> StructuralNetlistParser::FunctionalEdgesFromLineStream(
+    const string& str) {
+  stringstream ss(str);
+
+  string net_type_name;
+  assert(StructuralNetlistLexer::ConsumeSimpleIdentifierStream(
+      ss, &net_type_name));
+  assert(net_type_name == "input" || net_type_name == "output" ||
+         net_type_name == "wire"  || net_type_name == "reg");
+  if (net_type_name == "input" || net_type_name == "output") {
+    // Check for compound types "input wire", "output reg".
+    std::streampos cur_pos = ss.tellg();
+    string next_token;
+    if (StructuralNetlistLexer::ConsumeSimpleIdentifierStream(
+        ss, &next_token)) {
+      if (next_token == "wire" || next_token == "reg") {
+        net_type_name.append(" " + next_token);
+      } else {
+        ss.seekg(cur_pos);
+      }
+    }
+  }
+
+  pair <int, int> range_ints = {0, 0};
+  string range;
+  // Optional
+  if (StructuralNetlistLexer::ConsumeBitRangeStream(ss, &range)) {
+    range_ints = StructuralNetlistLexer::ExtractBitRange(range);
+  }
+
+  string identifier_list;
+  assert(StructuralNetlistLexer::ConsumeIdentifierListStream(
+      ss, &identifier_list));
+  vector<string> identifiers =
+      StructuralNetlistLexer::ExtractIdentifiersFromIdentifierListStream(
+          identifier_list);
+
+  assert(StructuralNetlistLexer::ConsumeCharStream(ss, nullptr, ';'));
+  StructuralNetlistLexer::ConsumeWhitespaceStream(ss);
+  assert(EOF == ss.peek());
+
+  vector<FunctionalEdge*> edges;
+  for (const string& net_identifier : identifiers) {
+    FunctionalEdge* edge = new FunctionalEdge(
+        net_identifier, range_ints.first, range_ints.second);
+    edges.push_back(edge);
+  }
+  return edges;
+}
+
 void StructuralNetlistParser::PopulateModules(
     map<string, VlogModule>* modules, const list<string>& lines) {
   const vector<string> non_module_keywords {
@@ -453,13 +631,39 @@ void StructuralNetlistParser::PopulateFunctionalNodes(
     const map<string, FunctionalEdge*>& wires,
     map<string, FunctionalNode*>* nodes,
     const list<string>& lines) {
-  const vector<string> non_module_keywords {
-    "module",
-    "endmodule",
-    "input",
-    "output",
+  const unordered_set<string> non_module_keywords {
     "wire",
     "reg",
+    "input",
+    "output",
+    "module",
+    "endmodule",
+  };
+  int lines_processed = 0;
+  for (const string& line : lines) {
+    if (!StartsWith(line, non_module_keywords)) {
+      FunctionalNode* node = FunctionalNodeFromLineStream(edges, wires, line);
+      nodes->insert(make_pair(node->instance_name, node));
+    }
+    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+      cout << "Processed " << lines_processed << " module lines." << endl;
+    }
+    lines_processed++;
+  }
+}
+
+void StructuralNetlistParser::PopulateFunctionalNodesDebug(
+    const map<string, FunctionalEdge*>& edges,
+    const map<string, FunctionalEdge*>& wires,
+    map<string, FunctionalNode*>* nodes,
+    const list<string>& lines) {
+  const unordered_set<string> non_module_keywords {
+    "wire",
+    "reg",
+    "input",
+    "output",
+    "module",
+    "endmodule",
   };
   int lines_processed = 0;
   for (const string& line : lines) {
@@ -498,11 +702,33 @@ void StructuralNetlistParser::PopulateNets(
 
 void StructuralNetlistParser::PopulateFunctionalEdges(
     map<string, FunctionalEdge*>* edges, const list<string>& lines) {
-  const vector<string> net_keywords {
-    "input",
-    "output",
+  const unordered_set<string> net_keywords {
     "wire",
     "reg",
+    "input",
+    "output",
+  };
+  int lines_processed = 0;
+  for (const string& line : lines) {
+    if (StartsWith(line, net_keywords)) {
+      for (FunctionalEdge* edge : FunctionalEdgesFromLineStream(line)) {
+        edges->insert(make_pair(edge->BaseName(), edge));
+      }
+    }
+    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+      cout << "Processed " << lines_processed << " net lines." << endl;
+    }
+    lines_processed++;
+  }
+}
+
+void StructuralNetlistParser::PopulateFunctionalEdgesDebug(
+    map<string, FunctionalEdge*>* edges, const list<string>& lines) {
+  const unordered_set<string> net_keywords {
+    "wire",
+    "reg",
+    "input",
+    "output",
   };
   int lines_processed = 0;
   for (const string& line : lines) {

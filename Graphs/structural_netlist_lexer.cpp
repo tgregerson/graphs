@@ -40,8 +40,9 @@ bool StructuralNetlistLexer::ConsumeWhitespaceStream(
     token->clear();
   }
   while (isspace(input.peek())) {
+    char c = (char)input.get();
     if (token != nullptr) {
-      token->push_back((char)input.get());
+      token->push_back(c);
     }
   }
   return true;
@@ -74,7 +75,7 @@ string StructuralNetlistLexer::ConsumeIdentifier(
 bool StructuralNetlistLexer::ConsumeIdentifierStream(
     istream& input, std::string* token) {
   ConsumeWhitespaceStream(input);
-  if (!input.eof()) {
+  if (EOF != input.peek()) {
     if (input.peek() == '\\') {
       return ConsumeEscapedIdentifierStream(input, token);
     } else {
@@ -109,7 +110,7 @@ string StructuralNetlistLexer::ConsumeIdentifierList(
       token->assign(incremental_token);
     }
   } else {
-    throw LexingException(error_msg);
+    throw LexingException(error_msg + "Empty input\n");
   }
   return ConsumeWhitespaceIfPresent(remaining, nullptr);
 }
@@ -117,16 +118,15 @@ string StructuralNetlistLexer::ConsumeIdentifierList(
 bool StructuralNetlistLexer::ConsumeIdentifierListStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
-    bool valid = true;
-    valid &= ConsumeIdentifierStream(input, token);
+    bool valid = ConsumeIdentifierStream(input, token);
     ConsumeWhitespaceStream(input);
     while (valid && ConsumeCharStream(input, nullptr, ',')) {
       string identifier;
-      valid &= ConsumeIdentifierStream(input, &identifier);
+      valid = ConsumeIdentifierStream(input, &identifier);
       if (nullptr != token) {
         token->append(", " + identifier);
       }
@@ -168,13 +168,13 @@ bool StructuralNetlistLexer::ConsumeSimpleIdentifierStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
   char c = input.peek();
-  if (EOF == 'c' || '_' == c || !isalpha(c)) {
+  if ('_' == c || !isalpha(c)) {
     return false;
   } else {
     if (nullptr != token) {
       token->clear();
     }
-    while (!isalpha(c) || EOF == c || '_' == c || '$' == c) {
+    while (isalnum(c) || '_' == c || '$' == c) {
       if (nullptr != token) {
         token->push_back(c);
       }
@@ -224,15 +224,17 @@ bool StructuralNetlistLexer::ConsumeEscapedIdentifierStream(
     if (nullptr != token) {
       token->clear();
     }
-    char c = input.peek();
-    while (' ' != c && EOF != c) {
+    char c;
+    do {
+      c = (char)input.get();
+      if (c == EOF) {
+        break;
+      }
       if (nullptr != token) {
         token->push_back(c);
       }
-      input.ignore();
-      input.peek();
-    }
-    return true;
+    } while (' ' != c);
+    return ' ' == c;
   }
 }
 
@@ -275,7 +277,7 @@ string StructuralNetlistLexer::ConsumeConnection(
 bool StructuralNetlistLexer::ConsumeConnectionStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     if ('.' == input.peek()) {
@@ -400,7 +402,7 @@ string StructuralNetlistLexer::ConsumeConnectedElement(
 bool StructuralNetlistLexer::ConsumeConnectedElementStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     char c = input.peek();
@@ -457,7 +459,7 @@ string StructuralNetlistLexer::ConsumeConnectedElementList(
 bool StructuralNetlistLexer::ConsumeConnectedElementListStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
@@ -560,7 +562,7 @@ string StructuralNetlistLexer::ConsumeParameterConnection(
 bool StructuralNetlistLexer::ConsumeParameterConnectionStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     if ('.' == input.peek()) {
@@ -620,7 +622,7 @@ string StructuralNetlistLexer::ConsumeParameterList(
 bool StructuralNetlistLexer::ConsumeParameterListStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
@@ -645,7 +647,7 @@ bool StructuralNetlistLexer::ConsumeParameterListStream(
 string StructuralNetlistLexer::ConsumeModuleParameters(
     const string& input, string* token) {
   const string error_msg =
-    "Failed to consume ParameterList from: " + input + "\n";
+    "Failed to consume ModuleParameters from: " + input + "\n";
   string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
   string incremental_token;
   if (remaining.size() < 3) { // Must have at least '#()'
@@ -819,7 +821,7 @@ string StructuralNetlistLexer::ConsumeBinaryImmediate(
 bool StructuralNetlistLexer::ConsumeBinaryImmediateStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
@@ -888,7 +890,7 @@ string StructuralNetlistLexer::ConsumeOctalImmediate(
 bool StructuralNetlistLexer::ConsumeOctalImmediateStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
@@ -957,7 +959,7 @@ string StructuralNetlistLexer::ConsumeDecimalImmediate(
 bool StructuralNetlistLexer::ConsumeDecimalImmediateStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
@@ -1028,7 +1030,7 @@ string StructuralNetlistLexer::ConsumeHexImmediate(
 bool StructuralNetlistLexer::ConsumeHexImmediateStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
-  if (input.eof()) {
+  if (EOF == input.peek()) {
     return false;
   } else {
     std::streampos initial_pos = input.tellg();
@@ -1095,10 +1097,12 @@ bool StructuralNetlistLexer::ConsumeUnbasedImmediateStream(
   }
   char c = input.peek();
   while (isdigit(c)) {
+    input.ignore();
     valid = true;
     if (nullptr != token) {
       token->push_back(c);
     }
+    c = input.peek();
   }
   return valid;
 }
@@ -1206,9 +1210,9 @@ bool StructuralNetlistLexer::ConsumeBitRangeStream(
     bool valid = ConsumeUnbasedImmediateStream(input, &first_bit_num);
     if (ConsumeCharStream(input, nullptr, ':')) {
       // Range
-      valid &= ConsumeUnbasedImmediateStream(input, &second_bit_num);
+      valid = valid && ConsumeUnbasedImmediateStream(input, &second_bit_num);
     }
-    valid &= ConsumeCharStream(input, nullptr, ']');
+    valid = valid && ConsumeCharStream(input, nullptr, ']');
     if (valid) {
       if (nullptr != token) {
         token->assign("[" + first_bit_num);
@@ -1323,11 +1327,15 @@ bool StructuralNetlistLexer::ConsumeWrappedElementStream(
     }
     string identifier_list;
     bool valid = consumer(input, &identifier_list);
+    if (valid && nullptr != token) {
+      token->append(std::move(identifier_list));
+    }
     while (valid && num_wraps > 0 && input.peek() == close) {
       input.ignore();
       if (nullptr != token) {
         token->push_back(close);
       }
+      --num_wraps;
     }
     valid &= num_wraps == 0;
     if (!valid) {
@@ -1360,7 +1368,28 @@ pair<string, string> StructuralNetlistLexer::ExtractConnectionFromConnection(
   return parsed_connection;
 }
 
-pair<string, string> StructuralNetlistLexer::ExtractParameterConnectionFromParameterConnection(
+pair<string, string> StructuralNetlistLexer::ExtractConnectionFromConnectionStream(
+    const string& connection) {
+  pair<string,string> parsed_connection;
+  stringstream ss(connection);
+
+  if (ss.peek() == '.') {
+    // Named connection.
+    ss.ignore();
+    assert(ConsumeIdentifierStream(ss, &(parsed_connection.first)));
+    string wrapped_connected_element;
+    assert(ConsumeWrappedElementStream(
+        ss, &wrapped_connected_element, &ConsumeConnectedElementStream,
+        '(', ')'));
+    parsed_connection.second = ExtractInner(wrapped_connected_element);
+  } else {
+    parsed_connection.second = ss.str();
+  }
+  return parsed_connection;
+}
+
+pair<string, string>
+StructuralNetlistLexer::ExtractParameterConnectionFromParameterConnection(
     const string& connection) {
   pair<string,string> parsed_connection;
   // Check that 'connection' is actually a valid Connection token.
@@ -1380,6 +1409,27 @@ pair<string, string> StructuralNetlistLexer::ExtractParameterConnectionFromParam
     clean_connected_element = ExtractInner(wrapped_connected_element);
   }
   parsed_connection.second = clean_connected_element;
+  return parsed_connection;
+}
+
+pair<string, string>
+StructuralNetlistLexer::ExtractParameterConnectionFromParameterConnectionStream(
+    const string& connection) {
+  pair<string,string> parsed_connection;
+  stringstream ss(connection);
+
+  if (ss.peek() == '.') {
+    // Named connection.
+    ss.ignore();
+    assert(ConsumeIdentifierStream(ss, &(parsed_connection.first)));
+    string wrapped_connected_element;
+    ConsumeWrappedElementStream(
+        ss, &wrapped_connected_element, &ConsumeParameterConnectedElementStream,
+        '(', ')');
+    parsed_connection.second = ExtractInner(wrapped_connected_element);
+  } else {
+    parsed_connection.second = ss.str();
+  }
   return parsed_connection;
 }
 
@@ -1403,8 +1453,24 @@ vector<string> StructuralNetlistLexer::ExtractIdentifiersFromIdentifierList(
   }
   return identifiers;
 }
+vector<string> StructuralNetlistLexer::ExtractIdentifiersFromIdentifierListStream(
+    const string& identifier_list) {
+  vector<string> identifiers;
+  stringstream ss(identifier_list);
 
-vector<pair<string,string>> StructuralNetlistLexer::ExtractConnectionsFromConnectionList(
+  string identifier;
+  assert(ConsumeIdentifierStream(ss, &identifier));
+  identifiers.push_back(identifier);
+  while (EOF != ss.peek()) {
+    assert(ConsumeCharStream(ss, nullptr, ','));
+    assert(ConsumeIdentifierStream(ss, &identifier));
+    identifiers.push_back(identifier);
+  }
+  return identifiers;
+}
+
+vector<pair<string,string>>
+StructuralNetlistLexer::ExtractConnectionsFromConnectionList(
     const string& connection_list) {
   vector<pair<string,string>> parsed_connections;
 
@@ -1439,7 +1505,41 @@ vector<pair<string,string>> StructuralNetlistLexer::ExtractConnectionsFromConnec
   return parsed_connections;
 }
 
-vector<pair<string,string>> StructuralNetlistLexer::ExtractParameterConnectionsFromParameterList(
+vector<pair<string,string>>
+StructuralNetlistLexer::ExtractConnectionsFromConnectionListStream(
+    const string& connection_list) {
+  vector<pair<string,string>> parsed_connections;
+  stringstream ss(connection_list);
+
+  string connection;
+  assert(ConsumeConnectionStream(ss, &connection));
+  pair<string,string> parsed_connection =
+    ExtractConnectionFromConnectionStream(connection);
+  vector<string> sub_connected_elements =
+    ExtractConnectedElementsFromConnectedElementStream(
+        parsed_connection.second);
+  for (const string& sub_element : sub_connected_elements) {
+    parsed_connections.push_back(
+        make_pair(parsed_connection.first, sub_element));
+  }
+  while (EOF != ss.peek()) {
+    assert(ConsumeCharStream(ss, nullptr, ','));
+    assert(ConsumeConnectionStream(ss, &connection));
+    parsed_connection =
+        ExtractConnectionFromConnectionStream(connection);
+    sub_connected_elements =
+      ExtractConnectedElementsFromConnectedElementStream(
+          parsed_connection.second);
+    for (const string& sub_element : sub_connected_elements) {
+      parsed_connections.push_back(
+          make_pair(parsed_connection.first, sub_element));
+    }
+  }
+  return parsed_connections;
+}
+
+vector<pair<string,string>>
+StructuralNetlistLexer::ExtractParameterConnectionsFromParameterList(
     const string& plist) {
   vector<pair<string,string>> parsed_connections;
 
@@ -1465,18 +1565,51 @@ vector<pair<string,string>> StructuralNetlistLexer::ExtractParameterConnectionsF
   return parsed_connections;
 }
 
-vector<pair<string,string>> StructuralNetlistLexer::ExtractParameterConnectionsFromModuleParameters(
+vector<pair<string,string>>
+StructuralNetlistLexer::ExtractParameterConnectionsFromParameterListStream(
+    const string& plist) {
+  vector<pair<string,string>> parsed_connections;
+  stringstream ss(plist);
+
+  string parameter_connection;
+  assert(ConsumeParameterConnectionStream(ss, &parameter_connection));
+  pair<string,string> parsed_connection =
+    ExtractParameterConnectionFromParameterConnectionStream(
+        parameter_connection);
+  parsed_connections.push_back(parsed_connection);
+  while (EOF != ss.peek()) {
+    assert(ConsumeCharStream(ss, nullptr, ','));
+    assert(ConsumeParameterConnectionStream(ss, &parameter_connection));
+    pair<string,string> parsed_connection =
+        ExtractParameterConnectionFromParameterConnectionStream(
+            parameter_connection);
+    parsed_connections.push_back(parsed_connection);
+  }
+  return parsed_connections;
+}
+
+vector<pair<string,string>>
+StructuralNetlistLexer::ExtractParameterConnectionsFromModuleParameters(
     const string& module_parameters) {
   // Check that 'module_parameters' is actually a valid token.
   string clean_module_parameters;
-  string remaining = ConsumeModuleParameters(module_parameters, &clean_module_parameters);
+  string remaining =
+      ConsumeModuleParameters(module_parameters, &clean_module_parameters);
   assert(remaining.empty());
 
   string plist = ExtractInner(ConsumeChar(clean_module_parameters, nullptr, '#'));
   return ExtractParameterConnectionsFromParameterList(plist);
 }
 
-vector<string> StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElement(
+vector<pair<string,string>>
+StructuralNetlistLexer::ExtractParameterConnectionsFromModuleParametersStream(
+    const string& module_parameters) {
+  string plist = ExtractInner(ConsumeChar(module_parameters, nullptr, '#'));
+  return ExtractParameterConnectionsFromParameterListStream(plist);
+}
+
+vector<string>
+StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElement(
     const string& connected_element) {
   vector<string> connected_elements;
 
@@ -1507,7 +1640,35 @@ vector<string> StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElem
   return connected_elements;
 }
 
-vector<string> StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElementList(
+vector<string>
+StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElementStream(
+    const string& connected_element) {
+  vector<string> connected_elements;
+
+  if (!connected_element.empty()) {
+    if (connected_element[0] == '{') {
+      stringstream ss(connected_element);
+      // The element is a concatenation of elements.
+      string wrapped_connected_element_list;
+      ConsumeWrappedElementStream(ss, &wrapped_connected_element_list,
+          &ConsumeConnectedElementListStream, '{', '}');
+      string connected_element_list = ExtractInner(
+          wrapped_connected_element_list);
+      connected_elements =
+          ExtractConnectedElementsFromConnectedElementListStream(
+              connected_element_list);
+      // Reverse order of concatenated elements so their position in the vector
+      // corresponds to the high-order to low-order ordering in a Verilog vector.
+      std::reverse(connected_elements.begin(), connected_elements.end());
+    } else {
+      connected_elements.push_back(connected_element);
+    }
+  }
+  return connected_elements;
+}
+
+vector<string>
+StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElementList(
     const string& connected_element_list) {
   vector<string> connected_elements;
 
@@ -1537,6 +1698,31 @@ vector<string> StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElem
   return connected_elements;
 }
 
+vector<string>
+StructuralNetlistLexer::ExtractConnectedElementsFromConnectedElementListStream(
+    const string& connected_element_list) {
+  vector<string> connected_elements;
+  stringstream ss(connected_element_list);
+
+  string connected_element;
+  assert(ConsumeConnectedElementStream(ss, &connected_element));
+  vector<string> sub_connected_elements =
+    ExtractConnectedElementsFromConnectedElementStream(connected_element);
+  for (const string& sub_element : sub_connected_elements) {
+    connected_elements.push_back(sub_element);
+  }
+  while (EOF != ss.peek()) {
+    assert(ConsumeCharStream(ss, nullptr, ','));
+    assert(ConsumeConnectedElementStream(ss, &connected_element));
+    vector<string> sub_connected_elements =
+      ExtractConnectedElementsFromConnectedElementStream(connected_element);
+    for (const string& sub_element : sub_connected_elements) {
+      connected_elements.push_back(sub_element);
+    }
+  }
+  return connected_elements;
+}
+
 pair<int, int> StructuralNetlistLexer::ExtractBitRange(
     const string& bit_range) {
   pair<int, int> bit_num_pair = {0, 0};
@@ -1558,6 +1744,28 @@ pair<int, int> StructuralNetlistLexer::ExtractBitRange(
     second_bit_num = first_bit_num;
   }
   remaining = ConsumeChar(remaining, nullptr, ']');
+  int first_int = boost::lexical_cast<int>(first_bit_num);
+  int second_int = boost::lexical_cast<int>(second_bit_num);
+  bit_num_pair.first = (first_int > second_int) ? first_int : second_int;
+  bit_num_pair.second = (first_int > second_int) ? second_int : first_int;
+  return bit_num_pair;
+}
+
+pair<int, int> StructuralNetlistLexer::ExtractBitRangeStream(
+    const string& bit_range) {
+  pair<int, int> bit_num_pair = {0, 0};
+  stringstream ss(bit_range);
+
+  string first_bit_num, second_bit_num;
+  assert(ConsumeCharStream(ss, nullptr, '['));
+  assert(ConsumeUnbasedImmediateStream(ss, &first_bit_num));
+  ConsumeWhitespaceStream(ss);
+  if (ConsumeCharStream(ss, nullptr, ':')) {
+    assert(ConsumeUnbasedImmediateStream(ss, &second_bit_num));
+  } else {
+    second_bit_num = first_bit_num;
+  }
+  assert(ConsumeCharStream(ss, nullptr, ']'));
   int first_int = boost::lexical_cast<int>(first_bit_num);
   int second_int = boost::lexical_cast<int>(second_bit_num);
   bit_num_pair.first = (first_int > second_int) ? first_int : second_int;

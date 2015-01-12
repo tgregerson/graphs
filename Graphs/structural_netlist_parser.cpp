@@ -619,7 +619,7 @@ void StructuralNetlistParser::PopulateModules(
       VlogModule module = VlogModuleFromLine(line);
       modules->insert(make_pair(module.instance_name, module));
     }
-    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+    if (lines_processed % 5000 == 0 && lines_processed != 0) {
       cout << "Processed " << lines_processed << " module lines." << endl;
     }
     lines_processed++;
@@ -645,7 +645,7 @@ void StructuralNetlistParser::PopulateFunctionalNodes(
       FunctionalNode* node = FunctionalNodeFromLineStream(edges, wires, line);
       nodes->insert(make_pair(node->instance_name, node));
     }
-    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+    if (lines_processed % 5000 == 0 && lines_processed != 0) {
       cout << "Processed " << lines_processed << " module lines." << endl;
     }
     lines_processed++;
@@ -671,7 +671,7 @@ void StructuralNetlistParser::PopulateFunctionalNodesDebug(
       FunctionalNode* node = FunctionalNodeFromLine(edges, wires, line);
       nodes->insert(make_pair(node->instance_name, node));
     }
-    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+    if (lines_processed % 5000 == 0 && lines_processed != 0) {
       cout << "Processed " << lines_processed << " module lines." << endl;
     }
     lines_processed++;
@@ -693,7 +693,7 @@ void StructuralNetlistParser::PopulateNets(
         nets->insert(make_pair(net.name, net));
       }
     }
-    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+    if (lines_processed % 5000 == 0 && lines_processed != 0) {
       cout << "Processed " << lines_processed << " net lines." << endl;
     }
     lines_processed++;
@@ -715,7 +715,7 @@ void StructuralNetlistParser::PopulateFunctionalEdges(
         edges->insert(make_pair(edge->BaseName(), edge));
       }
     }
-    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+    if (lines_processed % 5000 == 0 && lines_processed != 0) {
       cout << "Processed " << lines_processed << " net lines." << endl;
     }
     lines_processed++;
@@ -737,7 +737,7 @@ void StructuralNetlistParser::PopulateFunctionalEdgesDebug(
         edges->insert(make_pair(edge->BaseName(), edge));
       }
     }
-    if (lines_processed % 1000 == 0 && lines_processed != 0) {
+    if (lines_processed % 5000 == 0 && lines_processed != 0) {
       cout << "Processed " << lines_processed << " net lines." << endl;
     }
     lines_processed++;

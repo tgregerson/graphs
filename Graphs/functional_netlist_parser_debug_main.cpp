@@ -20,12 +20,6 @@
 
 using namespace std;
 
-void PrintHelpAndDie() {
-  cout << "Usage: ./functional_netlist_parser netlist_file [entropy_file [parsed_netlist]]"
-       << endl;
-  exit(1);
-}
-
 int main(int argc, char *argv[]) {
   StructuralNetlistParser parser;
 

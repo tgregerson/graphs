@@ -14,6 +14,7 @@
 
 #include "functional_edge.h"
 #include "functional_node.h"
+#include "tclap/CmdLine.h"
 #include "xilinx_functional_nodes.h"
 #include "structural_netlist_parser.h"
 

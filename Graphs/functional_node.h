@@ -137,4 +137,22 @@ class FunctionalNode {
   std::map<std::string, ConnectionDescriptor> named_output_connections;
 };
 
+class DummyFunctionalNode : public FunctionalNode {
+ public:
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+    return 1.0;
+  }
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+    return (bit_high - bit_low + 1) * 1.0;
+  }
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const {
+    return 0.5;
+  }
+};
+
 #endif /* FUNCTIONAL_NODE_H_ */

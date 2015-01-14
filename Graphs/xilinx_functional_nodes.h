@@ -113,6 +113,21 @@ class XilinxFdseNode : public XilinxFdNode {
   virtual void AddConnection(const ConnectionDescriptor& connection);
 };
 
+class XilinxFifo18e1Node : public FunctionalNode {
+ public:
+  XilinxFifo18e1Node() {}
+  virtual ~XilinxFifo18e1Node() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
 class XilinxGndNode : public FunctionalNode {
  public:
   XilinxGndNode() {}
@@ -190,6 +205,21 @@ class XilinxObufNode : public XilinxBufNode {
   virtual ~XilinxObufNode() {}
 };
 
+class XilinxMmcme2_AdvNode : public FunctionalNode {
+ public:
+  XilinxMmcme2_AdvNode() {}
+  virtual ~XilinxMmcme2_AdvNode() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
 class XilinxMuxNode : public FunctionalNode {
  public:
   virtual ~XilinxMuxNode() {}
@@ -247,6 +277,21 @@ class XilinxRamb36e1Node : public FunctionalNode {
       NodeMap* nodes) const;
 };
 
+class XilinxRam32mNode : public FunctionalNode {
+ public:
+  XilinxRam32mNode() {}
+  virtual ~XilinxRam32mNode() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
 class XilinxRam64mNode : public FunctionalNode {
  public:
   XilinxRam64mNode() {}
@@ -266,6 +311,36 @@ class XilinxRam64x1dNode : public FunctionalNode {
  public:
   XilinxRam64x1dNode() {}
   virtual ~XilinxRam64x1dNode() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
+class XilinxRam128x1sNode : public FunctionalNode {
+ public:
+  XilinxRam128x1sNode() {}
+  virtual ~XilinxRam128x1sNode() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
+class XilinxRam256x1sNode : public FunctionalNode {
+ public:
+  XilinxRam256x1sNode() {}
+  virtual ~XilinxRam256x1sNode() {}
   virtual void AddConnection(const ConnectionDescriptor& connection);
   virtual double ComputeEntropy(
       const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;

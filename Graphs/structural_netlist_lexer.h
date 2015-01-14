@@ -112,7 +112,7 @@ class StructuralNetlistLexer {
       std::istream& input, std::string* token);
 
   // Immediate = BinaryImmediate || DecimalImmediate || HexImmediate ||
-  //             OctalImmediate || StringLiteral
+  //             OctalImmediate || StringLiteral || ConsumeRealImmediate
   static std::string ConsumeImmediate(const std::string& input,
                                       std::string* token);
   static bool ConsumeImmediateStream(std::istream& input, std::string* token);
@@ -151,6 +151,12 @@ class StructuralNetlistLexer {
   static std::string ConsumeStringLiteral(const std::string& input,
                                           std::string* token);
   static bool ConsumeStringLiteralStream(
+      std::istream& input, std::string* token);
+
+  // RealImmediate = DecimalImmediate.DecimalImmediate
+  static std::string ConsumeRealImmediate(const std::string& input,
+                                          std::string* token);
+  static bool ConsumeRealImmediateStream(
       std::istream& input, std::string* token);
 
   // BitRange = \[UnbasedImmediate\] || \[UnbasedImmediate:UnbasedImmediate\]

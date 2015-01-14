@@ -350,6 +350,100 @@ void XilinxGndNode::AddConnection(const ConnectionDescriptor& connection) {
   }
 }
 
+void XilinxFifo18e1Node::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "ALMOSTEMPTY" ||
+      connection.port_name == "ALMOSTFULL" ||
+      connection.port_name == "DO" ||
+      connection.port_name == "DOP" ||
+      connection.port_name == "EMPTY" ||
+      connection.port_name == "FULL" ||
+      connection.port_name == "WRCOUNT" ||
+      connection.port_name == "RDCOUNT" ||
+      connection.port_name == "WRERR" ||
+      connection.port_name == "RDERR") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "DI" ||
+             connection.port_name == "DIP" ||
+             connection.port_name == "RDEN" ||
+             connection.port_name == "REGCE" ||
+             connection.port_name == "RST" ||
+             connection.port_name == "RSTREG" ||
+             connection.port_name == "WRCLK" ||
+             connection.port_name == "RDCLK" ||
+             connection.port_name == "WREN") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxFifo18e1Node::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  if (output_name == "ALMOSTEMPTY" ||
+      output_name == "ALMOSTFULL" ||
+      output_name == "EMPTY" ||
+      output_name == "FULL" ||
+      output_name == "WRERR" ||
+      output_name == "RDERR") {
+    return ComputeEntropy(output_name, wires, nodes, 0, 0);
+  } else if (output_name == "DO") {
+    return ComputeEntropy(output_name, wires, nodes, 31, 0);
+  } else if (output_name == "WRCOUNT" ||
+             output_name == "RDCOUNT") {
+    return ComputeEntropy(output_name, wires, nodes, 11, 0);
+  } else if (output_name == "DOP") {
+    return ComputeEntropy(output_name, wires, nodes, 3, 0);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxFifo18e1Node::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "ALMOSTEMPTY" ||
+      output_name == "ALMOSTFULL" ||
+      output_name == "EMPTY" ||
+      output_name == "FULL" ||
+      output_name == "WRERR" ||
+      output_name == "RDERR" ||
+      output_name == "DO" ||
+      output_name == "WRCOUNT" ||
+      output_name == "RDCOUNT" ||
+      output_name == "DOP") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxFifo18e1Node::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  if (output_name == "ALMOSTEMPTY" ||
+      output_name == "ALMOSTFULL" ||
+      output_name == "EMPTY" ||
+      output_name == "FULL" ||
+      output_name == "WRERR" ||
+      output_name == "RDERR") {
+    return 0.5;
+  } else if (output_name == "DO") {
+    const ConnectionDescriptor& desc = named_input_connections.at("DI");
+    return wires->at(
+        desc.connection_bit_names.at(bit_pos))->ProbabilityOne(wires, nodes);
+  } else if (output_name == "WRCOUNT" ||
+             output_name == "RDCOUNT") {
+    return 0.5;
+  } else if (output_name == "DOP") {
+    const ConnectionDescriptor& desc = named_input_connections.at("DIP");
+    return wires->at(
+        desc.connection_bit_names.at(bit_pos))->ProbabilityOne(wires, nodes);
+  } else {
+    throw std::exception();
+  }
+}
+
 double XilinxGndNode::ComputeEntropy(
       const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const {
   return 0.0;
@@ -457,6 +551,110 @@ double XilinxLutNode::ComputeProbabilityOne(
     }
   }
   return p1;
+}
+
+void XilinxMmcme2_AdvNode::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "CLKOUT0" ||
+      connection.port_name == "CLKOUT0B" ||
+      connection.port_name == "CLKOUT1" ||
+      connection.port_name == "CLKOUT1B" ||
+      connection.port_name == "CLKOUT2" ||
+      connection.port_name == "CLKOUT2B" ||
+      connection.port_name == "CLKOUT3" ||
+      connection.port_name == "CLKOUT3B" ||
+      connection.port_name == "CLKOUT4" ||
+      connection.port_name == "CLKOUT5" ||
+      connection.port_name == "CLKOUT6" ||
+      connection.port_name == "CLKFBOUT" ||
+      connection.port_name == "CLKFBOUTB" ||
+      connection.port_name == "LOCKED" ||
+      connection.port_name == "DO" ||
+      connection.port_name == "DRDY" ||
+      connection.port_name == "PSDONE" ||
+      connection.port_name == "CLKINSTOPPED" ||
+      connection.port_name == "CLKFBSTOPPED") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "CLKIN1" ||
+             connection.port_name == "CLKIN2" ||
+             connection.port_name == "CLKFBIN" ||
+             connection.port_name == "RST" ||
+             connection.port_name == "PWRDWN" ||
+             connection.port_name == "CLKINSEL" ||
+             connection.port_name == "DADDR" ||
+             connection.port_name == "DI" ||
+             connection.port_name == "DWE" ||
+             connection.port_name == "DEN" ||
+             connection.port_name == "DCLK" ||
+             connection.port_name == "PSINCDEC" ||
+             connection.port_name == "PSEN" ||
+             connection.port_name == "PSCLK") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxMmcme2_AdvNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  if (output_name == "CLKOUT0" ||
+      output_name == "CLKOUT0B" ||
+      output_name == "CLKOUT1" ||
+      output_name == "CLKOUT1B" ||
+      output_name == "CLKOUT2" ||
+      output_name == "CLKOUT2B" ||
+      output_name == "CLKOUT3" ||
+      output_name == "CLKOUT3B" ||
+      output_name == "CLKOUT4" ||
+      output_name == "CLKOUT5" ||
+      output_name == "CLKOUT6" ||
+      output_name == "CLKFBOUT" ||
+      output_name == "CLKFBOUTB" ||
+      output_name == "LOCKED" ||
+      output_name == "DRDY" ||
+      output_name == "PSDONE" ||
+      output_name == "CLKINSTOPPED" ||
+      output_name == "CLKFBSTOPPED") {
+    return ComputeEntropy(output_name, wires, nodes, 0, 0);
+  } else if (output_name == "DO") {
+    return ComputeEntropy(output_name, wires, nodes, 15, 0);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxMmcme2_AdvNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "CLKOUT0" ||
+      output_name == "CLKOUT0B" ||
+      output_name == "CLKOUT1" ||
+      output_name == "CLKOUT1B" ||
+      output_name == "CLKOUT2" ||
+      output_name == "CLKOUT2B" ||
+      output_name == "CLKOUT3" ||
+      output_name == "CLKOUT3B" ||
+      output_name == "CLKOUT4" ||
+      output_name == "CLKOUT5" ||
+      output_name == "CLKOUT6" ||
+      output_name == "CLKFBOUT" ||
+      output_name == "CLKFBOUTB" ||
+      output_name == "DO" ||
+      output_name == "LOCKED" ||
+      output_name == "DRDY" ||
+      output_name == "PSDONE" ||
+      output_name == "CLKINSTOPPED" ||
+      output_name == "CLKFBSTOPPED") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxMmcme2_AdvNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  return 0.5;
 }
 
 double XilinxMuxNode::ComputeEntropy(
@@ -671,6 +869,58 @@ double XilinxRamb36e1Node::ComputeProbabilityOne(
   return 0.5;
 }
 
+void XilinxRam32mNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "DOA" ||
+      port_name == "DOB" ||
+      port_name == "DOC" ||
+      port_name == "DOD") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (port_name == "DIA" ||
+             port_name == "DIB" ||
+             port_name == "DIC" ||
+             port_name == "DID" ||
+             port_name == "WCLK" ||
+             port_name == "WE" ||
+             port_name == "ADDRA" ||
+             port_name == "ADDRB" ||
+             port_name == "ADDRC" ||
+             port_name == "ADDRD") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxRam32mNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  return ComputeEntropy(output_name, wires, nodes, 1, 0);
+}
+
+double XilinxRam32mNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "DOA" ||
+      output_name == "DOB" ||
+      output_name == "DOC" ||
+      output_name == "DOD") {
+    if (bit_high != 1 || bit_low != 0) {
+      throw std::exception();
+    }
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxRam32mNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  // Currently, we don't try to predict output values for RAM.
+  return 0.5;
+}
+
 void XilinxRam64mNode::AddConnection(const ConnectionDescriptor& connection) {
   const string& port_name = connection.port_name;
   if (port_name == "DOA" ||
@@ -764,6 +1014,86 @@ double XilinxRam64x1dNode::ComputeEntropy(
 }
 
 double XilinxRam64x1dNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  // Currently, we don't try to predict output values for RAM.
+  return 0.5;
+}
+
+void XilinxRam128x1sNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "O") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (port_name == "WE" ||
+             port_name == "D" ||
+             port_name == "WCLK" ||
+             port_name == "A0" ||
+             port_name == "A1" ||
+             port_name == "A2" ||
+             port_name == "A3" ||
+             port_name == "A4" ||
+             port_name == "A5" ||
+             port_name == "A6") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxRam128x1sNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  return ComputeEntropy(output_name, wires, nodes, 0, 0);
+}
+
+double XilinxRam128x1sNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "O") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxRam128x1sNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  // Currently, we don't try to predict output values for RAM.
+  return 0.5;
+}
+
+void XilinxRam256x1sNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "O") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (port_name == "WE" ||
+             port_name == "D" ||
+             port_name == "WCLK" ||
+             port_name == "A") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxRam256x1sNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  return ComputeEntropy(output_name, wires, nodes, 0, 0);
+}
+
+double XilinxRam256x1sNode::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "O") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxRam256x1sNode::ComputeProbabilityOne(
     const string& output_name, int bit_pos, EdgeMap* wires,
     NodeMap* nodes) const {
   // Currently, we don't try to predict output values for RAM.

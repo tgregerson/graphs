@@ -9,7 +9,7 @@ CXXFLAGS_OPT = -std=c++11 $(XML2_CXX_FLAGS) -O3 -flto -Wall -Werror
 CXXFLAGS_PROFILE_VALGRIND = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Werror -g
 XXFLAGS_PROFILE_GPROF = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Werror -pg
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_CXX_FLAGS) -Wall -Werror
-CXXFLAGS = $(CXXFLAGS_OPT) -D_FILE_OFFSET_BITS=64
+CXXFLAGS = $(CXXFLAGS_DEBUG) -D_FILE_OFFSET_BITS=64
 LDFLAGS = -lrt $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 

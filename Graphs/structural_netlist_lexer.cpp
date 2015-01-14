@@ -693,7 +693,8 @@ bool StructuralNetlistLexer::ConsumeModuleParametersStream(
 }
 
 // Immediate = BinaryImmediate || DecimalImmediate || HexImmediate ||
-//             OctalImmediate || UnbasedImmediate || StringLiteral
+//             OctalImmediate || UnbasedImmediate || StringLiteral ||
+//             RealImmediate
 string StructuralNetlistLexer::ConsumeImmediate(
     const string& input, string* token) {
   const string error_msg =
@@ -731,6 +732,9 @@ string StructuralNetlistLexer::ConsumeImmediate(
             default:
               throw LexingException("");
           }
+        } else if (!remaining.empty() && '.' == remaining[0]) {
+          remaining = ConsumeRealImmediate(
+              incremental_token + remaining, &incremental_token);
         }
       } else {
         throw LexingException("");
@@ -773,6 +777,19 @@ bool StructuralNetlistLexer::ConsumeImmediateStream(
           return ConsumeHexImmediateStream(input, token);
         default:
           return false;
+      }
+    } else if (valid && '.' == input.peek()) {
+      if (nullptr != token) {
+        token->push_back('.');
+        string fractional;
+        if (ConsumeUnbasedImmediateStream(input, &fractional)) {
+          token->append(fractional);
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return ConsumeUnbasedImmediateStream(input, nullptr);
       }
     }
     return valid;
@@ -1159,6 +1176,69 @@ bool StructuralNetlistLexer::ConsumeStringLiteralStream(
       input.seekg(initial_pos);
       return false;
     }
+  }
+}
+
+// RealImmediate = DecimalImmediate.DecimalImmediate
+string StructuralNetlistLexer::ConsumeRealImmediate(
+    const string& input, string* token) {
+  const string error_msg =
+    "Failed to consume DecimalImmediate from: " + input + "\n";
+  string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+  string incremental_token;
+  size_t pos = 0;
+  while (pos < remaining.length() && isdigit(remaining[pos])) {
+    incremental_token.push_back(remaining[pos]);
+    ++pos;
+  }
+  if (pos >= remaining.length() || remaining[pos] != '.') {
+    throw LexingException(error_msg);
+  }
+  incremental_token.push_back('.');
+  ++pos;
+  while (pos < remaining.length() && isdigit(remaining[pos])) {
+    incremental_token.push_back(remaining[pos]);
+    ++pos;
+  }
+  if (token != nullptr) {
+    token->assign(incremental_token);
+  }
+  return ConsumeWhitespaceIfPresent(
+      remaining.substr(pos, string::npos), nullptr);
+}
+
+bool StructuralNetlistLexer::ConsumeRealImmediateStream(
+    istream& input, string* token) {
+  ConsumeWhitespaceStream(input);
+  if (!isdigit(input.peek())) {
+    return false;
+  } else {
+    bool valid = true;
+    std::streampos initial_pos = input.tellg();
+    while (isdigit(input.peek())) {
+      char c = (char)input.get();
+      if (token != nullptr) {
+        token->push_back(c);
+      }
+    }
+    valid = '.' == (char)input.peek();
+    if (valid) {
+      input.ignore();
+      if (token != nullptr) {
+        token->push_back('.');
+      }
+      valid = isdigit(input.peek());
+      while (valid && isdigit(input.peek())) {
+        char c = (char)input.get();
+        if (token != nullptr) {
+          token->push_back(c);
+        }
+      }
+    }
+    if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
   }
 }
 

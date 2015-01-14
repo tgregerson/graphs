@@ -30,6 +30,8 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxFdreNode();
     } else if (str == "FDSE") {
       node = new vivado::XilinxFdseNode();
+    } else if (str == "FIFO18E1") {
+      node = new vivado::XilinxFifo18e1Node();
     } else if (str == "GND") {
       node = new vivado::XilinxGndNode();
     } else if (str == "IBUF") {
@@ -56,10 +58,16 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxRamb18e1Node();
     } else if (str == "RAMB36E1") {
       node = new vivado::XilinxRamb36e1Node();
+    } else if (str == "RAM32M") {
+      node = new vivado::XilinxRam32mNode();
     } else if (str == "RAM64M") {
       node = new vivado::XilinxRam64mNode();
     } else if (str == "RAM64X1D") {
       node = new vivado::XilinxRam64x1dNode();
+    } else if (str == "RAM128X1S") {
+      node = new vivado::XilinxRam128x1sNode();
+    } else if (str == "RAM256X1S") {
+      node = new vivado::XilinxRam256x1sNode();
     } else if (str == "SRL16E") {
       node = new vivado::XilinxSrl16eNode();
     } else if (str == "SRLC32E") {

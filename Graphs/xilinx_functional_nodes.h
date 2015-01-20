@@ -18,6 +18,19 @@ class FunctionalEdge;
 // modules differently with different versions of ISE/Vivado.
 namespace vivado {
 
+class EpimBlackboxNode : public FunctionalNode {
+ public:
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
 class XilinxBufNode : public FunctionalNode {
  public:
   XilinxBufNode() {}
@@ -117,6 +130,21 @@ class XilinxFifo18e1Node : public FunctionalNode {
  public:
   XilinxFifo18e1Node() {}
   virtual ~XilinxFifo18e1Node() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;
+  virtual double ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const;
+  virtual double ComputeProbabilityOne(
+      const std::string& output_name, int bit_pos, EdgeMap* wires,
+      NodeMap* nodes) const;
+};
+
+class XilinxFifo36e1Node : public FunctionalNode {
+ public:
+  XilinxFifo36e1Node() {}
+  virtual ~XilinxFifo36e1Node() {}
   virtual void AddConnection(const ConnectionDescriptor& connection);
   virtual double ComputeEntropy(
       const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const;

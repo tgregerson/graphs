@@ -779,6 +779,7 @@ bool StructuralNetlistLexer::ConsumeImmediateStream(
           return false;
       }
     } else if (valid && '.' == input.peek()) {
+      input.ignore();
       if (nullptr != token) {
         token->push_back('.');
         string fractional;

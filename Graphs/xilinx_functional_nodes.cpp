@@ -18,6 +18,49 @@ using namespace std;
 
 namespace vivado {
 
+void EpimBlackboxNode::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "egamma") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "clk" ||
+             connection.port_name == "we" ||
+             connection.port_name == "d_in" ||
+             connection.port_name == "ecal_sum" ||
+             connection.port_name == "hcal_sum" ||
+             connection.port_name == "wr_addr") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double EpimBlackboxNode::ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  if (output_name == "egamma") {
+    return ComputeEntropy(output_name, wires, nodes, 0, 0);
+  } else {
+    cout << "Unrecognized output name: " << output_name << endl;
+    throw std::exception();
+  }
+}
+
+double EpimBlackboxNode::ComputeEntropy(
+      const std::string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "egamma") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    cout << "Unrecognized output name: " << output_name << endl;
+    throw std::exception();
+  }
+}
+
+double EpimBlackboxNode::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  return 0.5;
+}
+
 void XilinxBufNode::AddConnection(const ConnectionDescriptor& connection) {
   if (connection.port_name == "O") {
     named_output_connections.insert(make_pair(connection.port_name, connection));
@@ -388,7 +431,21 @@ double XilinxFifo18e1Node::ComputeEntropy(
       output_name == "RDERR") {
     return ComputeEntropy(output_name, wires, nodes, 0, 0);
   } else if (output_name == "DO") {
-    return ComputeEntropy(output_name, wires, nodes, 31, 0);
+    unsigned long bit_high;
+    if (named_parameters.find("DATA_WIDTH") != named_parameters.end()) {
+      const string& val_str = named_parameters.at("DATA_WIDTH");
+      if (!StructuralNetlistLexer::ConsumeUnbasedImmediate(
+          val_str, nullptr).empty()) {
+        throw std::exception();
+      }
+      bit_high = strtoul(val_str.c_str(), nullptr, 10);
+      if (bit_high == 0) {
+        throw std::exception();
+      }
+    } else {
+      bit_high = 31;
+    }
+    return ComputeEntropy(output_name, wires, nodes, bit_high, 0);
   } else if (output_name == "WRCOUNT" ||
              output_name == "RDCOUNT") {
     return ComputeEntropy(output_name, wires, nodes, 11, 0);
@@ -424,6 +481,128 @@ double XilinxFifo18e1Node::ComputeProbabilityOne(
   if (output_name == "ALMOSTEMPTY" ||
       output_name == "ALMOSTFULL" ||
       output_name == "EMPTY" ||
+      output_name == "FULL" ||
+      output_name == "WRERR" ||
+      output_name == "RDERR") {
+    return 0.5;
+  } else if (output_name == "DO") {
+    const ConnectionDescriptor& desc = named_input_connections.at("DI");
+    return wires->at(
+        desc.connection_bit_names.at(bit_pos))->ProbabilityOne(wires, nodes);
+  } else if (output_name == "WRCOUNT" ||
+             output_name == "RDCOUNT") {
+    return 0.5;
+  } else if (output_name == "DOP") {
+    const ConnectionDescriptor& desc = named_input_connections.at("DIP");
+    return wires->at(
+        desc.connection_bit_names.at(bit_pos))->ProbabilityOne(wires, nodes);
+  } else {
+    throw std::exception();
+  }
+}
+
+void XilinxFifo36e1Node::AddConnection(const ConnectionDescriptor& connection) {
+  if (connection.port_name == "ALMOSTEMPTY" ||
+      connection.port_name == "ALMOSTFULL" ||
+      connection.port_name == "DO" ||
+      connection.port_name == "DOP" ||
+      connection.port_name == "DBITERR" ||
+      connection.port_name == "SBITERR" ||
+      connection.port_name == "ECCPARITY" ||
+      connection.port_name == "EMPTY" ||
+      connection.port_name == "FULL" ||
+      connection.port_name == "WRCOUNT" ||
+      connection.port_name == "RDCOUNT" ||
+      connection.port_name == "WRERR" ||
+      connection.port_name == "RDERR") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (connection.port_name == "DI" ||
+             connection.port_name == "DIP" ||
+             connection.port_name == "RDEN" ||
+             connection.port_name == "REGCE" ||
+             connection.port_name == "RST" ||
+             connection.port_name == "RSTREG" ||
+             connection.port_name == "WRCLK" ||
+             connection.port_name == "RDCLK" ||
+             connection.port_name == "WREN" ||
+             connection.port_name == "INJECTDBITERR" ||
+             connection.port_name == "INJECTSBITERR") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
+double XilinxFifo36e1Node::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes) const {
+  if (output_name == "ALMOSTEMPTY" ||
+      output_name == "ALMOSTFULL" ||
+      output_name == "EMPTY" ||
+      output_name == "DBITERR" ||
+      output_name == "SBITERR" ||
+      output_name == "FULL" ||
+      output_name == "WRERR" ||
+      output_name == "RDERR") {
+    return ComputeEntropy(output_name, wires, nodes, 0, 0);
+  } else if (output_name == "DO") {
+    unsigned long bit_high;
+    if (named_parameters.find("DATA_WIDTH") != named_parameters.end()) {
+      const string& val_str = named_parameters.at("DATA_WIDTH");
+      if (!StructuralNetlistLexer::ConsumeUnbasedImmediate(
+          val_str, nullptr).empty()) {
+        throw std::exception();
+      }
+      bit_high = strtoul(val_str.c_str(), nullptr, 10);
+      if (bit_high == 0) {
+        throw std::exception();
+      }
+    } else {
+      bit_high = 63;
+    }
+    return ComputeEntropy(output_name, wires, nodes, bit_high, 0);
+  } else if (output_name == "WRCOUNT" ||
+             output_name == "RDCOUNT") {
+    return ComputeEntropy(output_name, wires, nodes, 12, 0);
+  } else if (output_name == "DOP" ||
+             output_name == "ECCPARITY") {
+    return ComputeEntropy(output_name, wires, nodes, 7, 0);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxFifo36e1Node::ComputeEntropy(
+      const string& output_name, EdgeMap* wires, NodeMap* nodes,
+      int bit_high, int bit_low) const {
+  if (output_name == "ALMOSTEMPTY" ||
+      output_name == "ALMOSTFULL" ||
+      output_name == "EMPTY" ||
+      output_name == "ECCPARITY" ||
+      output_name == "DBITERR" ||
+      output_name == "SBITERR" ||
+      output_name == "FULL" ||
+      output_name == "WRERR" ||
+      output_name == "RDERR" ||
+      output_name == "DO" ||
+      output_name == "WRCOUNT" ||
+      output_name == "RDCOUNT" ||
+      output_name == "DOP") {
+    return ComputeShannonEntropy(output_name, wires, nodes, bit_high, bit_low);
+  } else {
+    throw std::exception();
+  }
+}
+
+double XilinxFifo36e1Node::ComputeProbabilityOne(
+    const string& output_name, int bit_pos, EdgeMap* wires,
+    NodeMap* nodes) const {
+  if (output_name == "ALMOSTEMPTY" ||
+      output_name == "ALMOSTFULL" ||
+      output_name == "EMPTY" ||
+      output_name == "ECCPARITY" ||
+      output_name == "DBITERR" ||
+      output_name == "SBITERR" ||
       output_name == "FULL" ||
       output_name == "WRERR" ||
       output_name == "RDERR") {

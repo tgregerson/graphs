@@ -32,6 +32,8 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxFdseNode();
     } else if (str == "FIFO18E1") {
       node = new vivado::XilinxFifo18e1Node();
+    } else if (str == "FIFO36E1") {
+      node = new vivado::XilinxFifo36e1Node();
     } else if (str == "GND") {
       node = new vivado::XilinxGndNode();
     } else if (str == "IBUF") {
@@ -50,6 +52,8 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxLut6Node();
     } else if (str == "OBUF") {
       node = new vivado::XilinxObufNode();
+    } else if (str == "MMCME2_ADV") {
+      node = new vivado::XilinxMmcme2_AdvNode();
     } else if (str == "MUXF7") {
       node = new vivado::XilinxMuxf7Node();
     } else if (str == "MUXF8") {
@@ -74,6 +78,8 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxSrlc32eNode();
     } else if (str == "VCC") {
       node = new vivado::XilinxVccNode();
+    } else if (str == "epim_blackbox") {
+      node = new vivado::EpimBlackboxNode();
     } else {
       const std::string error_msg = "Unidentified module name: " + str;
       throw std::invalid_argument(error_msg.c_str());

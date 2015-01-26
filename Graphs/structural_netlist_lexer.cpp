@@ -708,7 +708,7 @@ string StructuralNetlistLexer::ConsumeImmediate(
       char c = remaining[0];
       if (c == '"') {
         remaining = ConsumeStringLiteral(remaining, &incremental_token);
-      } else if (isdigit(c)) {
+      } else if (isdigit(c) || '-' == c) {
         remaining = ConsumeUnbasedImmediate(remaining, &incremental_token);
         if (!remaining.empty() && remaining[0] == '\'') {
           assert(remaining.size() > 1);
@@ -756,6 +756,9 @@ bool StructuralNetlistLexer::ConsumeImmediateStream(
   if ('"' == c) {
     // String literal
     return ConsumeStringLiteralStream(input, token);
+  } else if ('-' == c) {
+    // Negative unbased immediate.
+    return ConsumeUnbasedImmediateStream(input, token);
   } else if (isdigit(c)) {
     // Value
     std::streampos initial_pos = input.tellg();
@@ -1079,7 +1082,7 @@ bool StructuralNetlistLexer::ConsumeHexImmediateStream(
   }
 }
 
-// UnbasedImmediate = (0-9)+
+// UnbasedImmediate = [-](0-9)+
 string StructuralNetlistLexer::ConsumeUnbasedImmediate(
     const string& input, string* token) {
   const string error_msg =
@@ -1090,6 +1093,9 @@ string StructuralNetlistLexer::ConsumeUnbasedImmediate(
     throw LexingException(error_msg);
   } else {
     size_t end_pos = 0;
+    if ('-' == remaining[end_pos]) {
+      ++end_pos;
+    }
     while (end_pos < remaining.size() &&
            (remaining[end_pos] >= '0' && remaining[end_pos] <= '9')) {
       ++end_pos;
@@ -1109,11 +1115,19 @@ string StructuralNetlistLexer::ConsumeUnbasedImmediate(
 bool StructuralNetlistLexer::ConsumeUnbasedImmediateStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
+  std::streampos initial_pos = input.tellg();
   bool valid = false;
   if (nullptr != token) {
     token->clear();
   }
   char c = input.peek();
+  if ('-' == c) {
+    input.ignore();
+    if (nullptr != token) {
+      token->push_back('-');
+    }
+    c = input.peek();
+  }
   while (isdigit(c)) {
     input.ignore();
     valid = true;
@@ -1121,6 +1135,9 @@ bool StructuralNetlistLexer::ConsumeUnbasedImmediateStream(
       token->push_back(c);
     }
     c = input.peek();
+  }
+  if (!valid) {
+    input.seekg(initial_pos);
   }
   return valid;
 }

@@ -426,6 +426,7 @@ FunctionalNode* StructuralNetlistParser::FunctionalNodeFromLineStream(
           const vector<string> single_bits = edge->GetBitNames();
           for (int bit = bit_range.second; bit <= bit_range.first; ++bit) {
             // Some edges are defined with non-zero starting bits.
+            // Can even have negative indices.
             int index = bit - edge->BitLow();
             assert(wires.find(single_bits.at(index)) != wires.end());
             desc.AddBitConnection(single_bits[index]);

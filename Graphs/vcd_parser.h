@@ -108,7 +108,7 @@ struct BitEntropyInfo {
 struct SignalEntropyInfo {
   unsigned long long last_update_time{0};
   unsigned long long width;
-  unsigned long long bit_low{0};
+  long long bit_low{0};
   std::string orig_name;
   std::vector<BitEntropyInfo> bit_info;
 };
@@ -218,7 +218,8 @@ struct VariableDeclaration {
   };
   VariableType type;
   unsigned long long int width;
-  unsigned long long int bit_low{0};
+  // Must be signed, because negative indicies are allowed.
+  long long int bit_low{0};
   std::string orig_name;
   std::string code_name;
 };
@@ -398,7 +399,7 @@ bool TryParseSimulationTimeFromInput(T& in, vcd_token::SimulationTime* st) {
   char* buffer_pos = initial_buffer_pos;
   char c = fhelp::GetChar(in);
   if ('#' == c) {
-    if (vcd_lexer::ConsumeDecimalNumber(in, &buffer_pos)) {
+    if (vcd_lexer::ConsumeUnsignedDecimalNumber(in, &buffer_pos)) {
       *buffer_pos = '\0';
       st->time = strtoull(initial_buffer_pos, nullptr, 10);
       return true;

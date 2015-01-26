@@ -213,6 +213,17 @@ bool ConsumeDecimalNumber(
 bool ConsumeDecimalNumber(
     FILE* in, char** buffer_pos);
 
+std::string ConsumeUnsignedDecimalNumber(
+    const std::string& in, std::string* token = nullptr);
+bool ConsumeUnsignedDecimalNumber(
+    std::istream& in, std::string* token = nullptr);
+bool ConsumeUnsignedDecimalNumber(
+    std::istream& in, char** buffer_pos);
+bool ConsumeUnsignedDecimalNumber(
+    FILE* in, std::string* token = nullptr);
+bool ConsumeUnsignedDecimalNumber(
+    FILE* in, char** buffer_pos);
+
 
 // Template function definitions
 template <typename T>

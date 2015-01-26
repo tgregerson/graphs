@@ -222,7 +222,7 @@ bool TryParseVarBody(const string& body, vcd_token::VariableDeclaration* var) {
   try {
     remaining = ConsumeWhitespaceOptional(remaining);
     string width_string;
-    remaining = ConsumeDecimalNumber(remaining, &width_string);
+    remaining = ConsumeUnsignedDecimalNumber(remaining, &width_string);
     var->width = strtoull(width_string.c_str(), nullptr, 10);
     remaining = ConsumeWhitespaceOptional(remaining);
     remaining = ConsumeNonWhitespace(remaining, &(var->code_name));
@@ -251,7 +251,7 @@ bool TryParseVarBody(const string& body, vcd_token::VariableDeclaration* var) {
       string bit_low;
       ConsumeDecimalNumber(
           bit_range.substr(range_pre + 1, string::npos), &bit_low);
-      var->bit_low = strtoull(bit_low.c_str(), nullptr, 10);
+      var->bit_low = strtoll(bit_low.c_str(), nullptr, 10);
       remaining = ConsumeWhitespaceOptional(remaining);
     }
     ConsumeExactString("$end", remaining);

@@ -756,6 +756,97 @@ void ConsumeWhitespaceOptional(
 }
 
 string ConsumeDecimalNumber(const string& in, string* token) {
+  if (!in.empty()) {
+    if ('-' == in.at(0)) {
+      string val;
+      string remaining = ConsumeUnsignedDecimalNumber(
+          in.substr(1, string::npos), &val);
+      if (nullptr != token) {
+        *token = "-" + val;
+      }
+      return remaining;
+    } else {
+      return ConsumeUnsignedDecimalNumber(in, token);
+    }
+  } else {
+    throw std::exception();
+  }
+}
+
+bool ConsumeDecimalNumber(istream& in, string* token) {
+  if ('-' == (char)in.peek()) {
+    in.ignore();
+    string val;
+    bool valid = ConsumeUnsignedDecimalNumber(in, &val);
+    if (valid) {
+      if (nullptr != token) {
+        *token = "-" + val;
+      }
+    } else {
+      in.unget();
+    }
+    return valid;
+  } else {
+    return ConsumeUnsignedDecimalNumber(in, token);
+  }
+}
+
+bool ConsumeDecimalNumber(
+    istream& in, char** buffer) {
+  if ('-' == in.peek()) {
+    **buffer = '-';
+    ++(*buffer);
+    in.ignore();
+    bool valid = ConsumeUnsignedDecimalNumber(in, buffer);
+    if (!valid) {
+      --(*buffer);
+    }
+    return buffer;
+  } else {
+    return ConsumeUnsignedDecimalNumber(in, buffer);
+  }
+}
+
+bool ConsumeDecimalNumber(FILE* in, string* token) {
+  char c = (char)fgetc(in);
+  bool valid = false;
+  if ('-' == c) {
+    valid = ConsumeUnsignedDecimalNumber(in, token);
+    if (valid) {
+      if (nullptr != token) {
+        *token = "-" + *token;
+      }
+    }
+  } else {
+    valid = ConsumeUnsignedDecimalNumber(in, token);
+  }
+  if (!valid) {
+    ungetc('-', in);
+  }
+  return valid;
+}
+
+bool ConsumeDecimalNumber(
+    FILE* in, char** buffer) {
+  char c = (char)fgetc(in);
+  bool valid = false;
+  if ('-' == c) {
+    **buffer = '-';
+    ++(*buffer);
+    valid = ConsumeUnsignedDecimalNumber(in, buffer);
+    if (!valid) {
+      --(*buffer);
+    }
+  } else {
+    valid = ConsumeUnsignedDecimalNumber(in, buffer);
+  }
+  if (!valid) {
+    ungetc('-', in);
+  }
+  return valid;
+}
+
+string ConsumeUnsignedDecimalNumber(const string& in, string* token) {
   size_t i;
   for (i = 0; i < in.size(); ++i) {
     if (!isdigit(in[i])) {
@@ -768,7 +859,7 @@ string ConsumeDecimalNumber(const string& in, string* token) {
   return in.substr(i, string::npos);
 }
 
-bool ConsumeDecimalNumber(istream& in, string* token) {
+bool ConsumeUnsignedDecimalNumber(istream& in, string* token) {
   std::streampos initial_pos = in.tellg();
   if (token != nullptr) {
     token->resize(0);
@@ -782,7 +873,7 @@ bool ConsumeDecimalNumber(istream& in, string* token) {
   return initial_pos != in.tellg();
 }
 
-bool ConsumeDecimalNumber(
+bool ConsumeUnsignedDecimalNumber(
     istream& in, char** buffer) {
   char* initial_buffer_pos = *buffer;
   while (!in.eof() && isdigit(in.peek())) {
@@ -792,7 +883,7 @@ bool ConsumeDecimalNumber(
   return initial_buffer_pos != *buffer;
 }
 
-bool ConsumeDecimalNumber(FILE* in, string* token) {
+bool ConsumeUnsignedDecimalNumber(FILE* in, string* token) {
   bool found = false;
   char c = (char)fgetc(in);
   while (isdigit(c)) {
@@ -808,7 +899,7 @@ bool ConsumeDecimalNumber(FILE* in, string* token) {
   return found;
 }
 
-bool ConsumeDecimalNumber(
+bool ConsumeUnsignedDecimalNumber(
     FILE* in, char** buffer) {
   char* initial_buffer_pos = *buffer;
   char c = (char)fgetc(in);

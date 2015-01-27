@@ -11,28 +11,35 @@
 #include <set>
 
 #include "file_helpers.h"
-#include "vcd_lexer.h"
+#include "tclap/CmdLine.h"
 #include "universal_macros.h"
+#include "vcd_lexer.h"
 
 using namespace std;
 
 int main(int argc, char *argv[]) {
 
-  if (argc != 2 && argc != 3) {
-    cout << "Usage: vcd_parser vcd_file [output_file]" << endl;
-    exit(1);
-  }
+  TCLAP::CmdLine cmd("Command description message", ' ', "0.0");
+
+  TCLAP::ValueArg<string> vcd_input_file_flag(
+      "v", "vcd", "VCD input file name", true, "", "string",
+      cmd);
+
+  TCLAP::ValueArg<string> entropy_output_file_flag(
+      "e", "entropy", "Entropy output file name", false, "", "string",
+      cmd);
+
+  cmd.parse(argc, argv);
 
   std::chrono::high_resolution_clock::time_point t_start =
       std::chrono::high_resolution_clock::now();
 
-  //ifstream in_file(argv[1], ios::in | ios::binary);
-  FILE* in_file = fopen(argv[1], "r");
+  FILE* in_file = fopen(vcd_input_file_flag.getValue().c_str(), "r");
   assert(!fhelp::IsError(in_file));
 
   std::ofstream outfile;
-  if (argc == 3) {
-    outfile.open(argv[2]);
+  if (entropy_output_file_flag.isSet()) {
+    outfile.open(entropy_output_file_flag.getValue());
     assert(outfile.is_open());
   }
 
@@ -42,26 +49,12 @@ int main(int argc, char *argv[]) {
   fhelp::SeekToEnd(in_file);
   const auto end_pos = fhelp::GetPosition(in_file);
   fhelp::SeekToPosition(in_file, initial_pos);
-  /*
-  if (end_pos > 1e9) {
-    cout << "File size too big: " << end_pos << endl;
-    throw std::exception();
-  }
-  */
 
   vcd_parser::vcd_token::VcdDefinitions vd;
-  /*
-  const long long pre_reserve = end_pos / 5;
-  cout << "Pre-reserving " << pre_reserve << " sim commands" << endl;
-  vd.simulation_commands.reserve(pre_reserve);
-  */
-
-  //VcdParser::ParseVcdDefinitions(file_contents, &vd, false);
-  //vcd_lexer::ConsumeVcdDefinitions(in_file, nullptr);
-  //vcd_parser::ParseVcdDefinitions(in_file, &vd);
   vcd_parser::EntropyFromVcdDefinitions(in_file, os);
 
-  cout << "Done processing " << argv[1] << ". Bye!" << endl;
+  cout << "Done processing " << vcd_input_file_flag.getValue()
+       << ". Bye!" << endl;
 
   std::chrono::high_resolution_clock::time_point t_end =
       std::chrono::high_resolution_clock::now();
@@ -76,6 +69,5 @@ int main(int argc, char *argv[]) {
   cout << "Time: " << duration_s.count() << "s" << endl;
 
   fclose(in_file);
-  //in_file.close();
   return 0;
 }

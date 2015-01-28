@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
       "e", "entropy", "Entropy output file name", false, "", "string",
       cmd);
 
-  TCLAP::ValueArg<int> time_interval_pico(
-      "t", "time_interval_u", "Time interval in picoseconds", false, 0, "int",
+  TCLAP::ValueArg<int> time_interval_micro(
+      "t", "time_interval_u", "Time interval in microseconds", false, 0, "int",
       cmd);
 
   TCLAP::ValueArg<int> max_mb(
@@ -59,11 +59,12 @@ int main(int argc, char *argv[]) {
   fhelp::SeekToPosition(in_file, initial_pos);
 
   vcd_parser::vcd_token::VcdDefinitions vd;
-  long long int interval_pico =
-      (time_interval_pico.isSet()) ? time_interval_pico.getValue() : 0;
+  long long int interval_micro =
+      (time_interval_micro.isSet()) ?
+          1000000 * time_interval_micro.getValue() : 0;
 
   vcd_parser::EntropyFromVcdDefinitions(
-      in_file, os, max_mb.getValue(), interval_pico);
+      in_file, os, max_mb.getValue(), interval_micro);
 
   cout << "Done processing " << vcd_input_file_flag.getValue()
        << ". Bye!" << endl;

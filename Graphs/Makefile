@@ -14,6 +14,7 @@ LDFLAGS = -lrt $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
 CHACO_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o)
+ETT_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_lexer.o)
 GRAPH_BASE_O = $(addprefix $(OBJDIR)/,edge.o id_manager.o node.o port.o weight_score.o)
 KLFM_BASE_O = $(addprefix $(OBJDIR)/,edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o partition_engine_klfm.o partitioner_config.o preprocessor.o testbench_generator.o) \
               $(GRAPH_BASE_O)
@@ -33,6 +34,8 @@ PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_confi
             $(KLFM_BASE_O) \
             $(NTL_BASE_O)
 
+ETT_BIN_O = $(OBJDIR)/entropy_time_tracker_main.o \
+            $(ETT_BASE_O)      
 FNP_BIN_O = $(OBJDIR)/functional_netlist_parser_main.o \
             $(SNP_BASE_O)
 FNPD_BIN_O = $(OBJDIR)/functional_netlist_parser_debug_main.o \
@@ -48,7 +51,7 @@ WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \
            $(GRAPH_BASE_O)
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter structural_netlist_parser vcd_parser weight_generator)
+BINARIES = $(addprefix $(BINDIR)/,partition_main entropy_time_tracker functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter structural_netlist_parser vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -62,6 +65,9 @@ $(BINDIR):
 	mkdir $(BINDIR)
 
 $(BINDIR)/partition_main: $(PM_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/entropy_time_tracker: $(ETT_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/functional_netlist_parser: $(FNP_BIN_O)
@@ -152,6 +158,9 @@ $(OBJDIR)/edge.o: $(edge_H) edge.cpp
 
 $(OBJDIR)/edge_klfm.o: $(edge_klfm_H) edge_klfm.cpp
 	$(CXX) -c edge_klfm.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/entropy_time_tracker_main.o: $(structural_netlist_lexer_H) entropy_time_tracker_main.cpp
+	$(CXX) -c entropy_time_tracker_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/functional_edge.o: $(functional_node_H) $(functional_edge_H) functional_edge.cpp
 	$(CXX) -c functional_edge.cpp $(CXXFLAGS) -o $@

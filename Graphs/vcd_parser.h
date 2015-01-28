@@ -797,7 +797,7 @@ void EntropyFromVcdDefinitions(
       } else {
         for (auto& slice : sig_info.time_slices) {
           BitEntropyInfo& bit_info = slice.bit_info.at(i);
-          os << "{" << slice.start_time << ", " << slice.end_time << "} ";
+          //os << "{" << slice.start_time << ", " << slice.end_time << "} ";
           os << bit_info.num_0 << " "
              << bit_info.num_1 << " "
              << bit_info.num_x << " "

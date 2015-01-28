@@ -774,6 +774,12 @@ void EntropyFromVcdDefinitions(
   // Update all signals with last value.
   UpdateAllSignals(cur_time, entropy_data);
 
+  assert(!entropy_data.empty());
+  if (interval_pico > 0) {
+    // For backwards compatibility with previous entropy files, only print
+    // the number of slices in multi-slice entropy files.
+    os << entropy_data.begin()->second.time_slices.size() << std::endl;
+  }
   for (auto& entropy_pair : entropy_data) {
     assert(entropy_pair.second.last_update_time != 0);
     SignalEntropyInfo& sig_info = entropy_pair.second;

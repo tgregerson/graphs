@@ -29,6 +29,14 @@ int main(int argc, char *argv[]) {
       "e", "entropy", "Entropy output file name", false, "", "string",
       cmd);
 
+  TCLAP::ValueArg<int> time_interval_pico(
+      "t", "time_interval_u", "Time interval in picoseconds", false, 0, "int",
+      cmd);
+
+  TCLAP::ValueArg<int> max_mb(
+      "m", "max_mb", "Stop after parsing this many megabytes", false, 0, "int",
+      cmd);
+
   cmd.parse(argc, argv);
 
   std::chrono::high_resolution_clock::time_point t_start =
@@ -51,7 +59,11 @@ int main(int argc, char *argv[]) {
   fhelp::SeekToPosition(in_file, initial_pos);
 
   vcd_parser::vcd_token::VcdDefinitions vd;
-  vcd_parser::EntropyFromVcdDefinitions(in_file, os);
+  long long int interval_pico =
+      (time_interval_pico.isSet()) ? time_interval_pico.getValue() : 0;
+
+  vcd_parser::EntropyFromVcdDefinitions(
+      in_file, os, max_mb.getValue(), interval_pico);
 
   cout << "Done processing " << vcd_input_file_flag.getValue()
        << ". Bye!" << endl;

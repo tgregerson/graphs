@@ -59,6 +59,7 @@ struct BitEntropyInfo {
         break;
       default: assert(false);
     }
+    cur_val_char = value_char;
   }
 
   double p_0() const {
@@ -99,18 +100,50 @@ struct BitEntropyInfo {
   }
 
   FourValueLogic cur_val{FourValueLogic::X};
+  char cur_val_char{'x'};
   long long int num_0{0};
   long long int num_1{0};
   long long int num_x{0};
   long long int num_z{0};
 };
 
+struct SignalEntropyTimeSlice {
+  void InitFrom(const SignalEntropyTimeSlice& previous_slice) {
+    start_time = previous_slice.end_time;
+    bit_info.resize(previous_slice.bit_info.size());
+    for (size_t i = 0; i < bit_info.size(); ++i) {
+      bit_info.at(i).cur_val = previous_slice.bit_info.at(i).cur_val;
+      bit_info.at(i).cur_val_char = previous_slice.bit_info.at(i).cur_val_char;
+    }
+  }
+  unsigned long long start_time{0};
+  unsigned long long end_time{0};
+  std::vector<BitEntropyInfo> bit_info;
+};
+
 struct SignalEntropyInfo {
+  SignalEntropyInfo() {
+    time_slices.resize(1);
+  }
+
+  SignalEntropyTimeSlice& CurrentTimeSlice() {
+    assert(!time_slices.empty());
+    return time_slices.back();
+  }
+
+  void AdvanceTimeSlice(long long int current_time) {
+    SignalEntropyTimeSlice& prev_slice = CurrentTimeSlice();
+    prev_slice.end_time = current_time;
+    SignalEntropyTimeSlice new_slice;
+    new_slice.InitFrom(prev_slice);
+    time_slices.push_back(new_slice); // prev_slice reference invalidated!
+  }
+
   unsigned long long last_update_time{0};
-  unsigned long long width;
+  unsigned long long width{1};
   long long bit_low{0};
   std::string orig_name;
-  std::vector<BitEntropyInfo> bit_info;
+  std::vector<SignalEntropyTimeSlice> time_slices;
 };
 
 namespace vcd_token {
@@ -531,7 +564,7 @@ inline void ProcessValueChange(
     long long time_diff = cur_time - sig_info.last_update_time;
     sig_info.last_update_time = cur_time;
     assert(sig_info.width == 1);
-    sig_info.bit_info.at(0).Update(
+    sig_info.CurrentTimeSlice().bit_info.at(0).Update(
         vc.scalar_value_change.value.value, time_diff);
   } else if (vc.type ==
               vcd_token::ValueChange::ValueChangeType::VectorValueChange){
@@ -564,12 +597,12 @@ inline void ProcessValueChange(
     }
     // Need to index in reverse order since char 0 of string is msb.
     for (size_t i = 0; i < vvc.number_string.length(); ++i) {
-      sig_info.bit_info.at(i).Update(
+      sig_info.CurrentTimeSlice().bit_info.at(i).Update(
           vvc.number_string.at(vvc.number_string.length() - i - 1),
           time_diff);
     }
     for (size_t i = vvc.number_string.length(); i < sig_info.width; ++i) {
-      sig_info.bit_info.at(i).Update(extend_char, time_diff);
+      sig_info.CurrentTimeSlice().bit_info.at(i).Update(extend_char, time_diff);
     }
   }
 }
@@ -584,16 +617,29 @@ inline void UpdateUpScope(std::vector<std::string>& cur_scope) {
   cur_scope.pop_back();
 }
 
+void UpdateAllSignals(
+    long long current_time,
+    std::unordered_map<std::string, SignalEntropyInfo>& entropy_data) {
+  for (auto& entropy_pair : entropy_data) {
+    long long time_diff = current_time - entropy_pair.second.last_update_time;
+    for (size_t i = 0; i < entropy_pair.second.width; ++i) {
+      BitEntropyInfo& bit =
+          entropy_pair.second.CurrentTimeSlice().bit_info.at(i);
+      bit.Update(bit.cur_val_char, time_diff);
+    }
+    entropy_pair.second.last_update_time = current_time;
+  }
+}
+
 template <typename T>
-void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
+void EntropyFromVcdDefinitions(
+    T& in, std::ostream& os, long long max_mb, long long int interval_pico) {
   const auto initial_pos = fhelp::GetPosition(in);
   fhelp::SeekToEnd(in);
   const auto end_pos = fhelp::GetPosition(in);
   const auto end_pos_mb = end_pos >> 20;
   fhelp::SeekToPosition(in, initial_pos);
 
-  // todo parameter
-  const long long max_mb = -1;
   const size_t omit_scope_levels = 2;
   const size_t max_depth = -1;
 
@@ -642,7 +688,7 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
             e_info.orig_name.append(var.orig_name);
             e_info.width = var.width;
             e_info.bit_low = var.bit_low;
-            e_info.bit_info.resize(e_info.width);
+            e_info.CurrentTimeSlice().bit_info.resize(e_info.width);
             entropy_data.insert(make_pair(var.code_name, e_info));
             break;
           }
@@ -678,6 +724,7 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
   std::cout << "---------------Starting parse sim commands----------------\n";
   vcd_token::SimulationCommand sc;
   long long cur_time = 0;
+  long long timeslice_switch_time = interval_pico;
   while (!fhelp::IsEof(in)) {
     if (!TryParseSimulationCommandFromInput(in, &sc)) {
       std::cout << "Done processing simulations" << std::endl;
@@ -686,6 +733,14 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
     }
     switch (sc.type) {
       case vcd_token::SimulationCommand::SimulationCommandType::TimeCommand:
+        if (timeslice_switch_time > 0 &&
+            sc.simulation_time.time > timeslice_switch_time) {
+          UpdateAllSignals(timeslice_switch_time, entropy_data);
+          for (auto& entropy_pair : entropy_data) {
+            entropy_pair.second.AdvanceTimeSlice(timeslice_switch_time);
+          }
+          timeslice_switch_time += interval_pico;
+        }
         cur_time = sc.simulation_time.time;
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand:
@@ -717,27 +772,33 @@ void EntropyFromVcdDefinitions(T& in, std::ostream& os) {
   std::cout << "End time: " << cur_time << std::endl;
 
   // Update all signals with last value.
-  for (auto& entropy_pair : entropy_data) {
-    long long time_diff = cur_time - entropy_pair.second.last_update_time;
-    for (int i = 0; i < entropy_pair.second.width; ++i) {
-      entropy_pair.second.bit_info.at(i).Update('0', time_diff);
-    }
-    entropy_pair.second.last_update_time = cur_time;
-    assert(entropy_pair.second.last_update_time != 0);
-  }
+  UpdateAllSignals(cur_time, entropy_data);
 
-  for (auto entropy_pair : entropy_data) {
+  for (auto& entropy_pair : entropy_data) {
     assert(entropy_pair.second.last_update_time != 0);
     SignalEntropyInfo& sig_info = entropy_pair.second;
+    sig_info.CurrentTimeSlice().end_time = cur_time;
     for (int i = 0; i < sig_info.width; ++i) {
-      BitEntropyInfo& bit_info = sig_info.bit_info.at(i);
-      os << sig_info.orig_name << "[" << (i + sig_info.bit_low) << "] "
-         << bit_info.num_0 << " "
-         << bit_info.num_1 << " "
-         << bit_info.num_x << " "
-         << bit_info.num_z << " "
-         //<< "(" << bit_info.total_time() << ") "
-         << std::endl;
+      os << sig_info.orig_name << "[" << (i + sig_info.bit_low) << "] ";
+      if (interval_pico <= 0) {
+        BitEntropyInfo& bit_info = sig_info.CurrentTimeSlice().bit_info.at(i);
+        assert(bit_info.total_time() > 0);
+        os << bit_info.num_0 << " "
+           << bit_info.num_1 << " "
+           << bit_info.num_x << " "
+           << bit_info.num_z << " "
+           << std::endl;
+      } else {
+        for (auto& slice : sig_info.time_slices) {
+          BitEntropyInfo& bit_info = slice.bit_info.at(i);
+          os << "{" << slice.start_time << ", " << slice.end_time << "} ";
+          os << bit_info.num_0 << " "
+             << bit_info.num_1 << " "
+             << bit_info.num_x << " "
+             << bit_info.num_z << " ";
+        }
+        os << std::endl;
+      }
     }
   }
 }

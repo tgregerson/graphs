@@ -80,19 +80,31 @@ int main(int argc, char *argv[]) {
     assert(whitelist_in_file.is_open());
     while (!whitelist_in_file.eof()) {
       string signal_name;
-      whitelist_in_file >> signal_name;
-      if (!signal_name.empty()) {
+      if (StructuralNetlistLexer::ConsumeIdentifierStream(
+          whitelist_in_file, &signal_name)) {
+        string bit_range;
+        if (StructuralNetlistLexer::ConsumeBitRangeStream(
+            whitelist_in_file, &bit_range)) {
+              signal_name.append(bit_range);
+        }
         whitelist_signals.insert(signal_name);
       }
     }
+    cout << "Whitelisted " << whitelist_signals.size() << " signals.\n";
   }
 
   map<string, vector<SliceValues>> signal_slices;
-  vector<SliceValues> total_slices;
-  int num_time_slices;
-  entropy_in_file >> num_time_slices;
+  vector<double> total_slice_entropy;
+  string num_slice_str;
+  unsigned long long num_time_slices;
+  if (StructuralNetlistLexer::ConsumeUnbasedImmediateStream(
+      entropy_in_file, &num_slice_str)) {
+    num_time_slices = strtoull(num_slice_str.c_str(), nullptr, 10);
+  } else {
+    num_time_slices = 1;
+  }
   cout << "Tracking data for " << num_time_slices << " time slices.\n";
-  total_slices.resize(num_time_slices);
+  total_slice_entropy.resize(num_time_slices);
   while (!entropy_in_file.eof()) {
     string signal_name;
     StructuralNetlistLexer::ConsumeIdentifierStream(
@@ -107,14 +119,14 @@ int main(int argc, char *argv[]) {
       if (whitelist_signals.empty() ||
           whitelist_signals.find(signal_name) != whitelist_signals.end()) {
         vector<SliceValues> slice_values;
-        for (int i = 0; i < num_time_slices; ++i) {
+        for (unsigned long long int i = 0; i < num_time_slices; ++i) {
           SliceValues sv;
           entropy_in_file >> sv.num_zero;
           entropy_in_file >> sv.num_one;
           entropy_in_file >> sv.num_x;
           entropy_in_file >> sv.num_z;
           slice_values.push_back(sv);
-          total_slices.at(i).Accumulate(sv);
+          total_slice_entropy.at(i) += MinSliceEntropy(sv);
         }
         signal_slices.insert(make_pair(signal_name, slice_values));
         cout << "Added " << signal_name << endl;
@@ -126,6 +138,12 @@ int main(int argc, char *argv[]) {
     entropy_in_file.ignore(numeric_limits<streamsize>::max(), '\n');
   }
   cout << "Found " << signal_slices.size() << " signals.\n";
+
+  for (const string& wl_signal : whitelist_signals) {
+    if (signal_slices.find(wl_signal) == signal_slices.end()) {
+      cout << "Didn't find entropy for whitelist signal: " << wl_signal << endl;
+    }
+  }
 
   ofstream outfile;
   if (output_file_flag.isSet()) {
@@ -143,9 +161,14 @@ int main(int argc, char *argv[]) {
     os << endl;
   }
 
-  os << "Total ";
-  for (const SliceValues& slice : total_slices) {
-    os << MinSliceEntropy(slice) << " ";
+  os << "Total (" << signal_slices.size() << ") ";
+  for (double slice_entropy : total_slice_entropy) {
+    os << slice_entropy << " ";
+  }
+  os << endl;
+  os << "TotalPercent (" << signal_slices.size() << ") ";
+  for (double slice_entropy : total_slice_entropy) {
+    os << (slice_entropy / signal_slices.size()) << " ";
   }
   os << endl;
 

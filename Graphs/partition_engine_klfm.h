@@ -92,7 +92,8 @@ class PartitionEngineKlfm : public PartitionEngine {
         sol_scip_format(true),
         sol_gurobi_format(false),
         use_entropy(false),
-        save_cutset(true) {
+        save_cutset(true),
+        cutset_dir("") {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -128,7 +129,8 @@ class PartitionEngineKlfm : public PartitionEngine {
         sol_scip_format(true),
         sol_gurobi_format(false),
         use_entropy(false),
-        save_cutset(true) {
+        save_cutset(true),
+        cutset_dir("") {
       max_imbalance_fraction.insert(max_imbalance_fraction.begin(),     
                                     num_resources_per_node, 0.05);
       constrain_balance_by_resource.insert(
@@ -269,13 +271,16 @@ class PartitionEngineKlfm : public PartitionEngine {
     // technique used when performing a large number of runs if it is not
     // necessary to print the cutset.
     bool save_cutset;
+
+    // If non-empty, cutsets are written to files stored in this directory.
+    std::string cutset_dir;
   };
 
  private:
   void AppendPartitionSummary(
     std::vector<PartitionSummary>* summaries, const NodePartitions& partitions,
     std::vector<int>& current_partition_balance, double current_partition_cost,
-    int num_passes);
+    int num_passes, int cur_run);
 
   // Verifies that all of weight vectors for every node in the node map have
   // the same number of entries as num_resources_per_node_;

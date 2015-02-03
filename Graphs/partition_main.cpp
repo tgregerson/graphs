@@ -51,6 +51,7 @@ class KlfmRunConfig {
   bool sol_gurobi_format{false};
   bool use_entropy{false};
   bool save_cutset{false};
+  string cutset_dir;
 };
 
 void print_usage_and_exit();
@@ -145,6 +146,7 @@ int main(int argc, char *argv[]) {
   options.sol_gurobi_format = run_config.sol_gurobi_format;
   options.use_entropy = run_config.use_entropy;
   options.save_cutset = run_config.save_cutset;
+  options.cutset_dir = run_config.cutset_dir;
 
   run_config.partitioner_config.PrintPreprocessorOptions(rs);
   options.Print(rs);
@@ -419,6 +421,11 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
       "", "save_cutset", "Store the cutset information from each run", cmd,
       false);
 
+  TCLAP::ValueArg<string> write_cutset_dir(
+      "", "write_cutset_dir", "Write cutsets to this directory", false,
+      "", "string", cmd);
+
+
   cmd.parse(argc, argv);
 
   KlfmRunConfig run_config;
@@ -461,6 +468,9 @@ KlfmRunConfig ConfigFromCommandLineOptions(int argc, char* argv[]) {
                                !run_config.sol_gurobi_format;
   run_config.use_entropy = use_entropy_switch.isSet();
   run_config.save_cutset = save_cutset_switch.isSet();
+  if (write_cutset_dir.isSet()) {
+    run_config.cutset_dir = write_cutset_dir.getValue();
+  }
   return run_config;
 }
 

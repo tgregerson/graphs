@@ -34,8 +34,6 @@ GainBucketEntry
   } else if (unconstrained_bucket->Empty()) {
     assert(!constrained_bucket->Empty()); // DEBUG
     constrained_entry = constrained_bucket->Top();
-    assert(constrained_entry.current_weight_vector()[resource_index_] <=
-           max_constrained_node_weight);
     constrained_bucket->Pop();
     return constrained_entry;
   }

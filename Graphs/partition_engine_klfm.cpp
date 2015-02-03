@@ -362,7 +362,7 @@ void PartitionEngineKlfm::ExecuteRun(
 
   AppendPartitionSummary(
       summaries, decoarsened_partition, current_partition_balance,
-      current_partition_cost, num_passes);
+      current_partition_cost, num_passes, cur_run);
 
   DLOG(DEBUG_OPT_TRACE, 1) << "Run complete." << endl;
 }
@@ -372,8 +372,9 @@ void PartitionEngineKlfm::AppendPartitionSummary(
    const NodePartitions& partitions,
    vector<int>& current_partition_balance,
    double current_partition_cost,
-   int num_passes) {
-  int num_summaries = 3;
+   int num_passes,
+   int cur_run) {
+  int num_summaries = 1;
 
   for (int sum_num = 0; sum_num < num_summaries; sum_num++) {
     if (sum_num == 1) {
@@ -516,6 +517,44 @@ void PartitionEngineKlfm::AppendPartitionSummary(
     summary.rms_resource_deviation = rms_avg;
     summary.num_passes_used = num_passes;
     summaries->push_back(summary);
+    if (!options_.cutset_dir.empty()) {
+      stringstream filename;
+      filename << options_.cutset_dir << "/"
+               << summary.total_cost
+               << "_" << cur_run
+               << "_" << summary.total_span
+               << "_" << summary.total_entropy
+               << "_cutset.txt";
+      ofstream cutset_outfile(filename.str());
+      assert(cutset_outfile.is_open());
+      set<string> cutset;
+      GetCutSetNames(partitions, &cutset);
+      for (const string& signal : cutset) {
+        // todo get rid of addition of "split" to split nets in partitioner.
+        // Don't think names need to be unique.
+        size_t pos = signal.find("_split_");
+        cutset_outfile << signal.substr(0, pos) << "\n";
+      }
+
+      stringstream csv_filename;
+      csv_filename << options_.cutset_dir << "/summary.csv";
+      ofstream csv_outfile;
+      if (cur_run == 0) {
+        csv_outfile.open(csv_filename.str(), ios_base::out);
+        assert(csv_outfile.is_open());
+        csv_outfile << "TotalCost,"
+                    << "RunNum,"
+                    << "TotalSpan,"
+                    << "TotalEntropy\n";
+      } else {
+        csv_outfile.open(csv_filename.str(), ios_base::app);
+        assert(csv_outfile.is_open());
+      }
+      csv_outfile << summary.total_cost << ","
+                  << cur_run << ","
+                  << summary.total_span << ","
+                  << summary.total_entropy << "\n";
+    }
   }
 }
 

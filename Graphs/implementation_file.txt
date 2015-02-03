@@ -101,7 +101,7 @@ rom8_twidth4_width5 80 0 0
 rom16_twidth4_width5 160 0 0
 cluster_filter 10 0 0
 BUFG 1 0 0
-CARRY4 0 10 0
+CARRY4 0 10 0 4 0 0
 DSP48E1 0 10 0 100 0 0
 FDCE 1 0 0
 FDPE 1 0 0

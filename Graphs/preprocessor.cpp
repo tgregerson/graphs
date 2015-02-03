@@ -52,7 +52,11 @@ void Preprocessor::RunUniversalResource(Node* graph) {
       }
     }
     if (highest_value == 0) {
-      print_missing_implementation_warning = true;
+      for (int weight : node->WeightVector(highest_index)) {
+        if (weight > 0) {
+          print_missing_implementation_warning = true;
+        }
+      }
     }
     node->SetSelectedWeightVector(highest_index);
   }

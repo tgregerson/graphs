@@ -139,10 +139,11 @@ struct SignalEntropyInfo {
     time_slices.push_back(new_slice); // prev_slice reference invalidated!
   }
 
+  int scope_prefix_code{-1};
   unsigned long long last_update_time{0};
   unsigned long long width{1};
   long long bit_low{0};
-  std::string orig_name;
+  std::string unscoped_orig_name;
   std::vector<SignalEntropyTimeSlice> time_slices;
 };
 
@@ -549,9 +550,8 @@ void ParseVcdDefinitions(T& in, vcd_token::VcdDefinitions* vd) {
   std::cout << "---------------Done parsing----------------\n";
 }
 
-inline void ProcessValueChange(
-    const vcd_token::ValueChange& vc, long long cur_time,
-    std::unordered_map<std::string, SignalEntropyInfo>& entropy_data,
+template <typename T> void ProcessValueChange(
+    const vcd_token::ValueChange& vc, long long cur_time, T& entropy_data,
     const std::unordered_set<std::string>& ignored_codes) {
   if (vc.type ==
       vcd_token::ValueChange::ValueChangeType::ScalarValueChange) {
@@ -617,9 +617,8 @@ inline void UpdateUpScope(std::vector<std::string>& cur_scope) {
   cur_scope.pop_back();
 }
 
-void UpdateAllSignals(
-    long long current_time,
-    std::unordered_map<std::string, SignalEntropyInfo>& entropy_data) {
+template <typename T>
+void UpdateAllSignals(long long current_time, T& entropy_data) {
   for (auto& entropy_pair : entropy_data) {
     long long time_diff = current_time - entropy_pair.second.last_update_time;
     for (size_t i = 0; i < entropy_pair.second.width; ++i) {
@@ -645,6 +644,9 @@ void EntropyFromVcdDefinitions(
 
   std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
   std::unordered_set<std::string> ignored_codes;
+
+  std::set<std::string> used_scope_prefixes;
+  std::vector<std::string> scope_prefixes_by_code;
 
   long long last_print_point = 0;
   long long cur_line = 0;
@@ -680,12 +682,20 @@ void EntropyFromVcdDefinitions(
         case vcd_token::VariableDeclaration::VariableType::WorType:
           // Do not track entropy for signals exceeding max depth.
           if (max_depth < 0 || cur_scope.size() <= max_depth) {
-            e_info.orig_name.clear();
+            e_info.unscoped_orig_name.clear();
+            std::string scope_prefix;
             for (size_t scope_level = omit_scope_levels;
                 scope_level < cur_scope.size(); ++scope_level) {
-              e_info.orig_name.append(cur_scope[scope_level] + ".");
+              // TODO
+              // Experimenting with using '/' here. Used to be '.'
+              scope_prefix.append(cur_scope[scope_level] + "/");
             }
-            e_info.orig_name.append(var.orig_name);
+            if (used_scope_prefixes.find(scope_prefix) ==
+                used_scope_prefixes.end()) {
+              e_info.scope_prefix_code = scope_prefixes_by_code.size();
+              scope_prefixes_by_code.push_back(scope_prefix);
+            }
+            e_info.unscoped_orig_name = var.orig_name;
             e_info.width = var.width;
             e_info.bit_low = var.bit_low;
             e_info.CurrentTimeSlice().bit_info.resize(e_info.width);
@@ -785,7 +795,10 @@ void EntropyFromVcdDefinitions(
     SignalEntropyInfo& sig_info = entropy_pair.second;
     sig_info.CurrentTimeSlice().end_time = cur_time;
     for (int i = 0; i < sig_info.width; ++i) {
-      os << sig_info.orig_name << "[" << (i + sig_info.bit_low) << "] ";
+      if (sig_info.scope_prefix_code >= 0) {
+        os << scope_prefixes_by_code.at(sig_info.scope_prefix_code);
+      }
+      os << sig_info.unscoped_orig_name << "[" << (i + sig_info.bit_low) << "] ";
       if (interval_pico <= 0) {
         BitEntropyInfo& bit_info = sig_info.CurrentTimeSlice().bit_info.at(i);
         assert(bit_info.total_time() > 0);

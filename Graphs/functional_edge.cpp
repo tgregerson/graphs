@@ -24,6 +24,13 @@ double FunctionalEdge::ProbabilityOne(
     map<string, FunctionalNode*>* nodes) {
   if (p_one_ < 0.0) {
     p_one_ = ComputeProbabilityOne(wires, nodes);
+    // Adjust for the possibility of rounding errors producing invalid
+    // values;
+    if (p_one_ < 0.0) {
+      p_one_ = 0.0;
+    } else if (p_one_ > 1.0) {
+      p_one_ = 1.0;
+    }
   }
   return p_one_;
 }
@@ -40,7 +47,15 @@ double FunctionalEdge::ComputeShannonEntropy(map<string, FunctionalEdge*>* wires
     return 0.0;
   } else {
     double p0 = 1.0 - p1;
-    return -p1*log2(p1) + -p0*log2(p0);
+    double entropy = -p1*log2(p1) + -p0*log2(p0);
+    // Ensure that we don't end up with invalid values due to rounding.
+    if (entropy < 0.0) {
+      return 0.0;
+    } else if (entropy > 1.0) {
+      return 1.0;
+    } else {
+      return entropy;
+    }
   }
 }
 

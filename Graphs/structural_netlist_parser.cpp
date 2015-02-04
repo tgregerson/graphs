@@ -792,11 +792,56 @@ void StructuralNetlistParser::PrePopulateProbabilityOnes(
 
   getline(p1_file, cur_line);
   do {
+
+    // TODO
+    // Added some hacky processing here to handle scoped identifiers in
+    // generate blocks and within modules.
+
     string remainder =
         StructuralNetlistLexer::ConsumeIdentifier(cur_line, &wire_name);
-    remainder =
-        StructuralNetlistLexer::ConsumeBitRange(remainder, &wire_bit_select);
-    wire_name.append(wire_bit_select);
+    try {
+      // This may either be the bitrange for an unscoped identifier or the
+      // genvar index for a scoped generated identifier.
+      remainder =
+          StructuralNetlistLexer::ConsumeBitRange(remainder, &wire_bit_select);
+      wire_name.append(wire_bit_select);
+    } catch (std::exception& e) {}
+
+    while ('.' == remainder.at(0) || '/' == remainder.at(0)) {
+      if ('.' == remainder.at(0)) {
+        // Scoped generate block identifier.
+        wire_name.push_back('.');
+        remainder = remainder.substr(1, string::npos);
+
+        string next_level;
+        remainder = StructuralNetlistLexer::ConsumeSimpleIdentifier(
+            remainder, &next_level);
+        wire_name.append(next_level);
+      }
+      if ('/' == remainder.at(0)) {
+        // Scoped nested module
+        wire_name.push_back('/');
+        remainder = remainder.substr(1, string::npos);
+
+        string next_level;
+        remainder = StructuralNetlistLexer::ConsumeIdentifier(
+            remainder, &next_level);
+        wire_name.append(next_level);
+      }
+      // Optional index
+      try {
+        string range;
+        remainder = StructuralNetlistLexer::ConsumeBitRange(remainder, &range);
+        wire_name.append(range);
+      } catch (std::exception& e) {}
+    }
+
+    try {
+      remainder =
+          StructuralNetlistLexer::ConsumeBitRange(remainder, &wire_bit_select);
+      wire_name.append(wire_bit_select);
+    } catch (std::exception& e) {}
+
     string number_dec;
     unsigned long long num_0, num_1, num_x, num_z;
     try {
@@ -833,8 +878,30 @@ void StructuralNetlistParser::PrePopulateProbabilityOnes(
         cout << wire_pair.first << endl;
       }
       */
+      // TODO Experiment: Try converting nested simple identifier to
+      // escaped identifier.
+      if ('\\' != wire_name.at(0)) {
+        string escaped_wire_name = "\\" + wire_name;
+        size_t range_start_pos = escaped_wire_name.rfind('[');
+        if (range_start_pos == string::npos ||
+            escaped_wire_name.back() != ']') {
+          // No range.
+          escaped_wire_name.push_back(' ');
+        } else {
+          escaped_wire_name = escaped_wire_name.substr(0, range_start_pos) + " " +
+                      escaped_wire_name.substr(range_start_pos, string::npos);
+        }
+        try {
+          FunctionalEdge* wire = wires->at(escaped_wire_name);
+          wire->SetProbabilityOne(wire_p1);
+          ++wires_processed;
+          cout << "Successfully set " << escaped_wire_name
+               << " after transformation\n";
+          getline(p1_file, cur_line);
+          continue;
+        } catch (std::exception& e) {}
+      }
       ++errors_found;
-      //cout << "Failed to find wire: " << wire_name << endl;
       //cout << e.what() << endl;
       //throw std::exception();
     }

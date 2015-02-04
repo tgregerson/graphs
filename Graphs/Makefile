@@ -101,10 +101,10 @@ clean:
 # HEADER DEPENDENCY DEFINITIONS
 
 chaco_weight_generator_H = chaco_weight_generator.h
+connection_descriptor_H = connection_descriptor.h
 edge_H = edge.h
 file_helpers_H = file_helpers.h
 functional_edge_H = functional_edge.h
-functional_node_H = functional_node.h
 id_manager_H = id_manager.h
 parser_interface_H = parser_interface.h
 port_H = port.h
@@ -116,25 +116,26 @@ universal_macros_H = universal_macros.h
 weight_score_H = weight_score.h
 
 edge_klfm_H = $(edge_H) edge_klfm.h
+functional_node_H = $(connection_descriptor_H) functional_node.h
 lp_solve_interface_H = $(univeral_macros_H) lp_solve_interface.h
 node_H = $(edge_H) $(port_H) node.h
 vcd_lexer_H = $(file_helpers_H) vcd_lexer.h
-xilinx_functional_nodes_H = $(functional_node_H) $(structural_netlist_lexer_H) xilinx_functional_nodes.h
 
 chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
-functional_node_factory_H = $(functional_node_H) $(xilinx_functional_nodes_H)
 gain_bucket_entry_H = $(node_H) $(universal_macros_H) gain_bucket_entry.h
 partitioner_config_H = $(node_H) partitioner_config.h
 partition_engine_H = $(edge_klfm_H) partition_engine.h
 vcd_parser_H = $(file_helpers_H) $(vcd_lexer_H) vcd_parser.h
+xilinx_functional_nodes_H = $(functional_node_H) $(structural_netlist_lexer_H) xilinx_functional_nodes.h
 
+functional_node_factory_H = $(functional_node_H) $(xilinx_functional_nodes_H)
 gain_bucket_interface_H = $(edge_klfm_H) $(gain_bucket_entry_H) gain_bucket_interface.h
 preprocessor_H = $(node_H) $(partitioner_config_H) preprocessor.h
 xml_config_reader_H = $(partitioner_config_H) xml_config_reader.h
-structural_netlist_parser_H = $(functional_node_factory_H) $(structural_netlist_lexer_H) structural_netlist_parser.h
 
 gain_bucket_manager_H = $(node_H) $(gain_bucket_interface_H) $(gain_bucket_entry_H) $(partitioner_config_H) gain_bucket_manager.h
 gain_bucket_standard_H = $(gain_bucket_entry_H) $(gain_bucket_interface_H) gain_bucket_standard.h
+structural_netlist_parser_H = $(functional_node_factory_H) $(structural_netlist_lexer_H) structural_netlist_parser.h
 
 gain_bucket_manager_single_resource_H = $(gain_bucket_entry_H) $(gain_bucket_manager_H) $(gain_bucket_standard_H) gain_bucket_manager_single_resource.h
 gain_bucket_manager_multi_resource_exclusive_H = $(gain_bucket_entry_H) $(gain_bucket_manager_H) $(gain_bucket_standard_H) $(partitioner_config_H) gain_bucket_manager_multi_resource_exclusive.h

@@ -5,8 +5,6 @@
  *      Author: gregerso
  */
 
-#include <cassert>
-
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -141,11 +139,14 @@ int main(int argc, char *argv[]) {
       functional_nodes, &functional_edges, &functional_wires);
 
   cout << "-----------------Computing Entropies--------------------\n";
-  for (const auto& wire_pair : functional_wires) {
+  for (auto& wire_pair : functional_wires) {
     FunctionalEdge* wire = wire_pair.second;
     wire->Entropy(&functional_wires, &functional_nodes);
   }
 
+  // WARNING: Entropy computation must be done before pruning wires from the
+  // graph, otherwise the necessary inputs may not be present when computing
+  // the output probability.
   cout << "-----------------Pruning Graph--------------------\n";
   // Remove synthesis-tool-specific nets that should not be included in graph.
   set<string> blacklisted_global_nets = {

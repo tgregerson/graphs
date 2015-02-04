@@ -8,6 +8,8 @@
 #ifndef CONNECTION_DESCRIPTOR_H_
 #define CONNECTION_DESCRIPTOR_H_
 
+#include <cassert>
+
 #include <exception>
 #include <string>
 #include <vector>
@@ -25,6 +27,7 @@ class ConnectionDescriptor {
     : port_name(pn), port_width(pw), connection_bit_names(cbn) {}
 
   void AddBitConnection(unsigned int index, const std::string& bit_name) {
+    assert(!bit_name.empty());
     if (connection_bit_names.size() <= index) {
       connection_bit_names.resize(index + 1);
       port_width = index + 1;
@@ -33,6 +36,7 @@ class ConnectionDescriptor {
   }
 
   void AddBitConnection(const std::string& bit_name) {
+    assert(!bit_name.empty());
     connection_bit_names.push_back(bit_name);
     ++port_width;
   }

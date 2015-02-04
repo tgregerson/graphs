@@ -8,6 +8,8 @@
 #ifndef FUNCTIONAL_EDGE_H_
 #define FUNCTIONAL_EDGE_H_
 
+#include <cassert>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -44,6 +46,7 @@ class FunctionalEdge {
       std::map<std::string, FunctionalNode*>* nodes);
 
   virtual void SetProbabilityOne(double p1) {
+    assert(p1 >= 0.0 && p1 <= 1.0);
     p_one_ = p1;
   }
 

@@ -1197,12 +1197,14 @@ bool StructuralNetlistLexer::ConsumeStringLiteralStream(
   }
 }
 
-// RealImmediate = DecimalImmediate.DecimalImmediate
+// RealImmediate = UnbasedImmediate.UnbasedImmediate[e[-]UnbasedImmediate]
 string StructuralNetlistLexer::ConsumeRealImmediate(
     const string& input, string* token) {
   const string error_msg =
-    "Failed to consume DecimalImmediate from: " + input + "\n";
+    "Failed to consume RealImmediate from: " + input + "\n";
   string remaining = ConsumeWhitespaceIfPresent(input, nullptr);
+
+  /*
   string incremental_token;
   size_t pos = 0;
   while (pos < remaining.length() && isdigit(remaining[pos])) {
@@ -1223,11 +1225,59 @@ string StructuralNetlistLexer::ConsumeRealImmediate(
   }
   return ConsumeWhitespaceIfPresent(
       remaining.substr(pos, string::npos), nullptr);
+  */
+
+  string mantissa;
+  string fractional;
+  string exponent;
+
+  try {
+    remaining = ConsumeUnbasedImmediate(remaining, &mantissa);
+  } catch (LexingException& e) {
+    throw LexingException(error_msg + e.what());
+  }
+  if (!remaining.empty() && '.' == remaining.at(0)) {
+    try {
+      remaining = ConsumeUnbasedImmediate(
+          remaining.substr(1, string::npos), &fractional);
+    } catch (LexingException& e) {
+      throw LexingException(error_msg + e.what());
+    }
+  }
+  if (!remaining.empty() && 'e' == remaining.at(0)) {
+    bool neg = false;
+    remaining = remaining.substr(1, string::npos);
+    if (!remaining.empty() && '-' == remaining.at(0)) {
+      neg = true;
+      remaining = remaining.substr(1, string::npos);
+    }
+    try {
+      remaining = ConsumeUnbasedImmediate(remaining, &exponent);
+    } catch (LexingException& e) {
+      throw LexingException(error_msg + e.what());
+    }
+    if (neg) {
+      exponent = "-" + exponent;
+    }
+  }
+  if (nullptr != token) {
+    token->assign(mantissa);
+    if (!fractional.empty()) {
+      token->push_back('.');
+      token->append(fractional);
+    }
+    if (!exponent.empty()) {
+      token->push_back('e');
+      token->append(exponent);
+    }
+  }
+  return ConsumeWhitespaceIfPresent(remaining);
 }
 
 bool StructuralNetlistLexer::ConsumeRealImmediateStream(
     istream& input, string* token) {
   ConsumeWhitespaceStream(input);
+  /*
   if (!isdigit(input.peek())) {
     return false;
   } else {
@@ -1254,6 +1304,43 @@ bool StructuralNetlistLexer::ConsumeRealImmediateStream(
       }
     }
     if (!valid) {
+      input.seekg(initial_pos);
+    }
+    return valid;
+  }
+  */
+
+  if (!isdigit(input.peek())) {
+    return false;
+  } else {
+    string mantissa, fractional, exponent;
+    std::streampos initial_pos = input.tellg();
+    bool valid = ConsumeUnbasedImmediateStream(input, &mantissa);
+    valid &= '.' == input.peek();
+    if (valid) {
+      input.ignore();
+      valid = ConsumeUnbasedImmediateStream(input, &fractional);
+    }
+    if (valid && 'e' == input.peek()) {
+      input.ignore();
+      bool neg = '-' == input.peek();
+      if (neg) {
+        input.ignore();
+      }
+      valid = ConsumeUnbasedImmediateStream(input, &exponent);
+      if (valid && neg) {
+        exponent = "-" + exponent;
+      }
+    }
+    if (valid && nullptr != token) {
+      token->assign(mantissa);
+      if (!fractional.empty()) {
+        token->append("." + fractional);
+      }
+      if (!exponent.empty()) {
+        token->append("e" + exponent);
+      }
+    } else {
       input.seekg(initial_pos);
     }
     return valid;

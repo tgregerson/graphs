@@ -9,8 +9,10 @@
 #include <iostream>
 #include <sstream>
 #include <set>
+#include <unordered_map>
 
 #include "file_helpers.h"
+#include "signal_entropy_info.h"
 #include "tclap/CmdLine.h"
 #include "universal_macros.h"
 #include "vcd_lexer.h"
@@ -63,8 +65,9 @@ int main(int argc, char *argv[]) {
       (time_interval_micro.isSet()) ?
           1000000 * time_interval_micro.getValue() : 0;
 
+  std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
   vcd_parser::EntropyFromVcdDefinitions(
-      in_file, os, max_mb.getValue(), interval_micro);
+      in_file, &entropy_data, true, os, max_mb.getValue(), interval_micro);
 
   cout << "Done processing " << vcd_input_file_flag.getValue()
        << ". Bye!" << endl;

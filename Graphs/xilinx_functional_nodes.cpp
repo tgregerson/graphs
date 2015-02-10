@@ -640,6 +640,19 @@ double XilinxGndNode::ComputeProbabilityOne(
   return 0.0;
 }
 
+void XilinxLdceNode::AddConnection(const ConnectionDescriptor& connection) {
+  const string& port_name = connection.port_name;
+  if (port_name == "Q") {
+    named_output_connections.insert(make_pair(connection.port_name, connection));
+  } else if (port_name == "G" || port_name == "GE" || port_name == "CLR" ||
+             port_name == "D") {
+    named_input_connections.insert(make_pair(connection.port_name, connection));
+  } else {
+    cout << "Unexpected port name: " << connection.port_name << endl;
+    throw std::exception();
+  }
+}
+
 void XilinxLutNode::AddConnection(const ConnectionDescriptor& connection) {
   const string& port_name = connection.port_name;
   if (port_name.empty()) {
@@ -653,7 +666,6 @@ void XilinxLutNode::AddConnection(const ConnectionDescriptor& connection) {
     throw std::exception();
   }
 }
-
 double XilinxLutNode::ComputeEntropy(
       const std::string& output_name, EdgeMap* wires, NodeMap* nodes) const {
   return ComputeEntropy(output_name, wires, nodes, 0, 0);

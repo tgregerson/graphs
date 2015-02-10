@@ -31,6 +31,10 @@ int main(int argc, char *argv[]) {
       "e", "entropy", "Entropy input file name", false, "", "string",
       cmd);
 
+  TCLAP::ValueArg<string> entropy_output_file_flag(
+      "s", "dump_shannon_entropy", "Shannon entropy output file name", false, "", "string",
+      cmd);
+
   TCLAP::ValueArg<string> xntl_output_file_flag(
       "x", "xntl", "XNTL output file name", false, "", "string",
       cmd);
@@ -40,6 +44,7 @@ int main(int argc, char *argv[]) {
   ifstream v_file;
   ifstream p1_file;
   ofstream xntl_file;
+  ofstream dump_entropy_file;
 
   // Open file.
   v_file.open(verilog_input_file_flag.getValue());
@@ -64,13 +69,18 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
   }
+  if (entropy_output_file_flag.isSet()) {
+    dump_entropy_file.open(entropy_output_file_flag.getValue());
+    if (!dump_entropy_file.is_open()) {
+      cout << "Can't open entropy output file "
+           << entropy_output_file_flag.getValue() << endl;
+      exit(1);
+    }
+  }
 
   map<string, FunctionalEdge*> functional_edges;
   map<string, FunctionalEdge*> functional_wires;
   map<string, FunctionalNode*> functional_nodes;
-
-  // If no output file, redirect to cout.
-  ostream& output_stream = xntl_file.is_open() ? xntl_file : cout;
 
   // Parsed lines will contain a line that terminates with a ';'.
   cout << "-----------------Parsing Netlist--------------------\n";
@@ -241,14 +251,22 @@ int main(int argc, char *argv[]) {
     for (const auto& node_pair : functional_nodes) {
       parser.PrintFunctionalNodeXNtlFormat(
           node_pair.second, &functional_edges, &functional_wires,
-          &functional_nodes, output_stream);
-      output_stream << endl;
+          &functional_nodes, xntl_file);
+      xntl_file << endl;
     }
     xntl_file.close();
   }
 
+  if (dump_entropy_file.is_open()) {
+    cout << "-----------------Writing computed entropy to "
+         << entropy_output_file_flag.getValue()
+         << "--------------------\n";
+    for (const auto& wire_pair : functional_wires) {
+      dump_entropy_file << wire_pair.first << " "
+                        << wire_pair.second->Entropy(&functional_wires, &functional_nodes)
+                        << endl;
+    }
+  }
+
   return 0;
 }
-
-
-

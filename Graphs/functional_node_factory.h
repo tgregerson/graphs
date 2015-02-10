@@ -38,6 +38,8 @@ class FunctionalNodeFactory {
       node = new vivado::XilinxGndNode();
     } else if (str == "IBUF") {
       node = new vivado::XilinxIbufNode();
+    } else if (str == "LDCE") {
+      node = new vivado::XilinxLdceNode();
     } else if (str == "LUT1") {
       node = new vivado::XilinxLut1Node();
     } else if (str == "LUT2") {

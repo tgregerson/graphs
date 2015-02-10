@@ -114,7 +114,6 @@ int main(int argc, char *argv[]) {
         entropy_in_file, &bit_range)) {
       signal_name.append(bit_range);
     }
-    cout << "Signal: " << signal_name << endl;
     if (!signal_name.empty()) {
       if (whitelist_signals.empty() ||
           whitelist_signals.find(signal_name) != whitelist_signals.end()) {
@@ -129,7 +128,6 @@ int main(int argc, char *argv[]) {
           total_slice_entropy.at(i) += MinSliceEntropy(sv);
         }
         signal_slices.insert(make_pair(signal_name, slice_values));
-        cout << "Added " << signal_name << endl;
       }
     } else {
       break;

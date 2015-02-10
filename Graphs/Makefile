@@ -14,6 +14,8 @@ LDFLAGS = -lrt $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
 CHACO_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o)
+CVCD_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_lexer.o vcd_lexer.o vcd_parser.o)
+CENT_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_lexer.o vcd_lexer.o)
 ETT_BASE_O = $(addprefix $(OBJDIR)/,structural_netlist_lexer.o)
 GRAPH_BASE_O = $(addprefix $(OBJDIR)/,edge.o id_manager.o node.o port.o weight_score.o)
 KLFM_BASE_O = $(addprefix $(OBJDIR)/,edge_klfm.o gain_bucket_manager_single_resource.o gain_bucket_manager_multi_resource_exclusive.o gain_bucket_manager_multi_resource_mixed.o gain_bucket_standard.o partition_engine_klfm.o partitioner_config.o preprocessor.o testbench_generator.o) \
@@ -34,6 +36,10 @@ PM_BASE_O = $(addprefix $(OBJDIR)/,chaco_parser.o ntl_parser.o partitioner_confi
             $(KLFM_BASE_O) \
             $(NTL_BASE_O)
 
+CVCD_BIN_O = $(OBJDIR)/compare_vcd_main.o \
+             $(CVCD_BASE_O)
+CENT_BIN_O = $(OBJDIR)/compare_entropy_main.o \
+             $(CENT_BASE_O)
 ETT_BIN_O = $(OBJDIR)/entropy_time_tracker_main.o \
             $(ETT_BASE_O)      
 FNP_BIN_O = $(OBJDIR)/functional_netlist_parser_main.o \
@@ -51,7 +57,7 @@ WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \
            $(GRAPH_BASE_O)
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main entropy_time_tracker functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter structural_netlist_parser vcd_parser weight_generator)
+BINARIES = $(addprefix $(BINDIR)/,partition_main compare_entropy compare_vcd entropy_time_tracker functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter structural_netlist_parser vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -65,6 +71,12 @@ $(BINDIR):
 	mkdir $(BINDIR)
 
 $(BINDIR)/partition_main: $(PM_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/compare_entropy: $(CENT_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/compare_vcd: $(CVCD_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/entropy_time_tracker: $(ETT_BIN_O)
@@ -110,6 +122,7 @@ parser_interface_H = parser_interface.h
 port_H = port.h
 mps_name_hash_H = mps_name_hash.h
 ntl_parser_H = ntl_parser.h
+signal_entropy_info_H = signal_entropy_info.h
 structural_netlist_lexer_H = structural_netlist_lexer.h
 testbench_generator_H = testbench_generator.h
 universal_macros_H = universal_macros.h
@@ -125,7 +138,7 @@ chaco_parser_H = $(edge_H) $(node_H) $(parser_interface_H) chaco_parser.h
 gain_bucket_entry_H = $(node_H) $(universal_macros_H) gain_bucket_entry.h
 partitioner_config_H = $(node_H) partitioner_config.h
 partition_engine_H = $(edge_klfm_H) partition_engine.h
-vcd_parser_H = $(file_helpers_H) $(vcd_lexer_H) vcd_parser.h
+vcd_parser_H = $(file_helpers_H) $(signal_entropy_H) $(vcd_lexer_H) vcd_parser.h
 xilinx_functional_nodes_H = $(functional_node_H) $(structural_netlist_lexer_H) xilinx_functional_nodes.h
 
 functional_node_factory_H = $(functional_node_H) $(xilinx_functional_nodes_H)
@@ -153,6 +166,12 @@ $(OBJDIR)/chaco_parser.o: $(id_manager_H) $(chaco_parser_H) chaco_parser.cpp
 
 $(OBJDIR)/chaco_weight_generator.o: $(chaco_parser_H) $(node_H) $(univeral_macros_H) $(chaco_weight_generator_H) chaco_weight_generator.cpp
 	$(CXX) -c chaco_weight_generator.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/compare_entropy_main.o: $(file_helpers_H) $(structural_netlist_lexer_H) compare_entropy_main.cpp
+	$(CXX) -c compare_entropy_main.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/compare_vcd_main.o: $(file_helpers_H) $(signal_entropy_info_H) $(vcd_parser_H) compare_vcd_main.cpp
+	$(CXX) -c compare_vcd_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/edge.o: $(edge_H) edge.cpp
 	$(CXX) -c edge.cpp $(CXXFLAGS) -o $@
@@ -235,7 +254,7 @@ $(OBJDIR)/vcd_lexer.o: $(universal_macros_H) $(vcd_lexer_H) vcd_lexer.cpp
 $(OBJDIR)/vcd_parser.o: $(universal_macros_H) vcd_parser.cpp
 	$(CXX) -c vcd_parser.cpp $(CXXFLAGS) -o $@
 
-$(OBJDIR)/vcd_parser_main.o: $(vcd_parser_H) vcd_parser_main.cpp
+$(OBJDIR)/vcd_parser_main.o: $(signal_entropy_info_H) $(vcd_parser_H) vcd_parser_main.cpp
 	$(CXX) -c vcd_parser_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/weight_score.o: $(weight_score_H) weight_score.cpp

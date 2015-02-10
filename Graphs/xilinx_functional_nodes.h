@@ -177,6 +177,13 @@ class XilinxIbufNode : public XilinxBufNode {
   virtual ~XilinxIbufNode() {}
 };
 
+class XilinxLdceNode : public XilinxFdNode {
+ public:
+  XilinxLdceNode() {}
+  virtual ~XilinxLdceNode() {}
+  virtual void AddConnection(const ConnectionDescriptor& connection);
+};
+
 class XilinxLutNode : public FunctionalNode {
  public:
   virtual ~XilinxLutNode() {}

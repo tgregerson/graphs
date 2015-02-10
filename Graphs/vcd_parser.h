@@ -12,141 +12,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include "signal_entropy_info.h"
 #include "vcd_lexer.h"
 
 // Structs for parsing VCD tokens
 namespace vcd_parser {
-
-// TODO Move entropy related stuff into separate class once mature.
-enum class FourValueLogic {
-  ZERO,
-  ONE,
-  X,
-  Z,
-};
-
-struct BitEntropyInfo {
-  void Update(char value_char, long long time_since_last_update) {
-    switch (cur_val) {
-      case FourValueLogic::ZERO:
-        num_0 += time_since_last_update;
-        break;
-      case FourValueLogic::ONE:
-        num_1 += time_since_last_update;
-        break;
-      case FourValueLogic::X:
-        num_x += time_since_last_update;
-        break;
-      case FourValueLogic::Z:
-        num_z += time_since_last_update;
-        break;
-      default: assert(false);
-    }
-    switch (value_char) {
-      case '0':
-        cur_val = FourValueLogic::ZERO;
-        break;
-      case '1':
-        cur_val = FourValueLogic::ONE;
-        break;
-      case 'x':
-      case 'X':
-        cur_val = FourValueLogic::X;
-        break;
-      case 'z':
-      case 'Z':
-        cur_val = FourValueLogic::Z;
-        break;
-      default: assert(false);
-    }
-    cur_val_char = value_char;
-  }
-
-  double p_0() const {
-    long long total = total_time();
-    if (total == 0) {
-      return 0.0;
-    } else {
-      return double(num_0) / double(total);
-    }
-  }
-  double p_1() const {
-    long long total = total_time();
-    if (total == 0) {
-      return 0.0;
-    } else {
-      return double(num_1) / double(total);
-    }
-  }
-  double p_x() const {
-    long long total = total_time();
-    if (total == 0) {
-      return 0.0;
-    } else {
-      return double(num_x) / double(total);
-    }
-  }
-  double p_z() const {
-    long long total = total_time();
-    if (total == 0) {
-      return 0.0;
-    } else {
-      return double(num_z) / double(total);
-    }
-  }
-
-  long long int total_time() const {
-    return num_0 + num_1 + num_x + num_z;
-  }
-
-  FourValueLogic cur_val{FourValueLogic::X};
-  char cur_val_char{'x'};
-  long long int num_0{0};
-  long long int num_1{0};
-  long long int num_x{0};
-  long long int num_z{0};
-};
-
-struct SignalEntropyTimeSlice {
-  void InitFrom(const SignalEntropyTimeSlice& previous_slice) {
-    start_time = previous_slice.end_time;
-    bit_info.resize(previous_slice.bit_info.size());
-    for (size_t i = 0; i < bit_info.size(); ++i) {
-      bit_info.at(i).cur_val = previous_slice.bit_info.at(i).cur_val;
-      bit_info.at(i).cur_val_char = previous_slice.bit_info.at(i).cur_val_char;
-    }
-  }
-  unsigned long long start_time{0};
-  unsigned long long end_time{0};
-  std::vector<BitEntropyInfo> bit_info;
-};
-
-struct SignalEntropyInfo {
-  SignalEntropyInfo() {
-    time_slices.resize(1);
-  }
-
-  SignalEntropyTimeSlice& CurrentTimeSlice() {
-    assert(!time_slices.empty());
-    return time_slices.back();
-  }
-
-  void AdvanceTimeSlice(long long int current_time) {
-    SignalEntropyTimeSlice& prev_slice = CurrentTimeSlice();
-    prev_slice.end_time = current_time;
-    SignalEntropyTimeSlice new_slice;
-    new_slice.InitFrom(prev_slice);
-    time_slices.push_back(new_slice); // prev_slice reference invalidated!
-  }
-
-  int scope_prefix_code{-1};
-  unsigned long long last_update_time{0};
-  unsigned long long width{1};
-  long long bit_low{0};
-  std::string unscoped_orig_name;
-  std::vector<SignalEntropyTimeSlice> time_slices;
-};
-
 namespace vcd_token {
 
 struct IdentifierCode {
@@ -630,9 +500,10 @@ void UpdateAllSignals(long long current_time, T& entropy_data) {
   }
 }
 
-template <typename T>
+template <typename T, typename U>
 void EntropyFromVcdDefinitions(
-    T& in, std::ostream& os, long long max_mb, long long int interval_pico) {
+    T& in, U* entropy_data, bool write_to_output, std::ostream& os,
+    long long max_mb, long long int interval_pico) {
   const auto initial_pos = fhelp::GetPosition(in);
   fhelp::SeekToEnd(in);
   const auto end_pos = fhelp::GetPosition(in);
@@ -642,7 +513,6 @@ void EntropyFromVcdDefinitions(
   const size_t omit_scope_levels = 2;
   const size_t max_depth = -1;
 
-  std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
   std::unordered_set<std::string> ignored_codes;
 
   std::set<std::string> used_scope_prefixes;
@@ -699,7 +569,7 @@ void EntropyFromVcdDefinitions(
             e_info.width = var.width;
             e_info.bit_low = var.bit_low;
             e_info.CurrentTimeSlice().bit_info.resize(e_info.width);
-            entropy_data.insert(make_pair(var.code_name, e_info));
+            entropy_data->insert(make_pair(var.code_name, e_info));
             break;
           }
         // Fall-through intended
@@ -730,7 +600,7 @@ void EntropyFromVcdDefinitions(
       last_print_point = cur_line;
     }
   }
-  std::cout << "Tracking entropy for " << entropy_data.size() << " signals\n";
+  std::cout << "Tracking entropy for " << entropy_data->size() << " signals\n";
   std::cout << "---------------Starting parse sim commands----------------\n";
   vcd_token::SimulationCommand sc;
   long long cur_time = 0;
@@ -745,8 +615,8 @@ void EntropyFromVcdDefinitions(
       case vcd_token::SimulationCommand::SimulationCommandType::TimeCommand:
         if (timeslice_switch_time > 0 &&
             sc.simulation_time.time > timeslice_switch_time) {
-          UpdateAllSignals(timeslice_switch_time, entropy_data);
-          for (auto& entropy_pair : entropy_data) {
+          UpdateAllSignals(timeslice_switch_time, *entropy_data);
+          for (auto& entropy_pair : *entropy_data) {
             entropy_pair.second.AdvanceTimeSlice(timeslice_switch_time);
           }
           timeslice_switch_time += interval_pico;
@@ -754,12 +624,12 @@ void EntropyFromVcdDefinitions(
         cur_time = sc.simulation_time.time;
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand:
-        ProcessValueChange(sc.value_change, cur_time, entropy_data, ignored_codes);
+        ProcessValueChange(sc.value_change, cur_time, *entropy_data, ignored_codes);
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::SimulationValueCommand:
         for (const vcd_token::ValueChange& vc :
              sc.simulation_value_command.value_changes) {
-          ProcessValueChange(vc, cur_time, entropy_data, ignored_codes);
+          ProcessValueChange(vc, cur_time, *entropy_data, ignored_codes);
         }
         break;
       default: break;
@@ -782,41 +652,46 @@ void EntropyFromVcdDefinitions(
   std::cout << "End time: " << cur_time << std::endl;
 
   // Update all signals with last value.
-  UpdateAllSignals(cur_time, entropy_data);
+  UpdateAllSignals(cur_time, *entropy_data);
 
-  assert(!entropy_data.empty());
+  assert(!entropy_data->empty());
   if (interval_pico > 0) {
     // For backwards compatibility with previous entropy files, only print
     // the number of slices in multi-slice entropy files.
-    os << entropy_data.begin()->second.time_slices.size() << std::endl;
+    os << entropy_data->begin()->second.time_slices.size() << std::endl;
   }
-  for (auto& entropy_pair : entropy_data) {
+  for (auto& entropy_pair : *entropy_data) {
     assert(entropy_pair.second.last_update_time != 0);
     SignalEntropyInfo& sig_info = entropy_pair.second;
     sig_info.CurrentTimeSlice().end_time = cur_time;
-    for (int i = 0; i < sig_info.width; ++i) {
-      if (sig_info.scope_prefix_code >= 0) {
-        os << scope_prefixes_by_code.at(sig_info.scope_prefix_code);
-      }
-      os << sig_info.unscoped_orig_name << "[" << (i + sig_info.bit_low) << "] ";
-      if (interval_pico <= 0) {
-        BitEntropyInfo& bit_info = sig_info.CurrentTimeSlice().bit_info.at(i);
-        assert(bit_info.total_time() > 0);
-        os << bit_info.num_0 << " "
-           << bit_info.num_1 << " "
-           << bit_info.num_x << " "
-           << bit_info.num_z << " "
-           << std::endl;
-      } else {
-        for (auto& slice : sig_info.time_slices) {
-          BitEntropyInfo& bit_info = slice.bit_info.at(i);
-          //os << "{" << slice.start_time << ", " << slice.end_time << "} ";
+  }
+  if (write_to_output) {
+    std::cout << "---------------Writing Output----------------\n";
+    for (auto& entropy_pair : *entropy_data) {
+      SignalEntropyInfo& sig_info = entropy_pair.second;
+      for (int i = 0; i < sig_info.width; ++i) {
+        if (sig_info.scope_prefix_code >= 0) {
+          os << scope_prefixes_by_code.at(sig_info.scope_prefix_code);
+        }
+        os << sig_info.unscoped_orig_name << "[" << (i + sig_info.bit_low) << "] ";
+        if (interval_pico <= 0) {
+          BitEntropyInfo& bit_info = sig_info.CurrentTimeSlice().bit_info.at(i);
+          assert(bit_info.total_time() > 0);
           os << bit_info.num_0 << " "
              << bit_info.num_1 << " "
              << bit_info.num_x << " "
-             << bit_info.num_z << " ";
+             << bit_info.num_z << " "
+             << std::endl;
+        } else {
+          for (auto& slice : sig_info.time_slices) {
+            BitEntropyInfo& bit_info = slice.bit_info.at(i);
+            os << bit_info.num_0 << " "
+               << bit_info.num_1 << " "
+               << bit_info.num_x << " "
+               << bit_info.num_z << " ";
+          }
+          os << std::endl;
         }
-        os << std::endl;
       }
     }
   }

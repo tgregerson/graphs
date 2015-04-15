@@ -500,10 +500,10 @@ void UpdateAllSignals(long long current_time, T& entropy_data) {
   }
 }
 
-template <typename T, typename U>
+template <typename T>
 void EntropyFromVcdDefinitions(
-    T& in, U* entropy_data, bool write_to_output, std::ostream& os,
-    long long max_mb, long long int interval_pico) {
+    T& in, EntropyData* entropy_data, bool write_to_output, std::ostream& os,
+    long long max_mb, long long int interval_pico, bool populate_vfd) {
   const auto initial_pos = fhelp::GetPosition(in);
   fhelp::SeekToEnd(in);
   const auto end_pos = fhelp::GetPosition(in);
@@ -517,6 +517,8 @@ void EntropyFromVcdDefinitions(
 
   std::set<std::string> used_scope_prefixes;
   std::vector<std::string> scope_prefixes_by_code;
+
+  signal_content::base::VFrameDeque vfd;
 
   long long last_print_point = 0;
   long long cur_line = 0;
@@ -569,7 +571,7 @@ void EntropyFromVcdDefinitions(
             e_info.width = var.width;
             e_info.bit_low = var.bit_low;
             e_info.CurrentTimeSlice().bit_info.resize(e_info.width);
-            entropy_data->insert(make_pair(var.code_name, e_info));
+            entropy_data->signal_data.insert(make_pair(var.code_name, e_info));
             break;
           }
         // Fall-through intended
@@ -600,7 +602,7 @@ void EntropyFromVcdDefinitions(
       last_print_point = cur_line;
     }
   }
-  std::cout << "Tracking entropy for " << entropy_data->size() << " signals\n";
+  std::cout << "Tracking entropy for " << entropy_data->signal_data.size() << " signals\n";
   std::cout << "---------------Starting parse sim commands----------------\n";
   vcd_token::SimulationCommand sc;
   long long cur_time = 0;
@@ -613,10 +615,14 @@ void EntropyFromVcdDefinitions(
     }
     switch (sc.type) {
       case vcd_token::SimulationCommand::SimulationCommandType::TimeCommand:
+        // TODO added for performance testing only
+        if (populate_vfd) {
+          entropy_data->AddCurrentVFrameFv();
+        }
         if (timeslice_switch_time > 0 &&
             sc.simulation_time.time > timeslice_switch_time) {
-          UpdateAllSignals(timeslice_switch_time, *entropy_data);
-          for (auto& entropy_pair : *entropy_data) {
+          UpdateAllSignals(timeslice_switch_time, entropy_data->signal_data);
+          for (auto& entropy_pair : entropy_data->signal_data) {
             entropy_pair.second.AdvanceTimeSlice(timeslice_switch_time);
           }
           timeslice_switch_time += interval_pico;
@@ -624,12 +630,12 @@ void EntropyFromVcdDefinitions(
         cur_time = sc.simulation_time.time;
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::ValueChangeCommand:
-        ProcessValueChange(sc.value_change, cur_time, *entropy_data, ignored_codes);
+        ProcessValueChange(sc.value_change, cur_time, entropy_data->signal_data, ignored_codes);
         break;
       case vcd_token::SimulationCommand::SimulationCommandType::SimulationValueCommand:
         for (const vcd_token::ValueChange& vc :
              sc.simulation_value_command.value_changes) {
-          ProcessValueChange(vc, cur_time, *entropy_data, ignored_codes);
+          ProcessValueChange(vc, cur_time, entropy_data->signal_data, ignored_codes);
         }
         break;
       default: break;
@@ -652,22 +658,22 @@ void EntropyFromVcdDefinitions(
   std::cout << "End time: " << cur_time << std::endl;
 
   // Update all signals with last value.
-  UpdateAllSignals(cur_time, *entropy_data);
+  UpdateAllSignals(cur_time, entropy_data->signal_data);
 
-  assert(!entropy_data->empty());
+  assert(!entropy_data->signal_data.empty());
   if (interval_pico > 0) {
     // For backwards compatibility with previous entropy files, only print
     // the number of slices in multi-slice entropy files.
-    os << entropy_data->begin()->second.time_slices.size() << std::endl;
+    os << entropy_data->signal_data.begin()->second.time_slices.size() << std::endl;
   }
-  for (auto& entropy_pair : *entropy_data) {
+  for (auto& entropy_pair : entropy_data->signal_data) {
     assert(entropy_pair.second.last_update_time != 0);
     SignalEntropyInfo& sig_info = entropy_pair.second;
     sig_info.CurrentTimeSlice().end_time = cur_time;
   }
   if (write_to_output) {
     std::cout << "---------------Writing Output----------------\n";
-    for (auto& entropy_pair : *entropy_data) {
+    for (auto& entropy_pair : entropy_data->signal_data) {
       SignalEntropyInfo& sig_info = entropy_pair.second;
       for (int i = 0; i < sig_info.width; ++i) {
         if (sig_info.scope_prefix_code >= 0) {

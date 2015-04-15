@@ -9,7 +9,7 @@ CXXFLAGS_OPT = -std=c++11 $(XML2_CXX_FLAGS) -O3 -flto -Wall -Werror
 CXXFLAGS_PROFILE_VALGRIND = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Werror -g
 XXFLAGS_PROFILE_GPROF = -std=c++11 $(XML2_CXX_FLAGS) -flto -Wall -Werror -pg
 CXXFLAGS_DEBUG = -g -std=c++11 $(XML2_CXX_FLAGS) -Wall -Werror
-CXXFLAGS = $(CXXFLAGS_DEBUG) -D_FILE_OFFSET_BITS=64
+CXXFLAGS = $(CXXFLAGS_OPT) -D_FILE_OFFSET_BITS=64
 LDFLAGS = -lrt $(XML2_LD_FLAGS) -flto
 LPSOLVE_LDFLAGS = -ldl lp_solve/liblpsolve55.a $(LDFLAGS)
 
@@ -48,6 +48,8 @@ FNPD_BIN_O = $(OBJDIR)/functional_netlist_parser_debug_main.o \
             $(SNP_BASE_O)
 NFC_BIN_O = $(OBJDIR)/ntl_format_converter.o
 PM_BIN_O = $(PM_BASE_O) $(OBJDIR)/partition_main.o
+S2C_BIN_O = $(OBJDIR)/shan_to_csv_main.o \
+            $(CENT_BASE_O)
 SNP_BIN_O = $(OBJDIR)/structural_netlist_parser_main.o \
             $(SNP_BASE_O)
 #VDG_BIN_O = $(OBJDIR)/vcd_dumpvars_generator_main.o \
@@ -57,7 +59,7 @@ WG_BIN_O = $(OBJDIR)/chaco_weight_generator.o \
            $(CHACO_BASE_O) \
            $(GRAPH_BASE_O)
 
-BINARIES = $(addprefix $(BINDIR)/,partition_main compare_entropy compare_vcd entropy_time_tracker functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter structural_netlist_parser vcd_parser weight_generator)
+BINARIES = $(addprefix $(BINDIR)/,partition_main compare_entropy compare_vcd entropy_time_tracker functional_netlist_parser functional_netlist_parser_debug lp_solve_interface ntl_format_converter shan_to_csv structural_netlist_parser vcd_parser weight_generator)
 
 # ------------------------------------------------------------
 # PROGRAMS
@@ -94,6 +96,9 @@ $(BINDIR)/lp_solve_interface: $(LPSI_BIN_O)
 $(BINDIR)/ntl_format_converter: $(NFC_BIN_O)	
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
+$(BINDIR)/shan_to_csv: $(S2C_BIN_O)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
 $(BINDIR)/structural_netlist_parser: $(SNP_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
@@ -101,7 +106,7 @@ $(BINDIR)/vcd_dumpvars_generator: $(VDG_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BINDIR)/vcd_parser: $(VP_BIN_O)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $^ /localhome/gregerso/git/signalcontent/build_files/huffman.o -o $@ $(LDFLAGS)
 
 $(BINDIR)/weight_generator: $(WG_BIN_O)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
@@ -232,6 +237,9 @@ $(OBJDIR)/preprocessor.o: $(universal_macros_H) $(preprocessor_H) preprocessor.c
 
 $(OBJDIR)/ntl_parser.o: $(edge_H) $(id_manager_H) $(node_H) $(universal_macros_H) $(ntl_parser_H) ntl_parser.cpp
 	$(CXX) -c ntl_parser.cpp $(CXXFLAGS) -o $@
+
+$(OBJDIR)/shan_to_csv_main.o: $(file_helpers_H) $(structural_netlist_lexer_H) shan_to_csv_main.cpp
+	$(CXX) -c shan_to_csv_main.cpp $(CXXFLAGS) -o $@
 
 $(OBJDIR)/structural_netlist_lexer.o: $(structural_netlist_lexer_H) structural_netlist_lexer.cpp
 	$(CXX) -c structural_netlist_lexer.cpp $(CXXFLAGS) -o $@

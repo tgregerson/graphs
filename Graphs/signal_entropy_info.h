@@ -14,44 +14,42 @@
 #include <string>
 #include <vector>
 
-enum class FourValueLogic {
-  ZERO,
-  ONE,
-  X,
-  Z,
-};
+// TODO this will break on other computers.
+#include "/localhome/gregerso/git/signalcontent/src/base/four_value_logic.h"
+#include "/localhome/gregerso/git/signalcontent/src/base/frame_fv.h"
+
 
 struct BitEntropyInfo {
   void Update(char value_char, long long time_since_last_update) {
     switch (cur_val) {
-      case FourValueLogic::ZERO:
+      case signal_content::base::FourValueLogic::ZERO:
         num_0 += time_since_last_update;
         break;
-      case FourValueLogic::ONE:
+      case signal_content::base::FourValueLogic::ONE:
         num_1 += time_since_last_update;
         break;
-      case FourValueLogic::X:
+      case signal_content::base::FourValueLogic::X:
         num_x += time_since_last_update;
         break;
-      case FourValueLogic::Z:
+      case signal_content::base::FourValueLogic::Z:
         num_z += time_since_last_update;
         break;
       default: assert(false);
     }
     switch (value_char) {
       case '0':
-        cur_val = FourValueLogic::ZERO;
+        cur_val = signal_content::base::FourValueLogic::ZERO;
         break;
       case '1':
-        cur_val = FourValueLogic::ONE;
+        cur_val = signal_content::base::FourValueLogic::ONE;
         break;
       case 'x':
       case 'X':
-        cur_val = FourValueLogic::X;
+        cur_val = signal_content::base::FourValueLogic::X;
         break;
       case 'z':
       case 'Z':
-        cur_val = FourValueLogic::Z;
+        cur_val = signal_content::base::FourValueLogic::Z;
         break;
       default: assert(false);
     }
@@ -110,7 +108,7 @@ struct BitEntropyInfo {
     return num_0 + num_1 + num_x + num_z;
   }
 
-  FourValueLogic cur_val{FourValueLogic::X};
+  signal_content::base::FourValueLogic cur_val{signal_content::base::FourValueLogic::X};
   char cur_val_char{'x'};
   long long int num_0{0};
   long long int num_1{0};
@@ -150,6 +148,20 @@ struct SignalEntropyInfo {
     time_slices.push_back(new_slice); // prev_slice reference invalidated!
   }
 
+  signal_content::base::FourValueLogic cur_value() const {
+    const SignalEntropyTimeSlice& cur_slice = time_slices.back();
+    return cur_slice.bit_info.front().cur_val;
+  }
+
+  std::vector<signal_content::base::FourValueLogic> cur_value_vframe() const {
+    std::vector<signal_content::base::FourValueLogic> vals;
+    const SignalEntropyTimeSlice& cur_slice = time_slices.back();
+    for (const BitEntropyInfo& bit_info : cur_slice.bit_info) {
+      vals.push_back(bit_info.cur_val);
+    }
+    return vals;
+  }
+
   int scope_prefix_code{-1};
   unsigned long long last_update_time{0};
   unsigned long long width{1};
@@ -157,5 +169,28 @@ struct SignalEntropyInfo {
   std::string unscoped_orig_name;
   std::vector<SignalEntropyTimeSlice> time_slices;
 };
+
+class EntropyData {
+ public:
+  std::unordered_map<std::string, SignalEntropyInfo> signal_data;
+
+  void AddCurrentVFrameFv() {
+    signal_content::base::VFrameFv vframe;
+    for (const auto& sig_pair : signal_data) {
+      const SignalEntropyInfo& sig_info = sig_pair.second;
+      if (sig_info.width > 1) {
+        signal_content::base::VFrameFv sig_vals = sig_info.cur_value_vframe();
+        for (signal_content::base::FourValueLogic fv : sig_vals) {
+          vframe.push_back(fv);
+        }
+      } else {
+        vframe.push_back(sig_info.cur_value());
+      }
+    }
+    vfd.push_back(std::move(vframe));
+  }
+  signal_content::base::VFrameDeque vfd;
+};
+
 
 #endif /* SIGNAL_ENTROPY_INFO_H_ */

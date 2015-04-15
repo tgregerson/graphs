@@ -3,6 +3,7 @@
 	<name>Graphs</name>
 	<comment></comment>
 	<projects>
+		<project>SignalContent</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

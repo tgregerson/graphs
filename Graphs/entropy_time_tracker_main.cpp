@@ -152,21 +152,21 @@ int main(int argc, char *argv[]) {
   ostream& os = (outfile.is_open()) ? outfile : std::cout;
 
   for (const auto& sig : signal_slices) {
-    os << sig.first << " ";
+    os << sig.first;
     for (const SliceValues& slice : sig.second) {
-      os << MinSliceEntropy(slice) << " ";
+      os << "," << MinSliceEntropy(slice);
     }
     os << endl;
   }
 
-  os << "Total (" << signal_slices.size() << ") ";
+  os << "Total (" << signal_slices.size() << ")";
   for (double slice_entropy : total_slice_entropy) {
-    os << slice_entropy << " ";
+    os << "," << slice_entropy;
   }
   os << endl;
-  os << "TotalPercent (" << signal_slices.size() << ") ";
+  os << "TotalPercent (" << signal_slices.size() << ")";
   for (double slice_entropy : total_slice_entropy) {
-    os << (slice_entropy / signal_slices.size()) << " ";
+    os << "," << (slice_entropy / signal_slices.size());
   }
   os << endl;
 

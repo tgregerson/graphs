@@ -5,6 +5,7 @@
  *      Author: gregerso
  */
 
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -131,7 +132,10 @@ int main(int argc, char *argv[]) {
   cout << "-----------------Populating Nodes--------------------\n";
   parser.PopulateFunctionalNodes(
       functional_edges, functional_wires, &functional_nodes, parsed_lines);
+  parser.PopulateFunctionalEdgePorts(
+      functional_nodes, &functional_edges, &functional_wires);
 
+  chrono::system_clock::time_point start_time = chrono::system_clock::now();
   FunctionalEdge* const0 = functional_edges.at("\\<const0> ");
   const0->SetProbabilityOne(0.0);
   FunctionalEdge* const0w = functional_wires.at("\\<const0> [0]");
@@ -145,14 +149,14 @@ int main(int argc, char *argv[]) {
     parser.PrePopulateProbabilityOnes(p1_file, &functional_wires);
   }
 
-  parser.PopulateFunctionalEdgePorts(
-      functional_nodes, &functional_edges, &functional_wires);
-
   cout << "-----------------Computing Entropies--------------------\n";
   for (auto& wire_pair : functional_wires) {
     FunctionalEdge* wire = wire_pair.second;
     wire->Entropy(&functional_wires, &functional_nodes);
   }
+  chrono::system_clock::time_point end_time = chrono::system_clock::now();
+  chrono::duration<double> elapsed_seconds = end_time - start_time;
+  cout << "Entropy computation time: " << elapsed_seconds.count() << "s\n";
 
   // WARNING: Entropy computation must be done before pruning wires from the
   // graph, otherwise the necessary inputs may not be present when computing

@@ -101,13 +101,28 @@
   #define PROFILE_ITERATIONS 5000
 #endif
 
-#define assert_b(cond) for ( ; !(cond) ; assert(cond) )
-#define assert_str(cond, str) if (!cond) {std::cout << str << std::endl; assert(cond);}
-#define RUN_DEBUG(debug_option, level) if (DEBUG_ENABLED && debug_option && (DEBUG_LEVEL >= level))
-#define RUN_VERBOSE(lev) if (VERBOSITY >= lev)
-#define DLOG(debug_option, level) if (DEBUG_ENABLED && debug_option && (DEBUG_LEVEL >= level)) std::cout
-#define VLOG(lev) if (VERBOSITY >= lev) std::cout
+#ifndef assert_b
+  #define assert_b(cond) for ( ; !(cond) ; assert(cond) )
+#endif
+#ifndef assert_str
+  #define assert_str(cond, str) if (!cond) {std::cout << str << std::endl; assert(cond);}
+#endif
+#ifndef RUN_DEBUG
+  #define RUN_DEBUG(debug_option, level) if (DEBUG_ENABLED && debug_option && (DEBUG_LEVEL >= level))
+#endif
+#ifndef RUN_VERBOSE
+  #define RUN_VERBOSE(lev) if (VERBOSITY >= lev)
+#endif
+#ifndef DLOG
+  #define DLOG(debug_option, level) if (DEBUG_ENABLED && debug_option && (DEBUG_LEVEL >= level)) std::cout
+#endif
+#ifndef VLOG
+  #define VLOG(lev) if (VERBOSITY >= lev) std::cout
+#endif
 
+#ifndef CNN_INLINE
+#define CNN_INLINE
 template<typename T> inline T* CHECK_NOTNULL(T* ptr) { assert(ptr != nullptr); return ptr; }
+#endif
 
 #endif /* UNIVERSAL_MACROS_H_ */

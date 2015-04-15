@@ -71,24 +71,24 @@ int main(int argc, char *argv[]) {
       (time_interval_micro.isSet()) ?
           1000000 * time_interval_micro.getValue() : 0;
 
-  std::unordered_map<std::string, SignalEntropyInfo> gold_entropy_data;
+  EntropyData gold_entropy_data;
   vcd_parser::EntropyFromVcdDefinitions(
-      gold_in_file, &gold_entropy_data, false, os, 0, interval_micro);
+      gold_in_file, &gold_entropy_data, false, os, 0, interval_micro, false);
   cout << "Done processing " << gold_vcd_input_file_flag.getValue() << endl;
   fclose(gold_in_file);
 
-  std::unordered_map<std::string, SignalEntropyInfo> cmp_entropy_data;
+  EntropyData cmp_entropy_data;
   vcd_parser::EntropyFromVcdDefinitions(
-      cmp_in_file, &cmp_entropy_data, false, os, 0, interval_micro);
+      cmp_in_file, &cmp_entropy_data, false, os, 0, interval_micro, false);
   cout << "Done processing " << cmp_vcd_input_file_flag.getValue() << endl;
   fclose(cmp_in_file);
 
   std::unordered_map<std::string, SigEntropyComparisonData> comparison_data;
-  for (const auto& entry : cmp_entropy_data) {
+  for (const auto& entry : cmp_entropy_data.signal_data) {
     const string& signal_name = entry.first;
-    if (gold_entropy_data.find(signal_name) != gold_entropy_data.end()) {
+    if (gold_entropy_data.signal_data.find(signal_name) != gold_entropy_data.signal_data.end()) {
       SigEntropyComparisonData cdata_entry;
-      const SignalEntropyInfo& gold_entry = gold_entropy_data.at(signal_name);
+      const SignalEntropyInfo& gold_entry = gold_entropy_data.signal_data.at(signal_name);
       const SignalEntropyInfo& cmp_entry = entry.second;
       assert(gold_entry.width == cmp_entry.width);
       cdata_entry.width = gold_entry.width;
@@ -107,9 +107,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  cout << gold_entropy_data.size() - comparison_data.size()
+  cout << gold_entropy_data.signal_data.size() - comparison_data.size()
        << " unpaired gold signals\n";
-  cout << cmp_entropy_data.size() - comparison_data.size()
+  cout << cmp_entropy_data.signal_data.size() - comparison_data.size()
        << " unpaired gold signals\n";
 
   return 0;

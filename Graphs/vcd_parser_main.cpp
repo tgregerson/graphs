@@ -17,7 +17,10 @@
 #include "universal_macros.h"
 #include "vcd_lexer.h"
 
+#include "/localhome/gregerso/git/signalcontent/src/codec/huffman.h"
+
 using namespace std;
+using namespace signal_content::base;
 
 int main(int argc, char *argv[]) {
 
@@ -31,13 +34,19 @@ int main(int argc, char *argv[]) {
       "e", "entropy", "Entropy output file name", false, "", "string",
       cmd);
 
-  TCLAP::ValueArg<int> time_interval_micro(
-      "t", "time_interval_u", "Time interval in microseconds", false, 0, "int",
+  TCLAP::ValueArg<int> time_interval_nano(
+      "t", "time_interval_u", "Time interval in nanoseconds", false, 0, "int",
       cmd);
 
   TCLAP::ValueArg<int> max_mb(
       "m", "max_mb", "Stop after parsing this many megabytes", false, 0, "int",
       cmd);
+
+  TCLAP::ValueArg<string> huffman_file_flag(
+      "c", "huffman", "Collect Huffman compression data", false, "", "string", cmd);
+
+  TCLAP::ValueArg<int> huffman_symbol_size_flag(
+      "s", "symbol_size", "Set Huffman symbol size", false, 8, "int", cmd);
 
   cmd.parse(argc, argv);
 
@@ -62,12 +71,40 @@ int main(int argc, char *argv[]) {
 
   vcd_parser::vcd_token::VcdDefinitions vd;
   long long int interval_micro =
-      (time_interval_micro.isSet()) ?
-          1000000 * time_interval_micro.getValue() : 0;
+      (time_interval_nano.isSet()) ?
+          1000 * time_interval_nano.getValue() : 0;
 
-  std::unordered_map<std::string, SignalEntropyInfo> entropy_data;
+  bool huffman_enabled = huffman_file_flag.isSet() ||
+       huffman_symbol_size_flag.isSet();
+  EntropyData entropy_data;
   vcd_parser::EntropyFromVcdDefinitions(
-      in_file, &entropy_data, true, os, max_mb.getValue(), interval_micro);
+      in_file, &entropy_data, true, os, max_mb.getValue(), interval_micro,
+      huffman_enabled);
+  if (huffman_enabled) {
+    cout << "Populating Huffman Codec\n";
+    signal_content::codec::HuffmanCodec codec(
+        entropy_data.vfd, huffman_symbol_size_flag.getValue());
+    codec.PrintCompressionData();
+    if (huffman_file_flag.isSet()) {
+      std::ofstream huffman_outfile;
+      huffman_outfile.open(huffman_file_flag.getValue());
+      assert(huffman_outfile.is_open());
+      huffman_outfile << "Uncompressed Frame Size\n";
+      huffman_outfile << entropy_data.vfd.front().size() *
+                         huffman_symbol_size_flag.getValue()
+                      << "\n";
+      huffman_outfile << "Compressed Frame Sizes\n";
+      for (size_t i = 0; i < entropy_data.vfd.size(); ++i) {
+        if (i % 1000 == 0) {
+          cout << "Encoded frame " << i << " of " << entropy_data.vfd.size()
+              << endl;
+        }
+        const VFrameFv& frame = entropy_data.vfd.at(i);
+        vector<bool> encoded = codec.EncodeFrame(frame);
+        huffman_outfile << encoded.size() << "\n";
+      }
+    }
+  }
 
   cout << "Done processing " << vcd_input_file_flag.getValue()
        << ". Bye!" << endl;
